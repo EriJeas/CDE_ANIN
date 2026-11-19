@@ -1,0 +1,32 @@
+# CDE ANIN en Render. Un servicio web con disco persistente: en el disco viven la base de datos y los archivos del CDE.
+services:
+  - type: web
+    name: cde-anin
+    runtime: node
+    plan: starter            # el disco persistente no existe en el plan gratuito
+    region: oregon
+    buildCommand: npm ci --omit=dev
+    startCommand: node servidor.js
+    healthCheckPath: /api/salud
+    autoDeploy: true
+    disk:
+      name: cde-datos
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: NODE_VERSION
+        value: 22.13.1
+      - key: NODE_ENV
+        value: production
+      - key: DATOS_DIR
+        value: /var/data
+      - key: MODO_ACCESO
+        value: cuentas
+      - key: NOMBRE_CDE
+        value: CDE ANIN - DEO
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_EMAILS          # correos de los administradores del CDE, separados por coma
+        sync: false
+      - key: ADMIN_CLAVE_INICIAL   # solo para el primer ingreso del administrador; luego se borra
+        sync: false

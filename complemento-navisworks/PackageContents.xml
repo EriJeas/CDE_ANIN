@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paquete del complemento de Navisworks "Publicar al CDE" (CDE ANIN). Una DLL por version de Navisworks en Contents\<version>\.
+     Navisworks carga solo el componente de su version (Nw21 = 2024, Nw22 = 2025, Nw23 = 2026, Nw24 = 2027). -->
+<ApplicationPackage SchemaVersion="1.0" AutodeskProduct="Navisworks" ProductType="Application" Name="CDE ANIN - Publicar al CDE" AppVersion="1.0.0"
+  Description="Publica modelos de Navisworks (NWD, NWF, NWC) al CDE institucional de ANIN: archivo, indice de propiedades y geometria."
+  Author="ANIN - Direccion de Estudios y Obras" ProductCode="{6c0e4b8a-3f2d-4e71-9b5a-2d8f1c7e9a40}" UpgradeCode="{9a4f2c1e-7b3d-4c8e-a6f0-5e2d1b9c8a73}">
+  <CompanyDetails Name="ANIN - Autoridad Nacional de Infraestructura" />
+  <Components Description="Navisworks 2024">
+    <RuntimeRequirements OS="Win64" Platform="NAVMAN|NAVSIM" SeriesMin="Nw21" SeriesMax="Nw21" />
+    <ComponentEntry AppName="CdeAnin.Navis" Version="1.0.0" ModuleName="./Contents/2024/CdeAnin.Navis.dll" AppDescription="Publicar al CDE ANIN" AppType="ManagedPlugin" />
+  </Components>
+  <Components Description="Navisworks 2025">
+    <RuntimeRequirements OS="Win64" Platform="NAVMAN|NAVSIM" SeriesMin="Nw22" SeriesMax="Nw22" />
+    <ComponentEntry AppName="CdeAnin.Navis" Version="1.0.0" ModuleName="./Contents/2025/CdeAnin.Navis.dll" AppDescription="Publicar al CDE ANIN" AppType="ManagedPlugin" />
+  </Components>
+  <Components Description="Navisworks 2026">
+    <RuntimeRequirements OS="Win64" Platform="NAVMAN|NAVSIM" SeriesMin="Nw23" SeriesMax="Nw23" />
+    <ComponentEntry AppName="CdeAnin.Navis" Version="1.0.0" ModuleName="./Contents/2026/CdeAnin.Navis.dll" AppDescription="Publicar al CDE ANIN" AppType="ManagedPlugin" />
+  </Components>
+  <Components Description="Navisworks 2027">
+    <RuntimeRequirements OS="Win64" Platform="NAVMAN|NAVSIM" SeriesMin="Nw24" SeriesMax="Nw24" />
+    <ComponentEntry AppName="CdeAnin.Navis" Version="1.0.0" ModuleName="./Contents/2027/CdeAnin.Navis.dll" AppDescription="Publicar al CDE ANIN" AppType="ManagedPlugin" />
+  </Components>
+</ApplicationPackage>

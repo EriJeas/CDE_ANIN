@@ -1,0 +1,20 @@
+{
+  "name": "cde-anin",
+  "version": "0.18.2",
+  "description": "CDE ANIN - Entorno Comun de Datos propio (ISO 19650) con complementos para Revit/Navisworks y conector a Autodesk Forma",
+  "main": "servidor.js",
+  "scripts": {
+    "start": "node servidor.js",
+    "pruebas": "node pruebas/pruebas-arranque.js",
+    "actualiza-visor": "node herramientas/actualiza-clasificadores.js"
+  },
+  "engines": { "node": ">=22.13" },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.22.2"
+  },
+  "devDependencies": {
+    "three": "^0.170.0"
+  }
+}

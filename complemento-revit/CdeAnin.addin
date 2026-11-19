@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>CDE ANIN - Publicar al CDE</Name>
+    <Assembly>CdeAnin\CdeAnin.dll</Assembly>
+    <FullClassName>CdeAnin.App</FullClassName>
+    <ClientId>5b1e7c3a-2d94-4f6b-8e1a-9c0d3f7a2b61</ClientId>
+    <VendorId>ANIN</VendorId>
+    <VendorDescription>ANIN - Direccion de Estudios y Obras - CDE institucional</VendorDescription>
+  </AddIn>
+</RevitAddIns>
