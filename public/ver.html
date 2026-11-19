@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visualizador · CDE ANIN</title>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="css/visor-origen-main.css?v=067">
+<link rel="stylesheet" href="css/ver.css?v=067">
+</head><body class="ver">
+<!-- VISUALIZADOR DE ARCHIVOS DEL CDE (Excel, Word, PowerPoint, Project, Primavera, GIS).
+     Las ventanas Cronograma, Hoja de calculo, Atributos y Contenido del archivo son las del Visor BIM Federado, TAL CUAL
+     (su marcado, su hoja de estilos y su codigo: js/visor-origen/cronograma.js, gis.js, buscador.js). js/ver-puente.js les da
+     lo que en el visor les daba app.js y decide que ventana abre cada archivo. -->
+<header id="verBarra"><b id="verNombre" class="mono"></b><select id="verVersion" title="Versión"></select><span id="verInfo" class="hint"></span><span class="crece"></span><a id="verBajar" class="boton" title="Descargar archivo de origen">⤓ Descargar</a></header>
+<div id="verAviso" class="hidden"></div>
+<div id="busy" class="hidden"><span id="busyText"></span></div>
+
+<div id="crWin" class="flota redim hidden">
+  <div id="crBar" class="fbar"><span>Cronograma</span><span id="crClose" class="fx">&times;</span></div>
+  <div class="fbody col">
+    <div class="ftools">
+      <span id="crTitulo" class="hint"></span>
+      <input id="crBuscar" type="text" placeholder="Buscar actividad...">
+      <label>Enlazar con las propiedades (Ctrl para marcar varias)</label>
+      <!-- Varias a la vez: en obra el codigo de actividad vive unas veces en
+           "Fecha Fin Real", otras en "ID Partida"... Se cruza con la UNION. -->
+      <select id="crParam" multiple size="4"></select>
+      <span id="crEnlace" class="hint"></span>
+      <!-- v1.178: los vinculos del cronograma (TASKPRED del XER), como Primavera.
+           Sin marcar, solo se dibujan los de la actividad elegida con clic. -->
+      <label class="hint" style="display:flex;gap:6px;align-items:center">
+        <input id="crVinculos" type="checkbox"> Vinculos (FS, SS, FF, SF) &middot;
+        clic en una actividad para ver los suyos &middot; clic en una flecha para su aviso</label>
+      <!-- v1.180: lo de siempre de Primavera: colapso total y ruta critica. -->
+      <div class="frow" style="gap:6px;align-items:center">
+        <button id="crExpandir" class="sm" title="Despliega todas las bandas WBS">Expandir todo</button>
+        <button id="crContraer" class="sm" title="Pliega todas las bandas WBS">Contraer todo</button>
+        <!-- v1.272: la clase del cronograma segun AACE RP 27R-03 (Fase 1) -->
+        <button id="crClase" class="sm" title="Evalua si el cronograma cumple la clase declarada (AACE RP 27R-03) y lo concilia con el anterior">Clase (AACE 27R-03)</button>
+        <label class="hint" style="display:flex;gap:6px;align-items:center">
+          <input id="crCritica" type="checkbox"> Ruta critica (holgura total &le; 0, en rojo;
+          el resto se atenua)</label>
+      </div>
+      <div id="crDetalle" class="hint" style="margin:2px 0"></div>
+      <label>Escala del eje</label>
+      <!-- Pixeles por dia. Auto ajusta al ancho; las fijas crecen y se desplazan. -->
+      <select id="crEscala">
+        <option value="0">Auto (ajustada al ancho)</option>
+        <option value="2">2 px/d&iacute;a (a&ntilde;os)</option>
+        <option value="6">6 px/d&iacute;a (meses)</option>
+        <option value="15">15 px/d&iacute;a (semanas)</option>
+        <option value="40">40 px/d&iacute;a (d&iacute;as)</option>
+      </select>
+      <div class="frow">
+        <input id="crFecha" type="range" min="0" max="100" value="100">
+        <span id="crFechaTxt" class="hint"></span>
+        <button id="crReset" class="sm">Restablecer</button>
+        <button id="crHoja" class="sm" style="display:none"
+                title="Volver a la hoja de calculo de la que salio este Gantt">Ver la hoja</button>
+      </div>
+    </div>
+    <div id="crLienzo" class="fscroll"></div>
+  </div>
+</div>
+
+<div id="xlWin" class="flota hidden">
+  <div class="fbar"><span>Hoja de calculo</span><span id="xlClose" class="fx">&times;</span></div>
+  <div class="fbody col">
+    <div class="ftools">
+      <span id="xlTitulo" class="hint"></span>
+      <div class="frow">
+        <input id="xlBuscar" type="text" placeholder="Buscar en toda la hoja...">
+        <button id="xlGantt" class="sm" style="display:none">Ver como Gantt</button>
+        <button id="xlBaja" class="sm" title="Descargar el archivo tal cual para abrirlo en Excel">Descargar</button>
+      </div>
+      <div id="xlHojas" class="xlhojas"></div>
+      <div id="xlInfo" class="hint"></div>
+    </div>
+    <div id="xlLienzo" class="fscroll"></div>
+  </div>
+</div>
+
+<div id="gisAttrWin" class="flota chico redim hidden">
+  <div class="fbar"><span id="gisAttrTit">Atributos</span><span id="gisAttrClose" class="fx">&times;</span></div>
+  <div class="fbody col">
+    <div class="ftools">
+      <input id="gisAttrBusca" type="text" placeholder="Buscar en los atributos...">
+      <button id="gisAttrCsv" class="sm">CSV</button>
+      <span id="gisAttrInfo" class="hint"></span>
+    </div>
+    <div class="fscroll"><table id="gisAttrTabla" class="tstabla"></table></div>
+  </div>
+</div>
+
+<div id="gisFichaWin" class="flota chico redim hidden">
+  <div class="fbar"><span id="gisFichaTit">Contenido del archivo</span><span id="gisFichaClose" class="fx">&times;</span></div>
+  <div class="fbody col">
+    <div class="ftools">
+      <button id="gisFichaCapa" class="sm hidden">Cargar la capa</button>
+      <button id="gisFichaCsv" class="sm hidden">CSV</button>
+      <span id="gisFichaInfo" class="hint"></span>
+    </div>
+    <div class="fscroll" id="gisFichaCuerpo"></div>
+  </div>
+</div>
+
+<!-- Documento de texto (Word, PowerPoint, texto): lo abre el lector de ZIP y de XML del visor (fichaZip / fichaXmlTexto) -->
+<div id="docWin" class="flota hidden"><div class="fbody col"><div class="ftools"><span id="docTitulo" class="hint"></span><div class="frow"><input id="docBuscar" type="text" placeholder="Buscar en el documento..."><span id="docCuenta" class="hint"></span><button id="docAnt" class="sm">‹</button><button id="docSig" class="sm">›</button><button id="docMenos" class="sm" title="Alejar">－</button><button id="docMas" class="sm" title="Acercar">＋</button></div></div><div id="docLienzo" class="fscroll"><div id="docHoja"></div></div></div></div>
+
+<!-- Mapa GIS: las capas las leen los lectores del visor (leeShp, leeDbf, leeKml, leeKmz, leeGpx, leeGeoJson, leeCapasSqlite) -->
+<div id="mapWin" class="flota hidden"><div class="fbody fila"><div id="mapLado"><div class="ftools"><span id="mapTitulo" class="hint"></span><div class="frow"><button id="mapZoom" class="sm" title="Encuadrar todas las capas visibles">Zoom a todo</button><select id="mapBase" title="Mapa base"><option value="osm">Calles (OpenStreetMap)</option><option value="sat">Satélite (Esri)</option><option value="no">Sin mapa base</option></select></div><div class="frow" id="mapZonaFila"><span class="hint">Zona UTM</span><select id="mapZona"><option>17</option><option>18</option><option>19</option></select><select id="mapHem"><option value="S">Sur</option><option value="N">Norte</option></select></div><div id="mapAviso" class="hint aviso"></div></div><div id="mapCapas" class="fscroll"></div></div><div id="mapa"></div></div></div>
+
+<script src="js/comun.js?v=067"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="js/ver-puente.js?v=067"></script>
+<script src="js/visor-origen/app-utm.js?v=067"></script>
+<script src="js/visor-origen/cronograma.js?v=067"></script>
+<script src="js/visor-origen/gis.js?v=067"></script>
+<script src="js/visor-origen/buscador.js?v=067"></script>
+<script src="js/ver-doc.js?v=067"></script>
+<script src="js/ver-gis.js?v=067"></script>
+<script>verArranca();</script>
+</body></html>

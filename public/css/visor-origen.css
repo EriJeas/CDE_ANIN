@@ -1,0 +1,124 @@
+/* ORIGEN: estilos del Visor BIM Federado (public/main.css) para los modulos portados tal cual (Filtro con sectores, Sectores por fecha, Metricas BIM, COBie, Modelos/Planos). Las variables de su tema se mapean al tema del visor del CDE (negro/oro). */
+body.visor { --alto: #1c160e; --hondo: #0f0c08; --linea: #3a3122; --linea-s: #55482f; --tenue: #a39679; --etiqueta: #bfae88; --acento: #c8a24a; --acento-f: rgba(200,162,74,.14); --acento-b: rgba(200,162,74,.28); --acento-h: #e9d29a; --atencion: #e07a6a; --atencion-f: rgba(224,122,106,.14); --r-s: 3px; --r-m: 5px; --r-g: 8px; --sombra-g: 0 18px 50px rgba(0,0,0,.6); --ok: #7fc47f; --mal: #e07a6a; --dato: #ece2cc; }
+.hidden { display: none !important; }
+.sm{background:var(--acento-f);color:var(--texto);border:1px solid var(--linea-s);border-radius:5px;padding:4px 9px;cursor:pointer;font-size:11px}
+.sm:hover{background:var(--acento-b)}
+.hint{color:var(--tenue);font-size:11px;margin-top:6px;line-height:1.4}
+.sm.wide{width:100%}
+/* ---------- Ventanas flotantes (tablero, cronograma, GIS) ---------- */
+.flota{position:fixed;left:60px;top:70px;width:1120px;max-width:calc(100vw - 90px);
+       height:660px;max-height:calc(100vh - 110px);z-index:70;background:var(--hondo);
+       border:1px solid var(--linea-s);border-radius:10px;display:flex;flex-direction:column;
+       box-shadow:0 18px 50px rgba(0,0,0,.6);overflow:hidden}
+.flota.chico{width:400px;height:520px}
+.flota.hidden{display:none}
+.fbar{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;
+      background:var(--alto);border-bottom:1px solid var(--linea);font-size:12px;color:var(--texto);
+      cursor:move;user-select:none}
+.fx{cursor:pointer;color:var(--tenue);font-size:17px;line-height:1}
+.fx:hover{color:var(--texto)}
+.fbody{flex:1;display:flex;min-height:0}
+.fbody.col{flex-direction:column}
+.ftools{padding:10px 12px;border-bottom:1px solid var(--linea);flex:none}
+.ftools label{display:block;font-size:10px;color:var(--etiqueta);margin:9px 0 3px}
+.fscroll{flex:1;overflow:auto;padding:10px 12px;min-height:0}
+.frow{display:flex;gap:7px;align-items:center;margin-top:9px}
+.frow .sm{flex:1}
+.hint.aviso{color:var(--atencion)}
+/* Controles --------------------------------------------------------------- */
+button,.tb,.sm{border-radius:var(--r-s);
+  transition:background .12s ease,border-color .12s ease,color .12s ease}
+.tb.primary,.sm.primary{background:var(--acento);color:#08222A;font-weight:600;border-color:transparent}
+.tb.primary:hover,.sm.primary:hover{background:var(--acento-h)}
+.flota{border-radius:var(--r-g);box-shadow:var(--sombra-g)}
+.sm.ico{padding:3px 8px;font-size:13px;line-height:1.2}
+/* Linea de tiempo por fechas en las tarjetas de filtro */
+.tlBox{padding:4px 2px 2px}
+.tlEnlace{font-size:10px;color:#3aa5b8;cursor:pointer;text-decoration:underline dotted}
+.tlFila{display:flex;align-items:center;gap:8px}
+.tlFila input[type=range]{flex:1;accent-color:#3aa5b8}
+.tlFecha{font-size:11px;color:var(--texto);min-width:76px;text-align:right}
+/* La fecha inicial va pegada al arranque de la barra y en tono menor: es la
+   referencia fija, no el valor que el usuario mueve. */
+.tlFecha.tlIni{color:var(--tenue);text-align:left;min-width:70px}
+/* Barra que aun no se ha tocado: se ve, pero no filtra nada todavia. */
+.tlFila.tlApagada{opacity:.55}
+.tlFila.tlApagada .tlFecha{font-style:italic}
+.colorUno{width:22px;height:18px;padding:0;border:1px solid var(--linea);
+          border-radius:4px;background:none;cursor:pointer;margin-left:4px}
+#cdWin .fbody{max-height:none}
+/* ---------- Modulo "Filtro Sectores": barra de Sector y Zona ---------- */
+/*
+ * Los dos botones son de SELECCION, no de accion: encendidos significa que su
+ * filtro esta puesto en el panel, y por eso se marcan igual que la tarjeta que
+ * colorea. Pulsar otra vez lo quita.
+ */
+#secBar .secbtn{flex:1;min-width:0;padding:7px 6px;font-size:12px;letter-spacing:.3px}
+#secBar .secbtn.on{background:var(--acento-f);border-color:var(--acento);color:var(--acento-h)}
+#secBar .secbtn:disabled{opacity:.4;cursor:default}
+#secBar .hint{margin-top:6px;line-height:1.45}
+#secInfo{color:var(--etiqueta)}
+/* ---------- Tabla de sectores por fecha ---------- */
+/* La ventana se mueve por su barra (como todas) y ademas se ensancha por la
+   esquina: una tabla con 15 familias no cabe en el tamano de partida. */
+.flota.redim{resize:both;min-width:360px;min-height:220px}
+.tstabla{border-collapse:collapse;font-size:11px;width:100%}
+.tstabla th,.tstabla td{border:1px solid var(--linea);padding:4px 7px;text-align:right;
+                        white-space:nowrap}
+.tstabla thead th{position:sticky;top:0;z-index:2;background:var(--alto);color:var(--etiqueta);
+                  font-weight:600;font-size:10px;text-align:center;line-height:1.3}
+.tstabla .tsfec{color:var(--acento);font-weight:400;font-size:10px}
+.tstabla td.tsnom{text-align:left;color:var(--texto);position:sticky;left:0;background:var(--hondo);
+                  max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.tstabla td.tsn,.tstabla td.tstot{cursor:pointer;color:var(--tenue)}
+.tstabla td.tsn:hover,.tstabla td.tstot:hover{background:var(--alto);color:var(--texto)}
+.tstabla td.on{outline:1px solid var(--acento);background:var(--acento-f)}
+.tstabla td b{color:var(--texto);font-weight:600}
+.tstabla td span{display:block;font-size:10px;color:var(--etiqueta)}
+.tstabla td.tsvacio{color:var(--linea);text-align:center}
+.tstabla th.tstot,.tstabla td.tstot{background:rgba(58,165,184,.07)}
+/* Tabla de sectores: mando de modo y vista por semanas */
+.tsmando{display:flex;gap:5px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.tsmando .sm.on{background:var(--acento-f);border-color:var(--acento);color:var(--acento-h)}
+.tsmando select{background:var(--hondo);border:1px solid var(--linea);border-radius:6px;
+                color:var(--texto);padding:4px 7px;font:11px inherit}
+.tstabla td.tssem{text-align:left;color:var(--texto);white-space:nowrap}
+.tstabla td.tssem .tsnada{display:block;font-size:10px;color:var(--atencion)}
+.tstabla tr.tsvacia td{color:var(--tenue);background:rgba(255,255,255,.02)}
+.tstabla td.tscero{color:var(--tenue);text-align:right}
+/* Sectores por fecha: columnas de partida y busqueda */
+.tstabla td.tscod{font-variant-numeric:tabular-nums;white-space:nowrap}
+.tstabla td.tspart{max-width:280px;white-space:normal;line-height:1.35}
+.tstabla td.tscod,.tstabla td.tspart{cursor:pointer}
+.tstabla td.tscod:hover,.tstabla td.tspart:hover{background:var(--alto)}
+.tsmando #tsBuscar{flex:1;min-width:180px;background:var(--hondo);
+  border:1px solid var(--linea);border-radius:6px;color:var(--texto);
+  padding:5px 8px;font:11px inherit}
+.tsmando #tsBuscar:focus{outline:none;border-color:var(--acento)}
+/* Linea de tiempo: la cifra de ejemplo con sus separadores */
+.tlBox .tlmask{width:130px;background:var(--hondo);border:1px solid var(--linea);
+  border-radius:6px;color:var(--texto);padding:4px 7px;font:11px inherit;
+  margin:3px 0 5px;font-variant-numeric:tabular-nums}
+.tlBox .tlmask:focus{outline:none;border-color:var(--acento)}
+/* Sectores por fecha: elementos contados en mas de un sector */
+.tstabla th.tsrep{color:var(--atencion)}
+.tstabla td.tsrep{color:var(--tenue);text-align:right;cursor:default}
+.tstabla td.tsrepon{color:var(--atencion);font-weight:600;cursor:pointer;
+                    background:var(--atencion-f)}
+.tstabla td.tsrepon:hover{filter:brightness(1.2)}
+.insSec summary .sm{margin-left:8px}
+.tstabla td.ins-fecha{color:var(--acento)}
+.tstabla td.ins-codigo{color:var(--atencion)}
+.tstabla td.ins-texto{color:var(--ok)}
+.tstabla td.ins-numero,.tstabla td.ins-otro{color:var(--tenue)}
+#bcPanel .hint{margin-top:0}
+#homeTools .sm{border-radius:999px;padding:6px 13px;background:transparent;border-color:var(--linea-s);color:var(--etiqueta)}
+#homeTools .sm:hover{border-color:var(--acento-b);color:var(--texto);background:var(--alto)}
+#pmFoco .pm-fc-tipos.chico{gap: 4px; margin-bottom: 4px;}
+#pmFoco .pm-fc-tipos.chico .pm-fc-tipo{padding: 3px 2px; border-radius: 6px;}
+#pmFoco .pm-fc-tipos.chico .pm-fc-tipo b{font-size: 13px;}
+#pmFoco .pm-fc-tipos.chico .pm-fc-tipo span{font-size: 9px;}/* paneles del visor (Metricas BIM / COBie) con el tema del CDE */
+#mbPanel, #cbPanel { background: var(--panel) !important; border-color: var(--borde) !important; color: var(--texto); font-size: 12px; } #mbPanel .hint, #cbPanel .hint { margin-top: 2px; }
+#secBar { margin: 0 0 8px; padding: 6px 0; border-bottom: 1px solid var(--borde); } #secBar .row { display: flex; flex-wrap: wrap; gap: 5px; } #secBar .secbtn { font-family: var(--er-t); font-variant: normal; letter-spacing: 0; }
+#tsWin.flota { left: 70px; top: 64px; width: min(1180px, calc(100vw - 100px)); height: min(640px, calc(100vh - 110px)); } #tsWin .fbar { cursor: move; }
+#mpVentana { z-index: 72; }

@@ -1,0 +1,44 @@
+/* VISUALIZADOR DE ARCHIVOS DEL CDE (ver.html). La hoja del visor (visor-origen-main.css) va TAL CUAL; aqui solo se cambian sus
+   variables de color al tema claro del CDE y se hace que la ventana del archivo ocupe la pagina (no flota: es la pagina). */
+:root {
+  --fondo: #f4f5f7; --panel: #ffffff; --alto: #f1f3f5; --hondo: #ffffff; --linea: #dfe3e8; --linea-s: #c4cad2;
+  --texto: #1f2933; --tenue: #66727f; --etiqueta: #4a5560;
+  --acento: #0696d7; --acento-h: #0b83ba; --acento-f: #e8f4fb; --acento-b: #bfe2f4;
+  --atencion: #b4690e; --atencion-f: #fdf1dc; --ok: #2f9e44; --mal: #c0392b;
+  --cono: rgba(6, 150, 215, .12); --cono-b: rgba(6, 150, 215, .5);
+  --sombra: 0 8px 24px rgba(0, 0, 0, .14); --sombra-g: 0 16px 48px rgba(0, 0, 0, .18);
+}
+body.ver { background: var(--fondo); font-family: Inter, "Segoe UI", Arial, sans-serif; display: block; overflow: hidden; }
+#verBarra { position: fixed; left: 0; right: 0; top: 0; height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 14px; background: #fff; border-bottom: 1px solid var(--linea); z-index: 30; font-size: 13px; }
+#verBarra .crece { flex: 1; } #verBarra select { width: auto; padding: 4px 6px; } #verNombre { font-family: var(--dato); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55vw; } #verInfo { margin: 0; }
+#verBarra .boton { border: 1px solid var(--linea-s); border-radius: 4px; padding: 5px 12px; color: var(--texto); text-decoration: none; background: #fff; font-size: 12.5px; } #verBarra .boton:hover { background: var(--alto); }
+#verAviso { position: fixed; left: 50%; top: 80px; transform: translateX(-50%); width: min(720px, 92vw); background: #fff; border: 1px solid var(--linea-s); border-left: 4px solid var(--acento); border-radius: 6px; padding: 16px 18px; font-size: 14px; line-height: 1.5; z-index: 40; box-shadow: var(--sombra); color: var(--texto); } #verAviso.mal { border-left-color: var(--mal); }
+#busy { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #fff; border: 1px solid var(--linea-s); border-radius: 8px; padding: 14px 22px; z-index: 50; box-shadow: var(--sombra); font-size: 13px; }
+/* la ventana del archivo es la pagina */
+body.ver #crWin, body.ver #xlWin, body.ver #docWin, body.ver #mapWin { left: 0; top: 44px; right: 0; bottom: 0; width: auto; height: auto; max-width: none; max-height: none; border-radius: 0; border: 0; box-shadow: none; resize: none; z-index: 5; }
+body.ver #crWin > .fbar, body.ver #xlWin > .fbar { display: none; }
+body.ver #gisAttrWin, body.ver #gisFichaWin { z-index: 1200; left: auto; right: 24px; top: 70px; width: min(760px, 70vw); height: min(560px, 76vh); }
+body.ver #gisFichaWin.sola { left: 3vw; right: 3vw; top: 60px; width: auto; height: calc(100vh - 80px); }
+body.ver .frow .sm { flex: none; }
+body.ver #crParam, body.ver label[for="crParam"], body.ver #crEnlace, body.ver #crClase, body.ver #crReset, body.ver #crFecha, body.ver #crFechaTxt { display: none; }
+/* documento */
+#docWin .ftools .frow input { max-width: 420px; }
+#docLienzo { background: #e9ecef; padding: 18px 0 40px; }
+.docpapel { background: #fff; color: #111; width: min(860px, calc(100% - 36px)); margin: 0 auto 16px; padding: 56px 64px; box-shadow: 0 1px 4px rgba(0, 0, 0, .18); font: 14.5px/1.55 "Segoe UI", Arial, sans-serif; overflow-wrap: break-word; }
+.docpapel p { margin: 0 0 8px; } .docpapel h1 { font-size: 22px; margin: 18px 0 10px; } .docpapel h2 { font-size: 18px; margin: 16px 0 8px; } .docpapel h3 { font-size: 16px; margin: 14px 0 6px; } .docpapel h4, .docpapel h5, .docpapel h6 { font-size: 14.5px; margin: 12px 0 6px; }
+.docpapel img { max-width: 100%; height: auto; } .docpapel .doclista { position: relative; } .docpapel .doclista::before { content: '•'; position: absolute; left: -16px; top: 0; }
+.doctbl { border-collapse: collapse; margin: 8px 0 12px; max-width: 100%; } .doctbl td { border: 1px solid #9aa3ad; padding: 4px 8px; vertical-align: top; } .doctbl td p { margin: 0 0 3px; } .doctbl td.docvm { border-top-color: transparent; }
+.docsalto { border: 0; border-top: 1px dashed #b8c0c8; margin: 28px -64px; } .docsinimg { color: #8a939d; font-size: 12px; }
+.docdiapo { padding: 26px 36px; } .docrot { font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: #7a838d; margin-bottom: 6px; }
+.docpre { white-space: pre-wrap; font: 12.5px/1.5 var(--dato); margin: 0; }
+mark.dochit { background: #ffe58a; padding: 0; } mark.dochit.on { background: #ff9d2e; }
+/* mapa */
+#mapWin .fbody { flex-direction: row; } #mapLado { width: 320px; flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--linea); background: var(--panel); min-height: 0; } #mapa { flex: 1; min-width: 0; background: #dfe6ec; }
+.mapcapa { padding: 9px 2px; border-bottom: 1px solid var(--linea); font-size: 12.5px; } .mapcapa label { display: flex; align-items: center; gap: 7px; margin: 0; } .mapcapa label b { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mapcapa input[type=checkbox] { width: auto; } .mapcapa input[type=color] { width: 26px; flex: none; border: 0; background: transparent; } .mapcapa .frow { margin-top: 6px; }
+.mapficha { border-collapse: collapse; margin-top: 4px; font-size: 12px; } .mapficha td { border-bottom: 1px solid #e3e6ea; padding: 2px 8px 2px 0; vertical-align: top; } .mapficha td:first-child { color: #66727f; }
+.leaflet-popup-content { max-height: 300px; overflow: auto; }
+/* el Gantt se dibuja con los colores del visor (pensados sobre fondo grafito): su lienzo se deja como en el visor */
+body.ver #crLienzo { background: #11151B; }
+body.ver #crBuscar + label { display: none; }
+body.ver #crWin .ftools { display: grid; grid-template-columns: minmax(260px, 1fr) auto auto; gap: 6px 16px; align-items: center; } body.ver #crWin .ftools > * { margin: 0; } body.ver #crTitulo { grid-column: 1 / -1; } body.ver #crDetalle { grid-column: 1 / -1; } body.ver #crWin .ftools > .frow:last-child { display: none; }
+body.ver #crEscala { width: 220px; } body.ver #crWin .ftools label { margin: 0; }

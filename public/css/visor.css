@@ -1,0 +1,152 @@
+/* CDE ANIN — VISOR. El aspecto del Visor BIM Federado (tema "er": negro, oro, Cinzel) sobre el visor liviano del CDE.
+   Se carga DESPUES de cde.css y redefine sus variables dentro de body.visor para que ventanas, barras y tablas salgan oscuras. */
+@font-face { font-family: "IN Cinzel"; src: url("../vendor/fuentes/cinzel-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "IN Cinzel"; src: url("../vendor/fuentes/cinzel-600.woff2") format("woff2"); font-weight: 500 800; font-display: swap; }
+@font-face { font-family: "IN Cormorant"; src: url("../vendor/fuentes/cormorant-garamond-500.woff2") format("woff2"); font-weight: 400 500; font-display: swap; }
+@font-face { font-family: "IN Cormorant"; src: url("../vendor/fuentes/cormorant-garamond-600.woff2") format("woff2"); font-weight: 600 800; font-display: swap; }
+@font-face { font-family: "IN Inter"; src: url("../vendor/fuentes/inter-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "IN Inter"; src: url("../vendor/fuentes/inter-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "IN Mono"; src: url("../vendor/fuentes/plex-mono-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+
+body.visor {
+  --er-ne: #0c0a07; --er-or: #c8a24a; --er-orc: #e9d29a; --er-tx: #ece2cc; --er-gr: #8f8570;
+  --er-f: "IN Cinzel", 'Palatino Linotype', serif; --er-t: "IN Inter", system-ui, sans-serif; --er-m: "IN Mono", Consolas, monospace;
+  --fondo: #0c0a07; --panel: #15110b; --borde: #3a3122; --texto: #ece2cc; --suave: #a39679; --gris: #8f8570;
+  --azul: #c8a24a; --azul2: rgba(200, 162, 74, .14); --ambar: #e9d29a; --ambar2: rgba(233, 210, 154, .12);
+  --verde: #7fc47f; --verde2: rgba(127, 196, 127, .14); --rojo: #e07a6a; --rojo2: rgba(224, 122, 106, .14); --mono: var(--er-m); --radio: 3px;
+  background: var(--er-ne); color: var(--er-tx); font-family: var(--er-t); font-size: 13px; overflow: hidden;
+}
+body.visor button, body.visor .boton { background: rgba(200, 162, 74, .05); border-color: rgba(200, 162, 74, .35); color: var(--er-tx); border-radius: 2px; font-family: var(--er-f); font-variant: small-caps; letter-spacing: .06em; }
+body.visor button:hover { border-color: var(--er-or); color: var(--er-orc); box-shadow: 0 0 12px rgba(200, 162, 74, .25); }
+body.visor button.primario { background: linear-gradient(180deg, #d4b05a, #a7853a); color: #15110b; border-color: var(--er-or); font-weight: 600; } body.visor button.primario:hover { background: linear-gradient(180deg, #e9d29a, #c8a24a); }
+body.visor button.activo { background: rgba(200, 162, 74, .22); color: var(--er-orc); border-color: var(--er-or); }
+body.visor button:disabled { opacity: .4; box-shadow: none; }
+body.visor input, body.visor select, body.visor textarea { background: #0f0c08; color: var(--er-tx); border-color: var(--borde); border-radius: 2px; font-family: var(--er-t); accent-color: var(--er-or); }
+body.visor input:focus, body.visor select:focus { outline: 1px solid var(--er-or); }
+body.visor label { color: var(--suave); }
+body.visor a { color: var(--er-orc); }
+body.visor h3 { font-family: var(--er-f); font-variant: small-caps; letter-spacing: .14em; color: var(--er-or); font-weight: 400; text-transform: none; font-size: 14px; margin: 12px 0 6px; }
+body.visor table th { color: var(--er-gr); font-family: var(--er-f); font-variant: small-caps; letter-spacing: .06em; font-weight: 400; border-bottom-color: var(--borde); background: #15110b; position: sticky; top: 0; }
+body.visor table td { border-bottom-color: rgba(58, 49, 34, .6); }
+body.visor tr.clic:hover { background: rgba(200, 162, 74, .1); } body.visor tr.sel td { background: rgba(200, 162, 74, .18); }
+body.visor .pista { color: var(--er-gr); }
+body.visor .barra .b { background: rgba(255, 255, 255, .05); } body.visor .barra .b i { background: linear-gradient(90deg, #a7853a, var(--er-or)); }
+body.visor .barra:hover .k, body.visor .barra.activa .k { color: var(--er-orc); }
+body.visor .ventana { background: rgba(21, 17, 11, .96); border: 1px solid rgba(200, 162, 74, .45); box-shadow: 0 0 0 1px rgba(12, 10, 7, .9), 0 14px 40px rgba(0, 0, 0, .6); backdrop-filter: blur(6px); }
+body.visor .ventana .vcab { background: linear-gradient(180deg, #1e1910, #15110b); border-bottom: 1px solid rgba(200, 162, 74, .35); }
+body.visor .ventana .vcab b { font-family: var(--er-f); font-variant: small-caps; letter-spacing: .18em; color: var(--er-orc); font-weight: 400; font-size: 15px; text-align: center; }
+body.visor .ventana .vcab b::before, body.visor .ventana .vcab b::after { content: '\25C6'; font-size: 8px; color: var(--er-or); margin: 0 10px; vertical-align: middle; }
+body.visor .aviso.verde { background: var(--verde2); color: var(--verde); border: 1px solid rgba(127, 196, 127, .3); } body.visor .aviso.rojo { background: var(--rojo2); color: var(--rojo); border: 1px solid rgba(224, 122, 106, .3); } body.visor .aviso.ambar { background: var(--ambar2); color: var(--er-orc); border: 1px solid rgba(200, 162, 74, .3); }
+body.visor .estado.COMPARTIDO { background: var(--ambar2); color: var(--er-orc); } body.visor .estado.PUBLICADO { background: var(--verde2); color: var(--verde); } body.visor .estado.WIP { background: rgba(255,255,255,.06); color: var(--suave); }
+body.visor ::-webkit-scrollbar { width: 9px; height: 9px; } body.visor ::-webkit-scrollbar-thumb { background: #3a3122; border-radius: 4px; } body.visor ::-webkit-scrollbar-track { background: transparent; }
+
+/* ---- barra superior ---- */
+.vtop { position: fixed; left: 0; right: 0; top: 0; height: 48px; z-index: 30; display: flex; align-items: center; gap: 10px; padding: 0 14px;
+  background: radial-gradient(ellipse at 50% -40%, rgba(200, 162, 74, .18), transparent 60%), linear-gradient(180deg, #13100b, #0c0a07); border-bottom: 1px solid rgba(200, 162, 74, .4); }
+.vtop .marca { font-family: var(--er-f); font-variant: small-caps; letter-spacing: .16em; color: var(--er-orc); font-size: 17px; text-decoration: none; white-space: nowrap; }
+.vtop .marca small { color: var(--er-gr); font-size: 12px; letter-spacing: .1em; margin-left: 8px; }
+.vtop .pastilla { border: 1px solid rgba(200, 162, 74, .35); border-radius: 14px; padding: 3px 12px; color: var(--er-tx); font-size: 12px; white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.vtop select { width: 360px; max-width: 32vw; font-size: 12px; padding: 4px 8px; }
+.vtop .crece { flex: 1; } .vtop .cifras { color: var(--er-gr); font-size: 12px; font-family: var(--er-m); white-space: nowrap; }
+.vtop .quien { display: flex; align-items: center; gap: 8px; color: var(--er-tx); font-size: 12px; }
+.vtop .quien .av { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(180deg, #d4b05a, #a7853a); color: #15110b; display: grid; place-items: center; font-weight: 700; font-size: 11px; }
+.vtop button { padding: 4px 10px; font-size: 12px; white-space: nowrap; }
+
+/* ---- carril de modulos (izquierda) ---- */
+.carril { position: fixed; left: 0; top: 48px; bottom: 0; width: 196px; z-index: 25; display: flex; flex-direction: column; padding: 10px 0;
+  background: linear-gradient(180deg, #100d09, #0a0806); border-right: 1px solid rgba(200, 162, 74, .4); }
+.carril .mod { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; color: var(--er-gr); font-family: var(--er-f); font-variant: small-caps; letter-spacing: .05em; font-size: 14px; border-left: 2px solid transparent; user-select: none; }
+.carril .mod .ico { width: 22px; text-align: center; font-size: 16px; color: var(--er-or); opacity: .75; font-variant: normal; }
+.carril .mod:hover, .carril .mod.activo { color: var(--er-orc); text-shadow: 0 0 10px rgba(233, 210, 154, .6); background: linear-gradient(90deg, rgba(200, 162, 74, .14), transparent 80%); }
+.carril .mod.activo { border-left-color: var(--er-or); } .carril .mod.activo .ico { opacity: 1; }
+.carril .sep { height: 1px; margin: 8px 16px; background: linear-gradient(90deg, transparent, rgba(200, 162, 74, .45), transparent); }
+.carril .abajo { margin-top: auto; }
+.carril .mod .cnt { margin-left: auto; font-family: var(--er-m); font-size: 11px; color: var(--er-gr); font-variant: normal; }
+
+/* ---- panel del modulo (al lado del carril) ---- */
+.panelmod { position: fixed; left: 206px; top: 58px; width: 350px; max-height: calc(100vh - 150px); z-index: 24; display: flex; flex-direction: column;
+  background: rgba(21, 17, 11, .94); border: 1px solid rgba(200, 162, 74, .45); border-radius: 3px; box-shadow: 0 0 0 1px rgba(12, 10, 7, .9), 0 14px 40px rgba(0, 0, 0, .55); backdrop-filter: blur(6px); }
+.panelmod .pcab { position: relative; text-align: center; padding: 12px 40px 10px; font-family: var(--er-f); font-variant: small-caps; letter-spacing: .22em; color: var(--er-orc); font-size: 17px; cursor: move; user-select: none; }
+.panelmod .pcab::before, .panelmod .pcab::after { content: '\25C6'; font-size: 9px; color: var(--er-or); margin: 0 12px; vertical-align: middle; }
+.panelmod .pcab .cerrar { position: absolute; right: 8px; top: 9px; width: 24px; height: 24px; padding: 0; font-family: inherit; }
+.panelmod .pcab .linea { position: absolute; left: 12%; right: 12%; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--er-or), transparent); }
+.panelmod .pcuerpo { padding: 10px 12px 12px; overflow: auto; flex: 1; }
+.panelmod .pcuerpo p { margin: 6px 0; }
+.grupo { border: 1px solid rgba(200, 162, 74, .28); background: rgba(200, 162, 74, .035); border-radius: 2px; padding: 8px 10px; margin: 8px 0; }
+.grupo h4 { margin: 0 0 6px; text-align: center; color: var(--er-or); font-family: var(--er-f); font-variant: small-caps; letter-spacing: .14em; font-size: 13px; font-weight: 400; }
+.grupo h4 .hint { display: block; color: var(--er-gr); font-size: 11px; font-style: italic; letter-spacing: 0; font-variant: normal; font-family: var(--er-t); }
+.filab { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 6px 0; } .filab > * { min-width: 0; }
+.filab input, .filab select { flex: 1; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(200, 162, 74, .4); border-radius: 12px; padding: 2px 10px; font-size: 12px; color: var(--er-tx); background: rgba(200, 162, 74, .06); cursor: pointer; }
+.chip.on { background: rgba(200, 162, 74, .22); color: var(--er-orc); border-color: var(--er-or); } .chip .x { color: var(--er-gr); } .chip .x:hover { color: var(--rojo); }
+.chip .n { font-family: var(--er-m); color: var(--er-gr); font-size: 11px; }
+.chip.nuevo { border-color: rgba(127, 196, 127, .6); } .chip.eliminado { border-color: rgba(224, 122, 106, .6); } .chip.modificado { border-color: rgba(233, 180, 80, .7); } .chip.igual { border-color: rgba(143, 133, 112, .5); }
+.chip.nuevo.on { background: rgba(127, 196, 127, .25); color: #cfe9cf; } .chip.eliminado.on { background: rgba(224, 122, 106, .25); color: #f3c9c1; } .chip.modificado.on { background: rgba(233, 180, 80, .28); color: #f5dfae; }
+.filtro { border: 1px solid rgba(200, 162, 74, .25); border-radius: 2px; padding: 6px 8px; margin: 6px 0; background: rgba(0, 0, 0, .25); }
+.filtro .ft { display: flex; align-items: center; gap: 6px; } .filtro .ft b { flex: 1; font-weight: 500; color: var(--er-orc); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filtro .ft button { padding: 1px 7px; font-size: 11px; }
+.filtro .vals { max-height: 190px; overflow: auto; margin-top: 4px; }
+.filtro .val { display: flex; align-items: center; gap: 6px; padding: 2px 2px; font-size: 12px; cursor: pointer; border-radius: 2px; } .filtro .val:hover { background: rgba(200, 162, 74, .1); }
+.filtro .val input { width: auto; margin: 0; } .filtro .val span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .filtro .val i { font-style: normal; font-family: var(--er-m); color: var(--er-gr); font-size: 11px; }
+.filtro .val.hueco span { color: var(--er-gr); font-style: italic; }
+.selparam { position: absolute; z-index: 70; width: 330px; max-height: 380px; display: flex; flex-direction: column; background: #15110b; border: 1px solid var(--er-or); border-radius: 2px; box-shadow: 0 14px 40px rgba(0, 0, 0, .6); }
+.selparam input { margin: 8px; width: calc(100% - 16px); } .selparam .lista { overflow: auto; flex: 1; padding-bottom: 6px; }
+.selparam .g { padding: 6px 10px 2px; color: var(--er-or); font-family: var(--er-f); font-variant: small-caps; letter-spacing: .12em; font-size: 12px; }
+.selparam .o { padding: 4px 14px; cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .selparam .o:hover { background: rgba(200, 162, 74, .14); color: var(--er-orc); }
+.lienzo-pestanas { display: flex; gap: 2px; border-bottom: 1px solid rgba(200, 162, 74, .3); margin: 4px 0 8px; }
+.lienzo-pestanas button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 4px 8px; font-size: 12px; color: var(--er-gr); }
+.lienzo-pestanas button.activa { color: var(--er-orc); border-bottom-color: var(--er-or); }
+.elemficha b { color: var(--er-orc); font-weight: 500; }
+
+/* ---- lienzo y herramientas ---- */
+/* el fondo del MODELO es claro (a pedido de Erick): la interfaz sigue oscura */
+#lienzo { position: fixed; inset: 48px 0 0 0; background: radial-gradient(ellipse at 50% 35%, #ffffff 0%, #eeeae0 55%, #d9d3c5 100%); }
+#lienzo canvas { display: block; }
+.herramientas { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 26; display: flex; gap: 2px; padding: 4px; border-radius: 4px;
+  background: rgba(21, 17, 11, .92); border: 1px solid rgba(200, 162, 74, .45); box-shadow: 0 10px 30px rgba(0, 0, 0, .5); backdrop-filter: blur(6px); }
+.herramientas button { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 62px; padding: 5px 6px; border: 1px solid transparent; background: transparent; font-size: 10px; letter-spacing: .04em; color: var(--er-gr); white-space: nowrap; }
+.herramientas button .ico { font-size: 17px; color: var(--er-or); font-variant: normal; line-height: 1; }
+.herramientas button:hover { color: var(--er-orc); border-color: rgba(200, 162, 74, .4); box-shadow: none; background: rgba(200, 162, 74, .08); }
+.herramientas button.activo { color: var(--er-orc); background: rgba(200, 162, 74, .2); border-color: var(--er-or); }
+.herramientas .sep { width: 1px; margin: 6px 4px; background: rgba(200, 162, 74, .35); }
+.herramientas select { width: auto; font-size: 11px; padding: 3px 6px; align-self: center; margin: 0 4px; }
+#estadoCarga { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 28; padding: 12px 22px; background: rgba(21, 17, 11, .92); border: 1px solid var(--er-or); color: var(--er-orc); font-family: var(--er-f); font-variant: small-caps; letter-spacing: .14em; border-radius: 3px; }
+.etq { position: absolute; transform: translate(-50%, -120%); background: rgba(21, 17, 11, .95); border: 1px solid var(--er-or); color: var(--er-orc); font: 600 12px var(--er-m); padding: 2px 7px; border-radius: 3px; pointer-events: none; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); }
+.pista2 { position: fixed; bottom: 78px; left: 50%; transform: translateX(-50%); background: rgba(21, 17, 11, .92); border: 1px solid rgba(200, 162, 74, .5); color: var(--er-orc); padding: 5px 14px; border-radius: 14px; font-size: 12px; z-index: 27; }
+.ctl { display: grid; grid-template-columns: 22px 1fr 1fr; gap: 6px; align-items: center; margin: 4px 0; font-size: 12px; } .ctl input[type=range] { padding: 0; }
+.leyenda { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; margin: 6px 0; } .leyenda i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+.kpis.cmp { grid-template-columns: repeat(4, 1fr); gap: 6px; } .kpis.cmp .kpi { padding: 6px 8px; } .kpis.cmp .kpi .n { font-size: 18px; }
+body.visor .kpi { background: rgba(0, 0, 0, .25); border-color: rgba(200, 162, 74, .3); } body.visor .kpi:hover, body.visor .kpi.activo { border-color: var(--er-or); background: rgba(200, 162, 74, .14); }
+body.visor .kpi .n { color: var(--er-orc); } body.visor .kpi .t { color: var(--er-gr); }
+.kpi.nuevo .n { color: #9fd79f; } .kpi.eliminado .n { color: #e59a8c; } .kpi.modificado .n { color: #f0c66a; }
+.listacmp { max-height: 360px; overflow: auto; } .listacmp .it { padding: 4px 6px; border-bottom: 1px solid rgba(58, 49, 34, .6); cursor: pointer; font-size: 12px; display: grid; grid-template-columns: 8px 1fr; gap: 8px; align-items: start; }
+.listacmp .it:hover { background: rgba(200, 162, 74, .1); } .listacmp .it.sel { background: rgba(200, 162, 74, .2); }
+.listacmp .it i { display: block; width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; } .listacmp .it .d { color: var(--er-gr); font-size: 11px; }
+.pt.nuevo { background: #4fbf4f; } .pt.eliminado { background: #e0584a; } .pt.modificado { background: #f0b640; } .pt.igual { background: #6f6757; }
+/* inventario (ventana grande) */
+.inv { display: grid; grid-template-columns: 210px 1fr; gap: 10px; height: 100%; }
+.inv .facetas { overflow: auto; border-right: 1px solid var(--borde); padding-right: 8px; }
+.inv .facetas h4 { margin: 8px 0 4px; color: var(--er-or); font-family: var(--er-f); font-variant: small-caps; letter-spacing: .1em; font-size: 12px; font-weight: 400; }
+.inv .facetas .f { display: flex; gap: 6px; align-items: center; padding: 2px 4px; font-size: 12px; cursor: pointer; border-radius: 2px; } .inv .facetas .f:hover { background: rgba(200, 162, 74, .1); } .inv .facetas .f.on { color: var(--er-orc); background: rgba(200, 162, 74, .16); }
+.inv .facetas .f span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .inv .facetas .f i { font-style: normal; font-family: var(--er-m); color: var(--er-gr); font-size: 11px; }
+.inv .tabla { display: flex; flex-direction: column; min-width: 0; } .inv .tabla .cuerpo { overflow: auto; flex: 1; border: 1px solid var(--borde); background: rgba(0, 0, 0, .25); padding: 0; margin: 0; border-radius: 2px; }
+.inv .tabla table { font-size: 12px; } .inv .tabla td, .inv .tabla th { padding: 4px 8px; white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+.inv tr.grupo-fila td { background: rgba(200, 162, 74, .1); color: var(--er-orc); font-family: var(--er-f); font-variant: small-caps; letter-spacing: .06em; }
+.colsel { position: absolute; z-index: 70; width: 320px; max-height: 360px; overflow: auto; background: #15110b; border: 1px solid var(--er-or); padding: 6px; }
+.colsel label { display: flex; gap: 6px; align-items: center; margin: 2px 0; font-size: 12px; color: var(--er-tx); cursor: pointer; } .colsel label input { width: auto; margin: 0; }
+/* planos (comparacion de PDF) */
+.planos { display: grid; grid-template-rows: auto 1fr; height: 100%; gap: 6px; }
+.planos .area { position: relative; overflow: hidden; border: 1px solid var(--borde); background: #1a1611; cursor: grab; } .planos .area:active { cursor: grabbing; }
+.planos .area canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; image-rendering: auto; }
+.planos .area .ladoB { position: absolute; left: 0; top: 0; }
+.planos .corte { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--er-or); box-shadow: 0 0 8px var(--er-or); cursor: ew-resize; }
+@media (max-width: 1100px) { .carril { width: 56px; } .carril .mod span.t, .carril .mod .cnt { display: none; } .panelmod { left: 66px; } .vtop select { width: 220px; } }
+/* v0.9.6: avance del lector de modelos del CDE */
+#estadoCarga { max-width: 600px; text-align: center; line-height: 1.55; } #estadoCarga small { font-variant: normal; letter-spacing: .03em; opacity: .8; } #estadoCarga button { font-variant: normal; letter-spacing: .03em; }
+/* v0.13.4 — NWD de Autodesk Forma: se prepara al abrirlo (forma-paso.html incrustada en el lienzo) */
+#fpaso { position: fixed; left: 0; top: 48px; width: 100%; height: calc(100% - 48px); border: 0; z-index: 2; background: #dfe3e8; }
+#estadoCarga.lado { left: auto; right: 16px; top: 64px; transform: none; max-width: 430px; text-align: left; }
+#estadoCarga .fpasos { margin-top: 8px; font-variant: normal; letter-spacing: 0; font-size: 13px; line-height: 1.6; }
+#estadoCarga .fpaso i { font-style: normal; display: inline-block; width: 16px; text-align: center; }
+#estadoCarga .fpaso.ok i { color: #8fd18f; } #estadoCarga .fpaso.mal i { color: #e8a49a; } #estadoCarga .fpaso.va i { color: var(--er-or); }
+#estadoCarga .fpaso small { opacity: .75; }

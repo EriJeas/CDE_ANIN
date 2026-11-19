@@ -1,0 +1,1697 @@
+/* =============================================================================
+ * Visor BIM ANIN - sistema visual
+ *
+ * Grafito e instrumento. La ventana del modelo es clara y la interfaz que la
+ * rodea es oscura: eso no es una moda, es lo que separa el encuadre del
+ * contenido y hace que el modelo sea lo que pesa en pantalla.
+ *
+ * Dos acentos, con papel fijo y sin excepciones:
+ *   CIAN   aqui puedes actuar, o esto es lo que estas mirando ahora.
+ *   AMBAR  esto reclama tu atencion: falta un dato, hay un choque, algo se veto.
+ * Cuando un color significa siempre lo mismo, se aprende a leer la pantalla sin
+ * mirar los textos. Cuando decora, no significa nada.
+ *
+ * Numeros en cifra tabular y en monoespaciada: este visor mide cosas, y una
+ * columna de cantidades que baila al actualizarse es una columna que no se
+ * puede comparar de un vistazo.
+ *
+ * Contraste comprobado: todo el texto sobre panel pasa AA (el mas ajustado,
+ * 6,0:1). Nada de gris sobre gris.
+ * ========================================================================== */
+:root{
+  --fondo:#0E1116;        /* lienzo de la aplicacion */
+  --panel:#161A21;        /* superficie de panel */
+  --alto:#1C222B;         /* superficie elevada, hover */
+  --hondo:#11151B;        /* superficie hundida, listas */
+  --linea:#252C37;        /* filete */
+  --linea-s:#323B49;      /* filete marcado */
+
+  --texto:#E6EBF2;
+  --tenue:#8C99AB;
+  --etiqueta:#A3B0C2;
+
+  --acento:#38C6E0;       /* puedes actuar / esto miras */
+  --acento-h:#5BD6EC;
+  --acento-f:#12313C;     /* fondo de acento */
+  --acento-b:#1E5468;
+
+  --atencion:#E8A33D;     /* reclama tu atencion */
+  --atencion-f:#3A2C13;
+  --ok:#4FBF8B;
+  --mal:#EE7B6E;
+
+  --cono:rgba(56,198,224,.14);
+  --cono-b:rgba(56,198,224,.55);
+
+  --r-s:6px; --r-m:9px; --r-g:14px;
+  --sombra:0 8px 24px rgba(0,0,0,.45);
+  --sombra-g:0 20px 60px rgba(0,0,0,.6);
+  --dato:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Consolas,monospace;
+}
+
+/* Los numeros no bailan al actualizarse. */
+body{font-variant-numeric:tabular-nums}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--linea);color:var(--texto);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#top{flex:none;display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--hondo);border-bottom:1px solid var(--linea-s)}
+#brand{font-weight:600}
+/* La cabecera de modelos ENVUELVE hacia abajo cuando son muchos (pedido de
+   Erick): nada de cortar con puntos suspensivos. Con mas de tres filas, la
+   propia barra hace scroll. */
+#modelName{color:var(--tenue);font-size:12px;flex:1;display:flex;flex-wrap:wrap;
+           gap:4px 6px;align-items:center;max-height:76px;overflow-y:auto;white-space:normal}
+.tb{background:var(--acento-f);color:var(--texto);border:1px solid var(--linea-s);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;text-decoration:none}
+.tb:hover{background:var(--acento-b)}
+.tb.primary{background:var(--acento-h);border-color:var(--acento)}
+.tb.wide{width:100%}
+.sm{background:var(--acento-f);color:var(--texto);border:1px solid var(--linea-s);border-radius:5px;padding:4px 9px;cursor:pointer;font-size:11px}
+.sm:hover{background:var(--acento-b)}
+#layout{flex:1;display:flex;min-height:0}
+#side,#dash,#incPanel{width:340px;min-width:200px;background:var(--panel);display:flex;flex-direction:column;overflow:hidden}
+#side{border-right:none}
+#dash,#incPanel{border-left:1px solid var(--linea-s)}
+#incPanel.hidden{display:none}
+#incPanel{overflow-y:auto}
+.panel{padding:10px 12px;border-bottom:1px solid var(--linea);display:flex;flex-direction:column;min-height:0}
+.panel.grow{flex:1;min-height:0}
+.panel.foot{flex:none;border-bottom:none;border-top:1px solid var(--linea)}
+.panel h3{margin:0;font-size:12px;color:var(--etiqueta);text-transform:uppercase;letter-spacing:.4px}
+.ptitle{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+
+/* --- Tarjetas de filtro --- */
+#filters{flex:1;overflow-y:auto;min-height:0;padding:8px 10px;display:flex;flex-direction:column;gap:10px}
+.fcard{background:var(--hondo);border:1px solid var(--linea-s);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.fcard.colorby{border-color:var(--acento)}
+.fhead{display:flex;gap:6px;align-items:center}
+.fhead select{flex:1;min-width:0}
+.fdel{background:none;border:none;color:var(--tenue);font-size:16px;cursor:pointer;padding:0 4px;line-height:1}
+.fdel:hover{color:var(--mal)}
+.fsub{display:flex;gap:6px;align-items:center}
+.fsub input[type=text]{flex:1;min-width:0}
+.lblc{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--etiqueta);white-space:nowrap;cursor:pointer}
+.fvals{max-height:230px;overflow-y:auto;margin:2px 0}
+.ffoot{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tenue)}
+.ffoot .sp{flex:1}
+
+/* --- Filas de valor: rejilla fija = alineacion perfecta --- */
+.vrow{display:grid;grid-template-columns:16px 13px 1fr auto;align-items:center;gap:8px;
+      padding:3px 4px;font-size:12px;cursor:pointer;border-radius:4px}
+.vrow:hover{background:var(--alto)}
+.vrow input[type=checkbox]{margin:0;width:14px;height:14px}
+.vrow .sw{width:13px;height:13px;border-radius:3px}
+.vrow .vname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--texto);text-align:left}
+.vrow .vcount{color:var(--tenue);font-size:11px;text-align:right}
+
+/* --- Divisor arrastrable --- */
+#drag{width:5px;cursor:col-resize;background:var(--panel);flex:none}
+#drag:hover{background:var(--acento-h)}
+.badge{background:var(--acento-f);border-radius:9px;padding:1px 7px;font-size:11px;color:var(--texto);margin-left:5px}
+select,input{width:100%;background:var(--hondo);color:var(--texto);border:1px solid var(--linea-s);border-radius:5px;padding:6px;font-size:12px}
+/*
+ * LAS CASILLAS NO SON CAJAS DE TEXTO.
+ *
+ * La regla de arriba (select,input) las alcanzaba tambien: una casilla salia
+ * con width:100% y padding:6px, es decir, un cuadro blanco enorme que se comia
+ * la fila entera. Ese es el "hueco" entre el cajetin y el nombre del panel de
+ * federar, y por eso en "Modelos en proyecto" el nombre del modelo no cabia y
+ * no se veia NADA. No hacia falta ni ensanchar la ventana ni recortar el hueco:
+ * el hueco era la propia casilla.
+ */
+input[type=checkbox],input[type=radio]{
+  width:auto;height:auto;min-width:0;flex:none;padding:0;margin:0;
+  accent-color:var(--acento);cursor:pointer}
+input[type=color]{padding:0;height:22px}
+.hint{color:var(--tenue);font-size:11px;margin-top:6px;line-height:1.4}
+.vrow:hover{background:var(--alto)}
+.row{display:flex;gap:5px;flex-wrap:wrap}
+#viewerHost{flex:1;position:relative;min-width:320px}
+#viewer{position:absolute;inset:0}
+#kpis{display:flex;flex-direction:column;gap:6px}
+.kpi{display:flex;justify-content:space-between;font-size:12px;padding:5px 8px;background:var(--hondo);border-radius:5px}
+.kpi b{color:var(--texto)}
+.kpi span{color:var(--etiqueta)}
+#chart{flex:1;overflow-y:auto;min-height:0}
+.bar{margin-bottom:7px;font-size:11px}
+.bar .lbl{display:flex;justify-content:space-between;color:var(--texto);margin-bottom:2px}
+.bar .track{height:7px;background:var(--hondo);border-radius:4px;overflow:hidden}
+.bar .fill{height:100%;border-radius:4px}
+#overlay,#login{position:fixed;inset:0;background:rgba(10,13,19,.82);display:flex;align-items:center;justify-content:center;z-index:20}
+.hidden{display:none!important}
+/* 980 px: entra el nombre del archivo Y su descripcion de Forma, que es lo que
+   de verdad distingue un E5-000005 de un E5-000009. */
+#dialog{background:var(--panel);border:1px solid var(--linea-s);border-radius:10px;padding:18px;
+        width:980px;max-width:94vw;max-height:80vh;display:flex;flex-direction:column}
+.card{background:var(--panel);border:1px solid var(--linea-s);border-radius:10px;padding:18px;
+      width:420px;max-height:76vh;display:flex;flex-direction:column;text-align:center}
+.card p{color:var(--etiqueta);font-size:13px;line-height:1.5}
+#crumbs{font-size:12px;color:var(--tenue);margin-bottom:8px;word-break:break-all}
+#crumbs a{color:var(--acento-h);cursor:pointer;text-decoration:none}
+#tree{flex:1;overflow-y:auto;margin-bottom:10px;min-height:120px}
+.node{padding:7px 9px;cursor:pointer;border-bottom:1px solid var(--linea);font-size:13px;
+       display:flex;gap:8px;align-items:baseline}
+/* Nombre a la izquierda, descripcion de Forma al lado y en tono menor. */
+.node .nfile{flex:0 1 46%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.node .ndesc{flex:1 1 54%;min-width:0;color:var(--tenue);font-size:12px;
+             overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.node:hover{background:var(--alto)}
+.node .ic{color:var(--tenue)}
+#busy{position:fixed;inset:0;background:rgba(10,13,19,.7);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:30;font-size:13px}
+.spin{width:34px;height:34px;border:3px solid var(--linea-s);border-top-color:var(--acento-h);border-radius:50%;animation:sp .9s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* --- Federacion: seleccion multiple en el explorador --- */
+.node.sel{background:var(--acento-f)}
+.node input[type=checkbox]{margin:0 2px 0 0}
+#picked{margin-top:6px;color:var(--etiqueta);font-size:11px;max-height:60px;overflow-y:auto}
+#dialog .row{flex:none}
+.mchip{display:inline-block;background:var(--acento-f);border:1px solid var(--linea-s);border-radius:10px;
+       padding:1px 8px;margin:2px 3px 0 0;font-size:11px;color:var(--texto)}
+
+/* --- Cabecera: proyecto --- */
+.pchip{background:var(--acento-b);border:1px solid var(--acento-h);border-radius:10px;padding:2px 9px;font-size:11px;color:var(--texto);white-space:nowrap}
+
+/* --- Panel de interferencias --- */
+.crow{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;color:var(--etiqueta)}
+.crow span{flex:none;width:104px}
+.crow select,.crow input{flex:1;min-width:0}
+#clashInfo{margin:6px 0}
+#clashList{max-height:240px;overflow-y:auto}
+.crow2{display:grid;grid-template-columns:auto 1fr auto;gap:7px;align-items:center;
+       padding:4px 5px;font-size:11px;border-bottom:1px solid var(--alto);cursor:pointer;border-radius:4px}
+.crow2:hover{background:var(--alto)}
+.crow2 .n{color:var(--tenue)}
+.crow2 .d{color:var(--mal);text-align:right}
+.crow2 .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--texto)}
+
+/* --- Conjuntos --- */
+#setsList{max-height:150px;overflow-y:auto;margin-top:4px}
+.srow{display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:center;
+      padding:4px 5px;font-size:12px;border-bottom:1px solid var(--alto);border-radius:4px}
+.srow:hover{background:var(--alto)}
+.srow .sname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--texto);cursor:pointer}
+.srow .scount{color:var(--tenue);font-size:11px}
+.srow .sdel{background:none;border:none;color:var(--tenue);cursor:pointer;font-size:14px;padding:0 3px}
+.srow .sdel:hover{color:var(--mal)}
+.mkset{background:var(--acento-b);border:1px solid var(--acento-h);color:var(--texto);border-radius:5px;
+       padding:4px 9px;cursor:pointer;font-size:11px}
+.mkset:hover{background:var(--acento)}
+
+/* --- Ambientes / Rooms --- */
+#roomSearch{margin-bottom:5px}
+#roomList{max-height:210px;overflow-y:auto}
+.rlvl{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--tenue);
+      padding:6px 4px 3px;border-bottom:1px solid var(--linea);position:sticky;top:0;background:var(--panel)}
+.rrow{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center;
+      padding:4px 5px;font-size:12px;border-bottom:1px solid var(--alto);cursor:pointer;border-radius:4px}
+.rrow:hover{background:var(--alto)}
+.rrow .rname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--texto)}
+.rrow .rarea{color:var(--tenue);font-size:11px;white-space:nowrap}
+.rback{font-size:11px;color:var(--acento-h);cursor:pointer;padding:4px 4px 6px}
+.rback:hover{text-decoration:underline}
+.rquant{display:flex;flex-direction:column;gap:3px;margin:6px 0 8px}
+.rquant div{display:flex;justify-content:space-between;font-size:11px;
+            background:var(--hondo);border-radius:4px;padding:4px 7px}
+.rquant span{color:var(--etiqueta)}
+.rquant b{color:var(--texto)}
+
+/* --- Informe de verificacion del XML --- */
+.creport{font-size:11px;line-height:1.4;padding:6px 8px;margin:6px 0;border-radius:5px;
+         border-left:3px solid var(--linea-s);background:var(--panel);color:var(--etiqueta);display:none}
+.creport.good{display:block;border-left-color:var(--ok);color:var(--ok)}
+.creport.warn{display:block;border-left-color:var(--atencion);color:var(--atencion)}
+.creport.bad{display:block;border-left-color:var(--mal);color:var(--mal)}
+
+/* --- Inventario flotante del ambiente --- */
+#roomInv{position:absolute;top:14px;right:14px;width:250px;max-height:60%;z-index:20;
+         background:rgba(16,21,30,.94);border:1px solid var(--linea-s);border-radius:7px;
+         box-shadow:0 6px 22px rgba(0,0,0,.45);padding:9px 10px;overflow:hidden;
+         display:flex;flex-direction:column}
+#roomInv.hidden{display:none}
+.rihead{display:flex;justify-content:space-between;align-items:center;gap:8px;
+        font-size:12px;color:var(--texto);margin-bottom:2px}
+.rihead b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.riclose{cursor:pointer;color:var(--tenue);font-size:16px;line-height:1;padding:0 2px}
+.riclose:hover{color:var(--texto)}
+.rimeta{font-size:10px;color:var(--tenue);margin-bottom:6px}
+.rilist{overflow-y:auto}
+.rirow{position:relative;display:flex;justify-content:space-between;gap:8px;
+       font-size:11px;padding:3px 5px;border-radius:3px;margin-bottom:2px;background:var(--hondo)}
+.rirow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;z-index:1}
+.rirow b{color:var(--acento-h);z-index:1}
+.rirow i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+.rirow i{background:var(--acento-f)}
+#roomModel{margin-bottom:5px}
+
+/* --- Informe de verificacion del XML --- */
+.creport{font-size:11px;line-height:1.4;padding:6px 8px;margin:6px 0;border-radius:5px;
+         border-left:3px solid var(--linea-s);background:var(--panel);color:var(--etiqueta);display:none}
+.creport.good{display:block;border-left-color:var(--ok);color:var(--ok)}
+.creport.warn{display:block;border-left-color:var(--atencion);color:var(--atencion)}
+.creport.bad{display:block;border-left-color:var(--mal);color:var(--mal)}
+
+/* --- Inventario flotante del ambiente --- */
+#viewerHost{position:relative}
+#roomInv{position:absolute;top:14px;right:14px;width:250px;max-height:60%;z-index:20;
+         background:rgba(16,21,30,.94);border:1px solid var(--linea-s);border-radius:7px;
+         box-shadow:0 6px 22px rgba(0,0,0,.45);padding:9px 10px;
+         display:flex;flex-direction:column}
+#roomInv.hidden{display:none}
+.rihead{display:flex;justify-content:space-between;align-items:center;gap:8px;
+        font-size:12px;color:var(--texto);margin-bottom:2px}
+.rihead b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.riclose{cursor:pointer;color:var(--tenue);font-size:16px;line-height:1;padding:0 2px}
+.riclose:hover{color:var(--texto)}
+.rimeta{font-size:10px;color:var(--tenue);margin-bottom:6px}
+.rilist{overflow-y:auto}
+.rirow{position:relative;display:flex;justify-content:space-between;gap:8px;
+       font-size:11px;padding:3px 5px;border-radius:3px;margin-bottom:2px;background:var(--hondo);
+       overflow:hidden}
+.rirow span,.rirow b{position:relative;z-index:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rirow b{color:var(--acento-h)}
+.rirow i{position:absolute;left:0;top:0;bottom:0;background:var(--acento-f);border-radius:3px}
+#roomModel{margin-bottom:5px}
+#lvlModel,#lvlPick{margin-bottom:5px}
+#lvlPick:last-child{margin-bottom:0}
+#roomInv{width:270px;max-height:72%}
+#riSearch{margin-bottom:5px;font-size:11px}
+.ricat{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--tenue);
+       padding:6px 3px 3px;border-bottom:1px solid var(--linea);margin-bottom:3px}
+.rirow.pick{cursor:pointer}
+.rirow.pick:hover{background:var(--alto)}
+.rirow.sel{background:var(--acento-b);outline:1px solid var(--acento-b)}
+
+/* --- Plano PDF en pantalla partida --- */
+#viewerHost.split{display:flex;flex-direction:column}
+/* #viewer es absolute e inset:0, asi que al partir la pantalla tapaba el
+   panel inferior: aqui vuelve al flujo para que el reparto funcione. */
+#viewerHost.split #viewer{position:relative;inset:auto;flex:1;min-height:0}
+#pdfSplit{height:45%;min-height:120px;display:flex;flex-direction:column;
+          background:var(--hondo);border-top:1px solid var(--linea-s)}
+#pdfSplit.hidden{display:none}
+#pdfDrag{height:6px;cursor:row-resize;background:var(--alto);flex:none}
+#pdfDrag:hover{background:var(--linea-s)}
+#pdfBar{display:flex;justify-content:space-between;align-items:center;gap:8px;
+        padding:4px 9px;font-size:11px;color:var(--etiqueta);background:var(--panel);flex:none}
+#pdfClose{cursor:pointer;font-size:16px;line-height:1;color:var(--tenue)}
+#pdfClose:hover{color:var(--texto)}
+#pdfFrame{flex:1;border:0;width:100%;background:#fff;min-height:0}
+
+/* --- Miniatura del plano --- */
+#pdfThumb{margin-bottom:8px;cursor:pointer;border:1px solid var(--linea-s);border-radius:6px;
+          overflow:hidden;background:var(--hondo)}
+#pdfThumb.hidden{display:none}
+#pdfThumb:hover{border-color:var(--acento)}
+#pdfThumbCv{display:block;width:100%;height:auto;background:#fff}
+#pdfThumbName{font-size:10px;color:var(--etiqueta);padding:4px 6px;overflow:hidden;
+              text-overflow:ellipsis;white-space:nowrap}
+
+/* --- Plano a pantalla partida --- */
+#pdfScroll{flex:1;overflow:auto;background:var(--hondo);text-align:center;min-height:0}
+#pdfCanvas{margin:8px auto;display:block;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+.pdfnav{display:flex;align-items:center;gap:5px}
+.pdfnav .sm{padding:1px 7px;font-size:12px}
+#pdfPage{font-size:11px;color:var(--etiqueta);min-width:52px;text-align:center}
+
+/* --- Inventario inferior de ambientes por nivel --- */
+#roomsDock{height:190px;min-height:100px;display:flex;flex-direction:column;
+           background:var(--hondo);border-top:1px solid var(--linea-s);flex:none}
+#roomsDock.hidden{display:none}
+#dockDrag{height:6px;cursor:row-resize;background:var(--alto);flex:none}
+#dockDrag:hover{background:var(--linea-s)}
+#dockBar{display:flex;justify-content:space-between;align-items:center;
+         padding:4px 9px;font-size:11px;color:var(--etiqueta);background:var(--panel);flex:none}
+#dockClose{cursor:pointer;font-size:16px;line-height:1;color:var(--tenue)}
+#dockClose:hover{color:var(--texto)}
+#dockTools{display:flex;gap:6px;align-items:center;padding:4px 9px;background:var(--panel);flex:none}
+#dockTools input{flex:1}
+#dockTools .sm{white-space:nowrap}
+#dockBody{flex:1;overflow:auto;min-height:0}
+#dockTable{width:100%;border-collapse:collapse;font-size:11px}
+#dockTable th{position:sticky;top:0;background:var(--panel);color:var(--tenue);text-align:left;
+              font-weight:500;padding:5px 8px;border-bottom:1px solid var(--linea-s);z-index:2}
+#dockTable td{padding:4px 8px;border-bottom:1px solid var(--alto);color:var(--texto)}
+#dockTable .num{text-align:right}
+#dockTable tr.dhead td{background:var(--alto);color:var(--texto);font-weight:600;
+                       text-transform:uppercase;letter-spacing:.3px;font-size:10px}
+#dockTable tr.drow{cursor:pointer}
+#dockTable tr.drow:hover td{background:var(--alto)}
+#dockTable tr.drow.on td{background:var(--acento-b)}
+#dockTable tfoot td{position:sticky;bottom:0;background:var(--panel);color:var(--etiqueta);font-weight:600}
+.who{font-size:11px;color:var(--tenue);margin-left:10px;white-space:nowrap}
+.who.warn{color:var(--atencion)}
+#browserHint code{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:4px;
+                  background:var(--hondo);border:1px solid var(--linea-s);color:var(--acento-h);cursor:pointer;
+                  font-size:10px;user-select:all}
+#browserHint code:hover{border-color:var(--acento)}
+.pdfnav input[type=text]{width:150px;font-size:11px;padding:3px 6px}
+.pdfnav input[type=range]{width:130px;accent-color:var(--acento);padding:0}
+.pdfnav .sep{width:1px;height:16px;background:var(--linea-s)}
+#pdfHits,#pdfZoomVal{font-size:10px;color:var(--tenue);min-width:38px;text-align:center}
+.dtabs{display:flex;gap:4px}
+.dtab{background:var(--hondo);color:var(--tenue);border:1px solid var(--linea-s);border-radius:5px;
+      padding:3px 10px;font-size:11px;cursor:pointer}
+.dtab:hover{color:var(--texto)}
+.dtab.on{background:var(--acento-b);color:var(--texto);border-color:var(--acento-b)}
+#invAddCol{width:auto;min-width:150px;max-width:220px}
+#dockTable th .drop{cursor:pointer;color:var(--tenue);margin-left:5px;font-weight:400}
+#dockTable th .drop:hover{color:var(--mal)}
+#pdfWrap{flex:1;display:flex;min-height:0}
+#pdfFound{width:200px;flex:none;overflow-y:auto;overflow-x:hidden;background:var(--panel);border-right:1px solid var(--linea-s);padding:4px}
+#pdfFound.hidden{display:none}
+.fhit{display:flex;justify-content:space-between;gap:6px;font-size:11px;padding:4px 6px;
+      border-radius:4px;cursor:pointer;background:var(--hondo);margin-bottom:3px}
+.fhit:hover{background:var(--alto)}
+.fhit.on{background:var(--atencion-f);outline:1px solid var(--atencion)}
+.fhit span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--texto)}
+.fhit b{color:var(--tenue);white-space:nowrap}
+#dockTable th.movable{cursor:grab;user-select:none}
+#dockTable th.over{background:var(--acento-b);box-shadow:inset 3px 0 0 var(--acento)}
+
+/* ---------- Portada ---------- */
+#home{position:fixed;inset:0;z-index:60;background:var(--fondo);overflow-y:auto;
+      display:flex;flex-direction:column}
+#home.hidden{display:none}
+#homeTop{display:flex;align-items:center;gap:18px;padding:20px 28px;
+         border-bottom:1px solid var(--linea);background:var(--hondo)}
+#logoBox{width:120px;height:64px;flex:none;border:1px dashed #33405480;border-radius:8px;
+         display:flex;align-items:center;justify-content:center;cursor:pointer;
+         background:var(--fondo);overflow:hidden}
+#logoBox:hover{border-color:var(--acento)}
+#logoBox span{font-size:11px;color:var(--tenue)}
+#logoBox img{width:100%;height:100%;object-fit:contain}
+#homeTitles{flex:1;min-width:0}
+#homeTitles h1{margin:0;font-size:22px;color:var(--texto);font-weight:600;letter-spacing:.2px}
+#homeTitles p{margin:3px 0 0;font-size:12px;color:var(--tenue);text-transform:uppercase;letter-spacing:1.2px}
+#homeUser{font-size:11px;color:var(--tenue);text-align:right;white-space:nowrap}
+#homeTools{display:flex;gap:8px;align-items:center;padding:14px 28px 4px}
+#homeTools input{flex:1;max-width:420px}
+#homeGrid{flex:1;display:grid;gap:14px;padding:16px 28px 28px;align-content:start;
+          grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.tile{background:var(--alto);border:1px solid var(--linea-s);border-radius:10px;overflow:hidden;
+      display:flex;flex-direction:column}
+.tile:hover{border-color:var(--linea-s)}
+.tphoto{height:130px;background:var(--hondo);position:relative;cursor:pointer;
+        display:flex;align-items:center;justify-content:center}
+.tphoto img{width:100%;height:100%;object-fit:cover}
+.tphoto .ph{font-size:11px;color:var(--tenue)}
+.tphoto .edit{position:absolute;right:6px;bottom:6px;font-size:10px;color:var(--etiqueta);
+              background:rgba(11,14,20,.8);border-radius:4px;padding:2px 6px;opacity:0}
+.tphoto:hover .edit{opacity:1}
+.tbody{padding:10px 12px;display:flex;flex-direction:column;gap:8px;flex:1}
+.tname{font-size:13px;color:var(--texto);line-height:1.3;font-weight:500}
+.thub{font-size:10px;color:var(--tenue);text-transform:uppercase;letter-spacing:.6px}
+.tbtns{display:flex;flex-direction:column;gap:5px;margin-top:auto}
+.tbtns button{width:100%;font-size:11px;padding:7px 8px;border-radius:6px;cursor:pointer;
+              border:1px solid var(--linea-s);background:var(--hondo);color:var(--texto)}
+.tbtns button:hover{border-color:var(--acento);color:#fff}
+.tbtns button.primary{background:var(--acento-f);border-color:var(--acento-b);color:#fff}
+.tbtns button.primary:hover{background:var(--acento-b)}
+
+/* ---------- Panel de avance ---------- */
+#avance{position:fixed;inset:0;z-index:70;background:var(--fondo);display:flex;flex-direction:column}
+#avance.hidden{display:none}
+#avBar{display:flex;align-items:center;gap:14px;padding:8px 16px;background:var(--hondo);
+       border-bottom:1px solid var(--linea);flex:none}
+#avTitle{font-size:13px;color:var(--texto);font-weight:600}
+#avMeta{flex:1;font-size:11px;color:var(--tenue);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.avbtns{display:flex;gap:6px}
+#avFrame{flex:1;border:0;width:100%;background:#fff;min-height:0}
+
+/* ---------- Filtro de categorias del inventario ---------- */
+#invCats{flex:none;max-height:120px;overflow-y:auto;padding:6px 9px;background:var(--panel);
+         border-bottom:1px solid var(--linea);display:flex;flex-wrap:wrap;gap:5px}
+#invCats.hidden{display:none}
+.icat{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--texto);
+      background:var(--hondo);border:1px solid var(--linea-s);border-radius:12px;padding:2px 9px;cursor:pointer}
+.icat:hover{border-color:var(--acento)}
+.icat.on{background:var(--acento-b);border-color:var(--acento-b);color:#fff}
+.icat b{color:var(--tenue);font-weight:400}
+.icat.on b{color:var(--acento-h)}
+
+/* ---------- Filtro de categorias, flotante ---------- */
+#invCats{position:absolute;z-index:40;top:74px;right:150px;width:290px;
+         background:var(--panel);border:1px solid var(--linea-s);border-radius:8px;
+         box-shadow:0 10px 30px rgba(0,0,0,.55);padding:8px;display:flex;flex-direction:column;gap:6px}
+#invCats.hidden{display:none}
+.icHead{display:flex;gap:6px}
+.icHead input{flex:1;font-size:11px;padding:4px 7px}
+#invCatList{max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.icat{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--texto);
+      padding:4px 7px;border-radius:5px;cursor:pointer}
+.icat:hover{background:var(--alto)}
+.icat.on{background:var(--acento-f)}
+.icat input{width:auto;margin:0;accent-color:var(--acento)}
+.icat span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icat b{color:var(--tenue);font-weight:400;font-size:10px}
+
+/* ---------- Paneles plegables ---------- */
+.ptitle .chev{color:var(--tenue);font-size:13px;width:12px;display:inline-block;flex:none}
+.panel > .ptitle{display:flex;align-items:center;gap:7px}
+.panel.fold > *:not(.ptitle){display:none}
+.panel.fold{padding-bottom:6px}
+
+/* ---------- Barras laterales ocultables ---------- */
+.tb.ico{padding:5px 9px;font-size:13px;line-height:1}
+.tb.ico.off{opacity:.45}
+body.sin-izq #side{display:none}
+body.sin-der #dash{display:none}
+
+/* ---------- Pantalla de acceso ---------- */
+body.pgate{display:flex;align-items:center;justify-content:center;min-height:100vh;
+           background:var(--fondo);margin:0;padding:24px;box-sizing:border-box}
+.gwrap{width:100%;max-width:760px}
+.ghead{text-align:center;margin-bottom:22px}
+.ghead h1{margin:0;font-size:22px;color:var(--texto);font-weight:600}
+.ghead .sub{margin:5px 0 0;font-size:11px;color:var(--tenue);
+            text-transform:uppercase;letter-spacing:1.4px}
+.gcols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:700px){.gcols{grid-template-columns:1fr}}
+.gate{background:var(--panel);border:1px solid var(--linea-s);border-radius:12px;
+      padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+.gate h2{margin:0 0 6px;font-size:15px;color:var(--texto);font-weight:600}
+.gate .nota{margin:0 0 12px;font-size:11px;color:var(--tenue);line-height:1.5}
+.gate .nota b{color:var(--etiqueta)}
+.gate label{display:block;font-size:11px;color:var(--etiqueta);margin:10px 0 4px}
+.gate input{width:100%;box-sizing:border-box}
+.gate .pri{width:100%;margin-top:16px;padding:9px;border-radius:6px;cursor:pointer;
+           background:var(--acento-f);border:1px solid var(--acento-b);color:#fff;font-size:12px}
+.gate .pri:hover{background:var(--acento-b)}
+.gate .lnk{width:100%;margin-top:10px;background:none;border:0;color:var(--etiqueta);
+           font-size:11px;cursor:pointer;text-decoration:underline}
+.gate .lnk:hover{color:var(--acento)}
+.gate .msg{font-size:11px;margin-top:10px;line-height:1.4;min-height:14px}
+.gate .msg.err{color:var(--mal)}
+.gate .msg.ok{color:var(--ok)}
+.gate .hidden{display:none}
+
+/* ---------- Panel de planos ---------- */
+#plans{width:270px;flex:none;background:var(--hondo);border-left:1px solid var(--linea);
+       display:flex;flex-direction:column;min-height:0}
+#plans.hidden{display:none}
+.pbar{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;
+      font-size:12px;color:var(--texto);border-bottom:1px solid var(--linea);flex:none}
+#plansClose{cursor:pointer;color:var(--tenue);font-size:16px;line-height:1}
+#plansClose:hover{color:var(--texto)}
+.ptools{padding:8px 10px 4px;flex:none}
+.ptools input{font-size:11px}
+#plansList{flex:1;overflow-y:auto;padding:6px 8px}
+.plan{padding:7px 9px;border-radius:6px;background:var(--alto);border:1px solid var(--linea);
+      margin-bottom:5px;cursor:pointer}
+.plan:hover{border-color:var(--acento-b)}
+.plan.on{background:var(--acento-b);border-color:var(--acento)}
+.plan .pn{font-size:11px;color:var(--texto);line-height:1.35;
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plan .pd{font-size:10px;color:var(--tenue);margin-top:2px;line-height:1.4;
+          display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.plan .po{font-size:9px;color:var(--tenue);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+
+/* filtro de categorias: movible y redimensionable */
+#invCats{resize:both;overflow:auto;min-width:220px;min-height:160px;max-width:640px;max-height:70vh}
+.icDrag{cursor:move;user-select:none;font-size:10px;color:var(--tenue);
+        padding:1px 2px 5px;letter-spacing:.5px;text-transform:uppercase}
+.pbar-o{height:4px;background:var(--alto);border-radius:2px;margin-top:5px;overflow:hidden}
+.pbar-i{display:block;height:100%;background:var(--acento);transition:width .12s linear}
+#avisoSeg{position:fixed;left:0;right:0;bottom:0;z-index:80;padding:7px 14px;
+          background:var(--mal);color:var(--mal);font-size:11px;text-align:center;
+          border-top:1px solid var(--mal)}
+#avisoSeg.hidden{display:none}
+#avisoSeg b{color:#fff}
+#mapaCtl{margin:-4px 0 8px;padding:7px 9px;background:var(--hondo);border:1px solid var(--linea-s);
+         border-radius:6px;display:flex;flex-direction:column;gap:6px}
+#mapaCtl.hidden{display:none}
+#mapaCtl label{font-size:10px;color:var(--etiqueta);display:flex;flex-direction:column;gap:3px}
+#mapaCtl select{font-size:11px;padding:3px 6px}
+#mapaCtl input[type=range]{width:100%;accent-color:var(--acento);padding:0}
+
+/* ---------- Gestion de calidad BIM ---------- */
+#calidad{position:fixed;inset:0;z-index:65;background:var(--fondo);overflow-y:auto;
+         display:flex;flex-direction:column}
+#calidad.hidden{display:none}
+#calTop{display:flex;justify-content:space-between;align-items:center;gap:16px;
+        padding:18px 26px;border-bottom:1px solid var(--linea);background:var(--hondo)}
+#calTop h1{margin:0;font-size:19px;color:var(--texto);font-weight:600}
+#calTop p{margin:3px 0 0;font-size:11px;color:var(--tenue);
+          text-transform:uppercase;letter-spacing:1.1px}
+#calBody{display:grid;gap:14px;padding:18px 26px 26px;align-content:start;
+         grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.calbox{background:var(--alto);border:1px solid var(--linea-s);border-radius:10px;padding:14px 16px}
+.calbox.ancho{grid-column:1/-1}
+.calbox h2{margin:0 0 5px;font-size:13px;color:var(--texto);font-weight:600}
+.calbox .nota{margin:0 0 11px;font-size:11px;color:var(--tenue);line-height:1.5}
+.calproc{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px}
+.calproc li{font-size:11px;color:var(--texto);background:var(--hondo);border:1px solid var(--acento-f);
+            border-radius:14px;padding:5px 12px}
+#calRuta{background:var(--fondo);color:var(--tenue);cursor:not-allowed;font-size:11px}
+.callist{margin-top:9px;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.calrow{display:flex;justify-content:space-between;align-items:center;gap:8px;
+        font-size:11px;padding:6px 9px;background:var(--hondo);border-radius:5px;color:var(--texto)}
+.calrow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.calrow b{color:var(--tenue);font-weight:400;white-space:nowrap}
+.calrow.click{cursor:pointer}
+.calrow.click:hover{background:var(--alto)}
+#calVisor{position:fixed;inset:0;z-index:66;background:var(--fondo);display:flex;flex-direction:column}
+#calVisor.hidden{display:none}
+.cvbar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;
+       background:var(--hondo);border-bottom:1px solid var(--linea);font-size:12px;color:var(--texto);flex:none}
+#calVisorX{cursor:pointer;font-size:18px;color:var(--tenue)}
+#calVisorX:hover{color:var(--texto)}
+#calFrame{flex:1;border:0;width:100%;background:#fff;min-height:0}
+.calsep{border:0;border-top:1px solid var(--linea-s);margin:14px 0 11px}
+
+/* ---------- Incidencias ---------- */
+#inc{width:290px;flex:none;background:var(--hondo);border-left:1px solid var(--linea);
+     display:flex;flex-direction:column;min-height:0}
+#inc.hidden{display:none}
+#incClose{cursor:pointer;color:var(--tenue);font-size:16px;line-height:1}
+#incClose:hover{color:var(--texto)}
+#incForm{padding:4px 10px 10px;border-bottom:1px solid var(--linea);flex:none}
+#incForm.hidden{display:none}
+#incForm label{display:block;font-size:10px;color:var(--etiqueta);margin:8px 0 3px}
+#incForm label.chk{display:flex;align-items:center;gap:6px;margin-top:10px}
+#incForm label.chk input{width:auto;margin:0;accent-color:var(--acento)}
+#incForm textarea{width:100%;box-sizing:border-box;background:var(--hondo);color:var(--texto);
+                  border:1px solid var(--linea-s);border-radius:5px;padding:6px;font-size:12px;
+                  font-family:inherit;resize:vertical}
+#incForm .row{margin-top:10px}
+#incForm .tb.primary{flex:1;background:var(--acento-f);border-color:var(--acento-b);color:#fff}
+#incList{flex:1;overflow-y:auto;padding:6px 8px}
+.iinc{padding:7px 9px;border-radius:6px;background:var(--alto);border:1px solid var(--linea);margin-bottom:5px}
+.iinc .it{font-size:11px;color:var(--texto);line-height:1.35}
+.iinc .im{font-size:10px;color:var(--tenue);margin-top:3px;display:flex;justify-content:space-between;gap:8px}
+.iest{padding:1px 7px;border-radius:9px;font-size:9px;text-transform:uppercase;letter-spacing:.4px}
+.iest.open{background:var(--acento-f);color:var(--acento-h)}
+.iest.closed{background:var(--acento-f);color:var(--ok)}
+
+/* Incidencia desplegada */
+.iinc{cursor:pointer}
+.iinc:hover{border-color:var(--linea-s)}
+.iinc.abierta{border-color:var(--acento-b);background:var(--alto)}
+.iinc .ipin{margin-right:4px}
+.iinc p{margin:7px 0 0;font-size:11px;color:var(--texto);line-height:1.45}
+.idet{margin-top:6px;font-size:10px;color:var(--tenue);line-height:1.5}
+.irow{display:flex;gap:6px;margin-top:8px}
+.irow .sm{flex:1}
+
+/* Elemento elegido para la incidencia nueva */
+.incsel{background:var(--alto);border:1px solid var(--linea-s);border-radius:6px;padding:7px 9px;
+        font-size:11px;color:var(--texto);display:flex;flex-direction:column;gap:2px}
+.incsel span{font-size:10px;color:var(--tenue)}
+.incsel.vacio{color:var(--tenue);font-size:10px;border-style:dashed}
+.incsel .sm{margin-top:6px;align-self:flex-start}
+#incElegir{margin-top:6px}
+.sm.wide{width:100%}
+#incPines{margin-top:6px;width:100%}
+#incPines.on{border-color:var(--acento-b);color:var(--acento-h)}
+#incFiltro{margin-top:5px}
+#incInfo{margin-top:5px}
+
+/* Chinchetas sobre el modelo */
+#incPins{position:absolute;inset:0;pointer-events:none;z-index:12;overflow:hidden}
+#incPins .pin{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;
+              min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;
+              border-radius:10px 10px 10px 2px;background:var(--mal);color:#fff;
+              border:1.5px solid var(--mal);font-size:10px;font-weight:700;line-height:17px;
+              text-align:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.55)}
+#incPins .pin:hover{background:var(--mal);transform:translate(-50%,-100%) scale(1.12)}
+#incPins .pin.cerrada{background:var(--ok);border-color:var(--ok)}
+
+/* ---------- Solicitudes de acceso ---------- */
+#solicitudes{margin:0 28px;padding:12px 16px;background:var(--alto);border:1px solid var(--linea-s);
+             border-radius:10px;font-size:11px;color:var(--texto)}
+#solicitudes.hidden{display:none}
+#solicitudes h3{margin:0 0 8px;font-size:13px;color:var(--texto)}
+.srow{display:grid;grid-template-columns:1.4fr 1.6fr 1fr 1fr;gap:10px;padding:7px 9px;
+      background:var(--hondo);border-radius:6px;margin-bottom:4px;align-items:center}
+.srow b{color:var(--acento-h);font-family:ui-monospace,monospace;user-select:all}
+.srow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.smeta{font-size:10px;color:var(--tenue);margin-bottom:9px;line-height:1.6}
+
+/* ---------- Ventanas flotantes (tablero, cronograma, GIS) ---------- */
+.flota{position:fixed;left:60px;top:70px;width:1120px;max-width:calc(100vw - 90px);
+       height:660px;max-height:calc(100vh - 110px);z-index:70;background:var(--hondo);
+       border:1px solid var(--linea-s);border-radius:10px;display:flex;flex-direction:column;
+       box-shadow:0 18px 50px rgba(0,0,0,.6);overflow:hidden}
+.flota.chico{width:400px;height:520px}
+.flota.hidden{display:none}
+.fbar{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;
+      background:var(--alto);border-bottom:1px solid var(--linea);font-size:12px;color:var(--texto);
+      cursor:move;user-select:none}
+.fx{cursor:pointer;color:var(--tenue);font-size:17px;line-height:1}
+.fx:hover{color:var(--texto)}
+.fbody{flex:1;display:flex;min-height:0}
+.fbody.col{flex-direction:column}
+.fside{width:250px;flex:none;padding:10px 12px;border-right:1px solid var(--linea);
+       overflow-y:auto;box-sizing:border-box}
+.fside label{display:block;font-size:10px;color:var(--etiqueta);margin:10px 0 3px}
+.fside label.chk{display:flex;align-items:center;gap:6px;margin-top:11px}
+.fside label.chk input{width:auto;accent-color:var(--acento)}
+.fmain{flex:1;padding:12px 14px;overflow:auto;min-width:0}
+.ftools{padding:10px 12px;border-bottom:1px solid var(--linea);flex:none}
+.ftools label{display:block;font-size:10px;color:var(--etiqueta);margin:9px 0 3px}
+.fscroll{flex:1;overflow:auto;padding:10px 12px;min-height:0}
+.frow{display:flex;gap:7px;align-items:center;margin-top:9px}
+.frow .sm{flex:1}
+.hint.aviso{color:var(--atencion)}
+#tbLienzo{margin-top:8px}
+#tbResumen{margin-bottom:4px}
+.tbtipos{display:flex;flex-direction:column;gap:4px}
+.tbtipo{text-align:left;padding:6px 9px;font-size:11px;background:var(--alto);color:var(--texto);
+        border:1px solid var(--linea-s);border-radius:5px;cursor:pointer;font-family:inherit}
+.tbtipo:hover{border-color:var(--acento-b)}
+.tbtipo.on{background:var(--acento-f);border-color:var(--acento-b);color:#fff}
+#crFecha{flex:2;accent-color:var(--acento)}
+#crLienzo svg{min-width:900px}
+.gcapa{padding:8px 9px;background:var(--alto);border:1px solid var(--linea);border-radius:6px;
+       margin-bottom:6px;font-size:11px;color:var(--texto)}
+.gcapa .chk{display:flex;align-items:center;gap:6px;min-width:0}
+/* Cabecera de capa: nombre a la izquierda, herramientas a la derecha. */
+.gcapa .gcabe{display:flex;align-items:center;gap:6px}
+.gcapa .gcabe .chk{flex:1;min-width:0}
+.gcapa .gnom{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.gcapa .gcabe input[type=color]{width:26px;flex:none;border:1px solid var(--linea-s);border-radius:4px}
+.gcapa .gcabe .sm{flex:none;padding:3px 7px}
+.gcapa .gquita{color:#d66a5e;font-weight:700;padding:3px 8px}
+.gcapa .gquita:hover{color:#ff8a7a}
+/* Fila de controles: etiqueta y campo en linea, sin desbordar. */
+.gcapa .gctl{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.gcapa .gctl label{display:flex;align-items:center;gap:5px;font-size:11px;
+                   color:var(--etiqueta);flex:1;min-width:0}
+.gcapa .gctl label select,.gcapa .gctl label input{flex:1;min-width:0;padding:3px 5px;font-size:11px}
+.gcapa .gctl input[type=range]{flex:1;min-width:70px;accent-color:var(--acento);padding:0}
+.gcapa .hint.aviso{color:#e0a34a}
+.gcapa .chk input{width:auto;accent-color:var(--acento)}
+.gcol{width:11px;height:11px;border-radius:2px;display:inline-block;flex:none}
+.grow{display:flex;align-items:center;gap:7px;margin-top:6px;font-size:10px;color:var(--etiqueta)}
+.grow input{width:80px}
+
+/* ---------- Barra de modulos ---------- */
+#modulos{width:74px;flex:none;background:var(--fondo);border-right:1px solid var(--linea);
+         display:flex;flex-direction:column;gap:2px;padding:6px 4px;overflow-y:auto}
+#modulos .mod{display:flex;flex-direction:column;align-items:center;gap:3px;
+              padding:9px 3px;background:none;border:1px solid transparent;border-radius:7px;
+              color:var(--tenue);font-family:inherit;font-size:9px;line-height:1.15;
+              text-align:center;cursor:pointer}
+#modulos .mod i{font-style:normal;font-size:17px;line-height:1}
+#modulos .mod:hover{background:var(--alto);color:var(--texto)}
+#modulos .mod.on{background:var(--acento-f);border-color:var(--acento-b);color:var(--texto)}
+#modulos .mod:disabled{opacity:.35;cursor:default}
+#modulos .mod:disabled:hover{background:none;color:var(--tenue)}
+
+/* ---------- Navegador de carpetas del proyecto ---------- */
+#navMod{width:300px;min-width:220px;flex:none;background:var(--panel);
+        display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--linea)}
+#navMod.hidden{display:none}
+#navModList{flex:1;overflow-y:auto;padding:6px 10px 14px}
+.ruta{font-size:10px;color:var(--tenue);margin-bottom:6px;line-height:1.5;word-break:break-word}
+.ruta a{color:var(--acento);cursor:pointer;text-decoration:none}
+.ruta a:hover{text-decoration:underline}
+.nitem{display:flex;align-items:flex-start;gap:7px;padding:7px 8px;border-radius:6px;
+       border:1px solid var(--linea);background:var(--hondo);margin-bottom:5px;font-size:11px}
+.nitem.carpeta{cursor:pointer}
+.nitem.carpeta:hover{border-color:var(--acento-b);background:var(--alto)}
+.nitem i{font-style:normal;font-size:13px;line-height:1.3;flex:none;color:var(--etiqueta)}
+.nitem .ncuerpo{flex:1;min-width:0}
+.nitem .nn{color:var(--texto);word-break:break-word}
+.nitem .nd{color:var(--tenue);font-size:10px;margin-top:2px;line-height:1.35}
+.nitem .sm{margin-top:6px;width:100%}
+.nitem.puesto{border-color:var(--ok)}
+.nitem.puesto .sm{opacity:.6}
+
+/* ---------- Ventana de archivos GIS ---------- */
+#gisFiles,#cronFiles,#vfPanel,#modelosPanel,#crmPanel{width:270px;min-width:200px;flex:none;background:var(--panel);
+          display:flex;flex-direction:column;overflow:hidden;border-left:1px solid var(--linea-s)}
+#gisFiles.hidden,#cronFiles.hidden,#vfPanel.hidden,#modelosPanel.hidden,#crmPanel.hidden{display:none}
+#gisFilesList,#cronFilesList{flex:1;overflow-y:auto;padding:6px 10px 14px}
+.gfile{padding:8px 9px;border:1px solid var(--linea);border-radius:6px;background:var(--hondo);
+       margin-bottom:5px;font-size:11px;cursor:pointer}
+.gfile:hover{border-color:var(--acento-b)}
+.gfile.on{border-color:var(--acento-b);background:var(--alto)}
+.gfile .gn{color:var(--texto);word-break:break-word}
+.gfile .gc{color:var(--tenue);font-size:10px;margin-top:2px}
+.gfile .gs{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:10px;color:var(--etiqueta)}
+
+.nd.aviso{color:var(--atencion)}
+
+/* ---------- Planos agrupados por carpeta ---------- */
+.cgrupo{margin-bottom:8px}
+.ccab{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:5px;
+      background:var(--alto);border:1px solid var(--linea);cursor:pointer;font-size:10px;
+      color:var(--etiqueta);text-transform:uppercase;letter-spacing:.3px;user-select:none}
+.ccab:hover{border-color:var(--acento-b);color:var(--texto)}
+.ccab i{font-style:normal;font-size:11px;flex:none;width:9px}
+.ccab span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ccab b{font-weight:600;background:var(--acento-f);color:var(--acento-h);border-radius:8px;
+        padding:1px 6px;font-size:9px;flex:none}
+.ccuerpo{padding:5px 0 0 6px;border-left:1px solid var(--linea);margin-left:5px}
+.po.enlazado{color:var(--ok)}
+
+/* ---------- Enlace plano-modelo ---------- */
+#plBar{display:flex;align-items:center;gap:7px;padding:5px 10px;background:var(--panel);
+       border-bottom:1px solid var(--linea);flex-wrap:wrap;flex:none}
+#plBar .sm{flex:none}
+#plBar .sm.on{border-color:var(--acento-b);color:var(--acento-h);background:var(--acento-f)}
+#plEstado{flex:none;color:var(--etiqueta);font-size:10px;min-width:96px}
+#plMsg{flex:1;min-width:120px;font-size:10px}
+#plOverlay{position:absolute;pointer-events:none;z-index:4}
+#pdfScroll{position:relative}
+
+/* Cartel guia de la toma de puntos: grande, sobre el 3D, imposible de no ver.
+   pointer-events none para que no estorbe al clic que precisamente pide. */
+#plGuia{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:60;
+        background:rgba(14,17,22,.92);border:1px solid var(--acento-b);color:#fff;
+        padding:10px 18px;border-radius:10px;font-size:14px;font-weight:600;
+        box-shadow:0 4px 18px rgba(0,0,0,.45);pointer-events:none;max-width:82%;
+        text-align:center;line-height:1.35}
+#plGuia.hidden{display:none}
+#plGuia .paso{display:block;font-size:11px;font-weight:400;color:#9fb0c8;margin-top:3px}
+#plGuia.aviso{border-color:#c0763a}
+
+/* =============================================================================
+ * Refinado de forma
+ * Menos peso visual, mas aire, filetes de un pixel y un solo nivel de sombra.
+ * ========================================================================== */
+
+/* Tipografia ------------------------------------------------------------- */
+body{-webkit-font-smoothing:antialiased;letter-spacing:.005em}
+#top{letter-spacing:-.01em}
+.pbar>span:first-child,#navModTit,
+#dash h3,#side h3,#incPanel h3,.sec-t{
+  font-size:10px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;
+  color:var(--etiqueta)}
+label{letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+
+/* Los datos van en monoespaciada: se comparan en columna. */
+#dash .v,.iest,#pdfPage,#pdfHits,#pdfZoomVal,#plEstado,
+.gs,.pd,.nitem .nd,.ccab b,#navModInfo,#incInfo,#tbResumen{
+  font-family:var(--dato);font-variant-numeric:tabular-nums}
+
+/* Controles --------------------------------------------------------------- */
+button,.tb,.sm{
+  border-radius:var(--r-s);
+  transition:background .12s ease,border-color .12s ease,color .12s ease}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,
+.mod:focus-visible,.plan:focus-visible{
+  outline:2px solid var(--acento);outline-offset:2px}
+input,select,textarea{
+  border-radius:var(--r-s);
+  transition:border-color .12s ease,background .12s ease}
+input:focus,select:focus,textarea:focus{border-color:var(--acento-b);background:var(--hondo)}
+
+.tb.primary,.sm.primary{background:var(--acento);color:#08222A;font-weight:600;border-color:transparent}
+.tb.primary:hover,.sm.primary:hover{background:var(--acento-h)}
+
+/* Superficies ------------------------------------------------------------- */
+#side,#dash,#navMod,#plans,#inc,#gisFiles,#cronFiles,#vfPanel,#modelosPanel{border-color:var(--linea)}
+.pbar{border-bottom:1px solid var(--linea);background:transparent}
+.plan,.gfile,.nitem,.iinc,.gcapa{
+  border-radius:var(--r-m);
+  transition:border-color .12s ease,background .12s ease,transform .12s ease}
+.plan:hover,.gfile:hover,.nitem.carpeta:hover,.iinc:hover{transform:translateX(2px)}
+.plan.on,.gfile.on,.iinc.abierta{
+  border-color:var(--acento-b);background:var(--acento-f)}
+.flota{border-radius:var(--r-g);box-shadow:var(--sombra-g)}
+
+/* Barra de modulos: el elemento que mas se mira, asi que se cuida. */
+#modulos .mod{border-radius:var(--r-m);transition:background .14s ease,color .14s ease}
+#modulos .mod.on{background:var(--acento-f);border-color:var(--acento-b);color:var(--acento)}
+#modulos .mod.on i{color:var(--acento)}
+#modulos .mod::after{
+  content:"";position:absolute;left:0;top:50%;width:2px;height:0;background:var(--acento);
+  border-radius:0 2px 2px 0;transform:translateY(-50%);transition:height .16s ease}
+#modulos .mod{position:relative}
+#modulos .mod.on::after{height:26px}
+
+/* Estados vacios: una invitacion a hacer algo, no un lamento. */
+.vacio{padding:22px 14px;color:var(--tenue);font-size:11px;line-height:1.6;
+       border:1px dashed var(--linea-s);border-radius:var(--r-m);text-align:center}
+.vacio b{color:var(--texto);font-weight:600}
+
+/* =============================================================================
+ * Pantalla de carga
+ *
+ * Estos modelos tardan minutos en abrirse. Una barra que no se mueve hace que
+ * la espera parezca averia, asi que la pantalla dice SIEMPRE en que va y da algo
+ * que hacer mientras tanto, para quien quiera.
+ * ========================================================================== */
+#busy{background:rgba(14,17,22,.90);backdrop-filter:blur(3px)}
+#busyCaja{
+  min-width:340px;max-width:520px;padding:26px 28px 22px;background:var(--panel);
+  border:1px solid var(--linea);border-radius:var(--r-g);box-shadow:var(--sombra-g);
+  display:flex;flex-direction:column;gap:14px}
+#busyTitulo{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--acento)}
+#busyText{font-size:13px;color:var(--texto);line-height:1.5;min-height:38px}
+#busyPista{font-size:11px;color:var(--tenue);line-height:1.55}
+
+/* Nivel de burbuja: el instrumento con el que se comprueba que algo esta a
+   plomo. Aqui hace de barra de progreso indeterminada. */
+#nivel{position:relative;height:16px;border-radius:8px;background:var(--hondo);
+       border:1px solid var(--linea);overflow:hidden}
+#nivel::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:34px;
+       transform:translateX(-50%);border-left:1px solid var(--linea-s);
+       border-right:1px solid var(--linea-s)}
+#burbuja{position:absolute;top:3px;width:22px;height:8px;border-radius:5px;
+       background:var(--acento);box-shadow:0 0 12px rgba(56,198,224,.55);
+       animation:plomo 3.4s cubic-bezier(.45,0,.55,1) infinite}
+@keyframes plomo{
+  0%{left:6px} 42%{left:calc(50% - 11px)} 52%{left:calc(50% - 7px)}
+  60%{left:calc(50% - 13px)} 68%{left:calc(50% - 9px)}
+  76%{left:calc(50% - 11px)} 100%{left:calc(100% - 28px)}}
+
+#busyPie{display:flex;align-items:center;gap:10px;justify-content:space-between}
+#busyPie .sm{flex:none}
+#juego{width:100%;height:120px;border-radius:var(--r-m);background:var(--hondo);
+       border:1px solid var(--linea);display:block}
+#juego.hidden{display:none}
+#juegoAyuda{font-size:10px;color:var(--tenue);text-align:center}
+.plesc{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--etiqueta);flex:none}
+.plesc input{width:56px;padding:3px 6px;font-family:var(--dato);text-align:center}
+.sm.ico{padding:3px 8px;font-size:13px;line-height:1.2}
+.iotro{margin-right:4px;color:var(--tenue);font-size:9px}
+.idet.aviso{color:var(--atencion);background:var(--atencion-f);padding:6px 8px;
+            border-radius:var(--r-s);margin-top:7px}
+#acxPanel,#cmpPanel{width:300px;min-width:220px;flex:none;background:var(--panel);
+          display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--linea)}
+#acxPanel.hidden,#cmpPanel.hidden{display:none}
+#cmpPanel label{display:block;font-size:10px;color:var(--etiqueta);margin:9px 0 3px;
+                letter-spacing:.06em;text-transform:uppercase}
+#cmpPanel .tb.wide,#cmpPanel .sm.wide{width:100%;margin-top:9px}
+#cmpLista{flex:1;overflow-y:auto;margin-top:8px;min-height:80px}
+.crow{display:flex;gap:7px;align-items:center;padding:4px 2px;cursor:pointer;
+      border-bottom:1px solid var(--linea);font-size:11px}
+.crow:hover{background:var(--acento-f)}
+.crow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cletra{flex:none;width:16px;height:16px;border-radius:4px;text-align:center;
+        line-height:16px;font-size:10px;color:#fff}
+.cletra.ca{background:#b3372f}
+.cletra.cb{background:#2f7d3c}
+.crow .cnom{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crow .cdet{flex:none;font-size:9px;color:var(--etiqueta);white-space:nowrap}
+#acxList{flex:1;overflow-y:auto;padding:6px 10px 14px}
+#modulos .mod.vetado{opacity:.32}
+#modulos .mod.vetado:hover{background:none;color:var(--tenue)}
+#acxLogin label{display:block;font-size:10px;color:var(--etiqueta);margin:9px 0 3px;
+                letter-spacing:.06em;text-transform:uppercase}
+#acxLogin .tb.wide{width:100%;margin-top:11px}
+#acxLogin .hint{margin-top:8px;line-height:1.5}
+#acxSesion.hidden,#acxLogin.hidden{display:none}
+#acxQuien{color:var(--ok)}
+#acxSesion .sm{margin-top:6px}
+
+/* Quitar modelo: el aspa de cada chip solo aparece en modo quitar */
+.mchip .mquita{display:inline;margin-left:6px;cursor:pointer;color:#d66a5e;
+               font-style:normal;font-weight:700;padding:0 3px;border-radius:3px}
+body.quitando .mchip .mquita{display:inline}
+.mchip .mquita:hover{background:#d66a5e;color:#fff}
+#btnQuitar.on{background:#5a2a24;border-color:#d66a5e}
+#btnQuitar.hidden{display:none}
+
+/* Comparacion en paralelo */
+#parWrap{position:fixed;inset:0;z-index:60;background:var(--fondo);display:flex;flex-direction:column}
+#parWrap.hidden{display:none}
+#parBar{display:flex;align-items:center;gap:14px;padding:8px 14px;background:var(--panel);
+        border-bottom:1px solid var(--linea)}
+#parBar #parCerrar{margin-left:auto}
+#parCuerpo{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--linea)}
+.parPane{position:relative;background:#f4f5f6}
+.parPane>div{position:absolute;inset:0}
+.parEtiqueta{position:absolute;top:10px;left:10px;z-index:5;width:26px;height:26px;
+             border-radius:6px;color:#fff;font-weight:700;text-align:center;line-height:26px}
+.parEtiqueta.pa{background:#b3372f}
+.parEtiqueta.pb{background:#2f7d3c}
+
+/* Panel de quitar modelo: lista completa bajo la cabecera */
+#quitarPanel,#vistasPanel{position:fixed;top:44px;right:10px;z-index:70;width:420px;max-width:92vw;
+             max-height:60vh;overflow-y:auto;background:var(--panel);
+             border:1px solid var(--linea);border-radius:8px;box-shadow:0 8px 24px #0008}
+#quitarPanel.hidden,#vistasPanel.hidden{display:none}
+#quitarPanel .qtitulo,#vistasPanel .qtitulo{padding:9px 12px;font-size:11px;letter-spacing:.06em;
+                      text-transform:uppercase;color:var(--etiqueta);
+                      border-bottom:1px solid var(--linea)}
+#quitarPanel .qrow,#vistasPanel .qrow{display:flex;align-items:center;gap:10px;padding:7px 12px;
+                   border-bottom:1px solid var(--linea);font-size:12px}
+#quitarPanel .qrow span,#vistasPanel .qrow span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#quitarPanel .qx,#vistasPanel .qx{flex:none;cursor:pointer;color:#d66a5e;font-style:normal;font-weight:700;
+                 padding:1px 7px;border-radius:4px}
+#quitarPanel .qx:hover,#vistasPanel .qx:hover{background:#d66a5e;color:#fff}
+
+#quitarPanel .qchk,#vistasPanel .qchk{flex:none;accent-color:#3aa5b8;cursor:pointer}
+#quitarPanel .qpie,#vistasPanel .qpie{display:flex;align-items:center;gap:10px;padding:8px 12px}
+
+.chklinea{display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;color:var(--texto)}
+.chklinea input{accent-color:#3aa5b8;cursor:pointer}
+
+/* Dashboard de interferencias */
+#cdCuerpo .cdchips{display:flex;gap:10px;margin-bottom:14px}
+#cdCuerpo .cdchip{flex:1;border-radius:8px;padding:10px;text-align:center;color:#fff}
+#cdCuerpo .cdchip b{display:block;font-size:22px}
+#cdCuerpo .cdchip span{font-size:10px;letter-spacing:.05em;text-transform:uppercase;opacity:.85}
+#cdCuerpo h4{margin:14px 0 8px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--etiqueta)}
+#cdCuerpo .cdfila{margin:5px 0}
+#cdCuerpo .cdnom{font-size:11px;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cdCuerpo .cdbarra{height:14px;border-radius:4px;background:#b3372f;min-width:6px;
+                   display:flex;align-items:center;justify-content:flex-end;padding-right:6px;
+                   color:#fff;font-size:10px;font-weight:700}
+#cdCuerpo .cdbarra.verde{background:#2f7d3c}
+
+/* Linea de tiempo por fechas en las tarjetas de filtro */
+.tlBox{padding:4px 2px 2px}
+.tlEnlace{font-size:10px;color:#3aa5b8;cursor:pointer;text-decoration:underline dotted}
+.tlFila{display:flex;align-items:center;gap:8px}
+.tlFila input[type=range]{flex:1;accent-color:#3aa5b8}
+.tlFecha{font-size:11px;color:var(--texto);min-width:76px;text-align:right}
+/* La fecha inicial va pegada al arranque de la barra y en tono menor: es la
+   referencia fija, no el valor que el usuario mueve. */
+.tlFecha.tlIni{color:var(--tenue);text-align:left;min-width:70px}
+/* Barra que aun no se ha tocado: se ve, pero no filtra nada todavia. */
+.tlFila.tlApagada{opacity:.55}
+.tlFila.tlApagada .tlFecha{font-style:italic}
+
+#btnFiltroO.on{background:#3aa5b8;color:#fff;border-color:#3aa5b8}
+.modoColor{margin-left:6px;font-size:10px;background:#1d242d;color:var(--texto);
+           border:1px solid var(--linea);border-radius:4px;padding:1px 2px}
+.colorUno{width:22px;height:18px;padding:0;border:1px solid var(--linea);
+          border-radius:4px;background:none;cursor:pointer;margin-left:4px}
+
+.mchip{display:inline-flex;align-items:center;max-width:330px}
+.mchip .mquita:hover{color:#ff8a7a}
+#vfPanel{display:flex;flex-direction:column}
+#vfPanel .plist{overflow-y:auto;flex:1;padding:8px}
+#vfPanel{width:380px}
+
+/* Dashboard de interferencias: ventana AJUSTABLE (tirar de la esquina) */
+#cdWin{width:900px;max-width:96vw;min-width:560px;min-height:420px;resize:both;overflow:auto}
+#cdWin .fbody{max-height:none}
+/* Los nombres reales son largos (100021-JYS01-100-ZZZ-FED-BIM-E5-000001.nwd):
+   con la casilla ya corregida caben, y con 380 px caben COMPLETOS. */
+#modelosPanel{display:flex;flex-direction:column;width:380px;min-width:260px}
+#modelosPanel .plist{overflow-y:auto;flex:1;padding:8px}
+.mrow{display:flex;align-items:center;gap:7px;padding:7px 8px;border-bottom:1px solid var(--linea)}
+.mrow span{flex:1;min-width:0;font-size:12px;color:var(--texto);line-height:1.35;
+           overflow-wrap:anywhere;word-break:break-word}
+.mrow .mvista{font-style:normal;font-size:10px;color:var(--tenue);display:block;margin-top:2px}
+.mrow .mvistaSel{margin-top:3px;font-size:10px;padding:2px 4px;width:100%}
+.mrow .mqx{cursor:pointer;color:#d66a5e;font-weight:700;padding:0 4px;align-self:flex-start}
+.mrow .mqx:hover{color:#ff8a7a}
+
+/* ---------- Ficha de incidencia, al estilo de la de Autodesk ----------
+   Etiqueta arriba en tono menor y valor debajo: en un panel estrecho, dos
+   columnas obligarian a partir palabras a cada linea. */
+.ifila{padding:6px 0;border-bottom:1px solid var(--linea)}
+.ifila:last-of-type{border-bottom:0}
+.ifila .ieti{display:block;font-size:10px;text-transform:uppercase;
+             letter-spacing:.03em;color:var(--etiqueta);margin-bottom:2px}
+.ifila .ival{display:block;font-size:12px;color:var(--texto);line-height:1.45;
+             overflow-wrap:anywhere}
+.ifila .itenue{color:var(--tenue);font-size:11px}
+.ifila .iaviso{color:#e0a34a}
+
+/* ---------- Modulo "Filtro Sectores": barra de Sector y Zona ---------- */
+/*
+ * Los dos botones son de SELECCION, no de accion: encendidos significa que su
+ * filtro esta puesto en el panel, y por eso se marcan igual que la tarjeta que
+ * colorea. Pulsar otra vez lo quita.
+ */
+#secBar .secbtn{flex:1;min-width:0;padding:7px 6px;font-size:12px;letter-spacing:.3px}
+#secBar .secbtn.on{background:var(--acento-f);border-color:var(--acento);color:var(--acento-h)}
+#secBar .secbtn:disabled{opacity:.4;cursor:default}
+#secBar .hint{margin-top:6px;line-height:1.45}
+#secInfo{color:var(--etiqueta)}
+
+/* ---------- Visor de hojas de calculo ---------- */
+.xlhojas{display:flex;gap:4px;flex-wrap:wrap;margin-top:9px}
+.xltab{background:var(--hondo);border:1px solid var(--linea);border-radius:5px;
+       color:var(--tenue);font-family:inherit;font-size:10px;padding:4px 9px;cursor:pointer}
+.xltab:hover{border-color:var(--acento-b);color:var(--texto)}
+.xltab.on{background:var(--acento-f);border-color:var(--acento);color:var(--acento-h)}
+#xlLienzo{padding:0}
+.xlTabla{border-collapse:collapse;font-size:11px;table-layout:fixed;
+         color:var(--texto);background:var(--hondo)}
+.xlTabla th,.xlTabla td{border:1px solid var(--linea);padding:3px 6px;
+         vertical-align:top;overflow:hidden}
+/* Las palabras NO se parten letra a letra: solo se envuelven si no caben
+   enteras, que es como lee Excel. Antes "CUMPLIMIENTO" salia en vertical. */
+.xlTabla td{word-break:normal;overflow-wrap:break-word;hyphens:none}
+.xlTabla thead th{position:sticky;top:0;z-index:2;background:var(--alto);
+         color:var(--etiqueta);font-weight:600;font-size:10px;text-align:center}
+/* Numero de fila: pegado a la izquierda, como en cualquier hoja de calculo */
+.xlTabla th.xlrn{position:sticky;left:0;z-index:1;background:var(--alto);
+         color:var(--etiqueta);font-weight:400;font-size:10px;text-align:right;
+         width:46px;min-width:46px}
+.xlTabla thead th.xlrn{z-index:3}
+.xlTabla col.xlrnc{width:46px}
+.xlTabla td.xlnum{text-align:right;font-variant-numeric:tabular-nums}
+.xlTabla td.xlhit{background:var(--acento-f);color:var(--acento-h)}
+.xlmas{padding:10px 12px}
+
+/* Imagenes incrustadas en la hoja de calculo */
+.xlwrap{position:relative;display:inline-block;min-width:100%}
+.xlimgs{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+.xlimg{position:absolute;z-index:4;pointer-events:auto;overflow:hidden}
+.xlimg img{width:100%;height:100%;object-fit:contain;display:block;
+           background:#fff;border:1px solid var(--linea);border-radius:3px;cursor:zoom-in}
+.xlimg.nodibuja{border:1px dashed var(--atencion);border-radius:4px;color:var(--atencion);
+                background:rgba(0,0,0,.35);font-size:10px;line-height:1.35;padding:6px;
+                display:flex;align-items:center;text-align:center}
+.xltab.oculta{border-style:dashed;opacity:.75}
+.xltab.xlocultas{margin-left:6px;border-color:var(--acento-b);color:var(--acento)}
+
+/* ---------- Dar acceso a alguien (panel del administrador) ---------- */
+.invitar{background:var(--hondo);border:1px solid var(--linea);border-radius:8px;
+         padding:10px;margin-bottom:6px}
+.invitar .ifila{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+.invitar .ifila input{flex:1;min-width:150px;background:var(--fondo);border:1px solid var(--linea);
+                      border-radius:6px;color:var(--texto);padding:6px 8px;font:12px inherit}
+.invitar .ifila input:focus{outline:none;border-color:var(--acento)}
+.invitar .ifila button{flex:none}
+.invok{margin-top:8px;padding:8px 10px;border:1px solid var(--ok);border-radius:6px;
+       color:var(--texto);background:rgba(79,157,105,.12);line-height:1.6;font-size:11px}
+.invok code{background:var(--fondo);border:1px solid var(--linea);border-radius:4px;
+            padding:2px 6px;font-size:12px;color:var(--acento-h);user-select:all}
+/* Excel ignora la orientacion EXIF; el navegador la aplica. Se iguala a Excel:
+   el giro correcto es el que dice el propio dibujo (rot), no el de la foto. */
+.xlimg img{image-orientation:none}
+
+/* ---------- Tabla de sectores por fecha ---------- */
+/* La ventana se mueve por su barra (como todas) y ademas se ensancha por la
+   esquina: una tabla con 15 familias no cabe en el tamano de partida. */
+.flota.redim{resize:both;min-width:360px;min-height:220px}
+#tsWin{width:760px;height:420px;left:auto;right:30px;top:96px}
+#tsLienzo{padding:0}
+.tstabla{border-collapse:collapse;font-size:11px;width:100%}
+.tstabla th,.tstabla td{border:1px solid var(--linea);padding:4px 7px;text-align:right;
+                        white-space:nowrap}
+.tstabla thead th{position:sticky;top:0;z-index:2;background:var(--alto);color:var(--etiqueta);
+                  font-weight:600;font-size:10px;text-align:center;line-height:1.3}
+.tstabla .tsfec{color:var(--acento);font-weight:400;font-size:10px}
+.tstabla td.tsnom{text-align:left;color:var(--texto);position:sticky;left:0;background:var(--hondo);
+                  max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.tstabla td.tsn,.tstabla td.tstot{cursor:pointer;color:var(--tenue)}
+.tstabla td.tsn:hover,.tstabla td.tstot:hover{background:var(--alto);color:var(--texto)}
+.tstabla td.on{outline:1px solid var(--acento);background:var(--acento-f)}
+.tstabla td b{color:var(--texto);font-weight:600}
+.tstabla td span{display:block;font-size:10px;color:var(--etiqueta)}
+.tstabla td.tsvacio{color:var(--linea);text-align:center}
+.tstabla th.tstot,.tstabla td.tstot{background:rgba(58,165,184,.07)}
+
+/* ---------- Incidencias: formulario completo y desplazable ---------- */
+/*
+ * El formulario crecio con toda la plantilla de Autodesk (asignado, observadores,
+ * ubicacion, causa y los atributos del proyecto) y ya no cabe de una vez: sin
+ * esto, los botones de Crear y Cancelar quedaban por debajo del borde de la
+ * pantalla y no habia forma de llegar a ellos.
+ */
+#incForm{max-height:calc(100vh - 210px);overflow-y:auto;overscroll-behavior:contain}
+/* Crear y Cancelar SIEMPRE a la vista, por larga que sea la plantilla. */
+#incForm > .row{position:sticky;bottom:0;z-index:3;background:var(--panel);
+                padding:8px 0 6px;border-top:1px solid var(--linea);margin-top:8px}
+#incForm select[multiple]{height:auto;padding:4px}
+#incForm .oblig{color:#d66a5e;font-weight:700}
+.iref{display:inline-block;line-height:1.5}
+
+/* Referencias de la incidencia: bloque propio, como en Autodesk */
+.ibloque{margin:8px 0 4px;border:1px solid var(--linea);border-radius:6px;overflow:hidden}
+.ibtit{background:var(--alto);color:var(--etiqueta);font-size:10px;letter-spacing:.4px;
+       text-transform:uppercase;padding:5px 8px}
+.ibtit .ibn{color:var(--acento)}
+.ibcuerpo{padding:6px 8px;font-size:11px;line-height:1.5;color:var(--texto)}
+.ibcuerpo .iref{padding:2px 0;border-bottom:1px solid var(--linea)}
+.ibcuerpo .iref:last-child{border-bottom:none}
+
+/* Tabla de sectores: mando de modo y vista por semanas */
+.tsmando{display:flex;gap:5px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.tsmando .sm.on{background:var(--acento-f);border-color:var(--acento);color:var(--acento-h)}
+.tsmando select{background:var(--hondo);border:1px solid var(--linea);border-radius:6px;
+                color:var(--texto);padding:4px 7px;font:11px inherit}
+.tstabla td.tssem{text-align:left;color:var(--texto);white-space:nowrap}
+.tstabla td.tssem .tsnada{display:block;font-size:10px;color:var(--atencion)}
+.tstabla tr.tsvacia td{color:var(--tenue);background:rgba(255,255,255,.02)}
+.tstabla td.tscero{color:var(--tenue);text-align:right}
+
+/* ---------- Referencias: desplegable al estilo de Autodesk ---------- */
+.ibtit{display:flex;align-items:center;gap:8px}
+.ibtit .ibadd{margin-left:auto;flex:none;text-transform:none;letter-spacing:0}
+.ibmenu{border-top:1px solid var(--linea);background:var(--hondo);
+        max-height:260px;overflow-y:auto}
+.ibmenu.hidden,.ibpanel.hidden{display:none}
+.ibop{display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;
+      border-bottom:1px solid var(--linea);color:var(--texto);font:12px inherit;
+      padding:8px 10px;cursor:pointer;text-align:left}
+.ibop:last-child{border-bottom:none}
+.ibop:hover{background:var(--alto);color:var(--acento-h)}
+.ibop .ibic{width:16px;text-align:center;color:var(--tenue)}
+.ibpanel{border-top:1px solid var(--linea);padding:9px 10px;background:var(--hondo)}
+.ibph{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--acento);
+      margin-bottom:6px}
+.ibpanel input{width:100%;box-sizing:border-box;background:var(--fondo);
+               border:1px solid var(--linea);border-radius:6px;color:var(--texto);
+               padding:6px 8px;font:12px inherit;margin-bottom:7px}
+.ibpanel input:focus{outline:none;border-color:var(--acento)}
+.ibplista{max-height:190px;overflow-y:auto;margin-bottom:7px}
+.ibpit{display:block;width:100%;background:none;border:none;border-bottom:1px solid var(--linea);
+       color:var(--texto);font:11px inherit;padding:6px 4px;cursor:pointer;text-align:left}
+.ibpit:hover{background:var(--alto);color:var(--acento-h)}
+.ibcuerpo .iref{display:flex;align-items:center;gap:7px}
+.ibcuerpo .iref .irefn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.irefx{background:none;border:none;color:var(--tenue);cursor:pointer;font-size:15px;
+       line-height:1;padding:0 2px;flex:none}
+.irefx:hover{color:var(--mal)}
+
+/* Sectores por fecha: columnas de partida y busqueda */
+.tstabla td.tscod{font-variant-numeric:tabular-nums;white-space:nowrap}
+.tstabla td.tspart{max-width:280px;white-space:normal;line-height:1.35}
+.tstabla td.tscod,.tstabla td.tspart{cursor:pointer}
+.tstabla td.tscod:hover,.tstabla td.tspart:hover{background:var(--alto)}
+.tsmando #tsBuscar{flex:1;min-width:180px;background:var(--hondo);
+  border:1px solid var(--linea);border-radius:6px;color:var(--texto);
+  padding:5px 8px;font:11px inherit}
+.tsmando #tsBuscar:focus{outline:none;border-color:var(--acento)}
+
+/* Linea de tiempo: la cifra de ejemplo con sus separadores */
+.tlBox .tlmask{width:130px;background:var(--hondo);border:1px solid var(--linea);
+  border-radius:6px;color:var(--texto);padding:4px 7px;font:11px inherit;
+  margin:3px 0 5px;font-variant-numeric:tabular-nums}
+.tlBox .tlmask:focus{outline:none;border-color:var(--acento)}
+
+/* Sectores por fecha: elementos contados en mas de un sector */
+.tstabla th.tsrep{color:var(--atencion)}
+.tstabla td.tsrep{color:var(--tenue);text-align:right;cursor:default}
+.tstabla td.tsrepon{color:var(--atencion);font-weight:600;cursor:pointer;
+                    background:var(--atencion-f)}
+.tstabla td.tsrepon:hover{filter:brightness(1.2)}
+
+/* Selector de modelos: columna "Ultima actualizacion" y dialogo mas ancho */
+#dialog{width:1120px}
+.node .nmod{margin-left:auto;flex:none;color:var(--tenue);font-size:11px;
+            font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:12px}
+
+/* Cronograma desde modelo */
+#crmPanel .ptools select{width:100%;box-sizing:border-box;margin-bottom:6px}
+#crmPanel .lbl{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;
+               color:var(--etiqueta);margin:6px 0 3px}
+
+/* Inspector de archivos cerrados */
+#insWin{width:860px;max-width:94vw}
+.insSec{margin-bottom:10px}
+.insSec details{border:1px solid var(--linea);border-radius:6px;margin-bottom:6px;padding:4px 8px}
+.insSec summary{cursor:pointer;font-size:12px;color:var(--texto)}
+.insSec summary .sm{margin-left:8px}
+.insPre{white-space:pre-wrap;word-break:break-word;font:11px/1.4 ui-monospace,Consolas,monospace;
+        color:var(--texto);background:var(--hondo);border:1px solid var(--linea);border-radius:6px;padding:8px;max-height:60vh;overflow:auto}
+.tstabla td.ins-fecha{color:var(--acento)}
+.tstabla td.ins-codigo{color:var(--atencion)}
+.tstabla td.ins-texto{color:var(--ok)}
+.tstabla td.ins-numero,.tstabla td.ins-otro{color:var(--tenue)}
+
+/* Cronograma: con escala fija el lienzo se desplaza en horizontal */
+#crLienzo{overflow:auto}
+
+/* Acceso en lote */
+.invlote{margin-top:10px;border:1px solid var(--linea);border-radius:6px;padding:6px 10px}
+.invlote summary{cursor:pointer;font-size:12px;color:var(--acento)}
+.invlote textarea{width:100%;box-sizing:border-box;margin:6px 0;background:var(--hondo);
+  border:1px solid var(--linea);border-radius:6px;color:var(--texto);padding:6px 8px;
+  font:11px ui-monospace,Consolas,monospace}
+
+/* Tablas de planificacion (v1.89) */
+.tplanwin{position:fixed;right:14px;top:56px;width:min(760px,94vw);max-height:80vh;
+  display:flex;flex-direction:column;z-index:60}
+.tplanwin.fold{max-height:none}
+.tplanbar{display:flex;gap:6px;align-items:center;padding:6px 10px;flex-wrap:wrap}
+.tplanbar select,.tplanbar input{background:var(--hondo);border:1px solid var(--linea);
+  color:var(--texto);border-radius:6px;padding:4px 6px;font-size:12px;max-width:220px}
+.tplanbar input{flex:1;min-width:150px}
+.tplanscroll{overflow:auto;padding:0 10px 10px}
+.tplantabla{width:100%;border-collapse:collapse;font-size:12px}
+.tplantabla th,.tplantabla td{border-bottom:1px solid var(--linea);padding:3px 6px;
+  text-align:left;white-space:nowrap}
+.tplantabla th.num,.tplantabla td.num{text-align:right}
+.tplantabla tr.tot td{font-weight:600;border-top:1px solid var(--linea)}
+
+/* ---------- Tablas de planificacion: ventana de verdad (v1.98) ---------- */
+#tplanPanel{position:fixed;left:50%;top:78px;transform:translateX(-50%);
+  width:min(880px,94vw);max-height:76vh;display:flex;flex-direction:column;
+  background:#0d1a21;border:1px solid #23485a;border-radius:10px;
+  box-shadow:0 16px 44px rgba(0,0,0,.6);z-index:70;overflow:hidden;padding:0}
+#tplanPanel.hidden{display:none}
+#tplanPanel .ptitle{cursor:move;user-select:none;padding:9px 12px;font-weight:600;
+  letter-spacing:.3px;background:#112530;border-bottom:1px solid #1d3948}
+#tplanPanel .tplanbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;
+  padding:8px 10px;border-bottom:1px solid #16303c;background:#0f2029}
+#tplanPanel .tplanbar select,#tplanPanel .tplanbar input{
+  background:#0a161c;color:#dfeef5;border:1px solid #24505f;border-radius:6px;
+  padding:5px 8px;min-width:150px}
+#tplanPanel .tplanbar input{flex:1;min-width:180px}
+#tplanPanel .tplanscroll{overflow:auto;padding:0 10px 10px}
+.tplantabla{width:100%;border-collapse:collapse;font-size:12.5px}
+.tplantabla thead th{position:sticky;top:0;background:#112530;color:#bfe0ee;
+  text-align:left;padding:7px 8px;border-bottom:1px solid #24505f;z-index:1}
+.tplantabla td{padding:5px 8px;border-bottom:1px solid #142b35;color:#e6f2f7}
+.tplantabla tr:nth-child(even) td{background:#0f2029}
+.tplantabla .num{text-align:right;font-variant-numeric:tabular-nums}
+.tplantabla .tot td{font-weight:700;background:#123040;border-top:2px solid #2a5a6d}
+
+/* ---------- Miniatura de emision en el detalle (v1.98) ---------- */
+.incMiniBox{display:none}
+.incMiniBox.con{display:block;margin:2px 0 8px}
+.incMiniBox img{width:100%;border-radius:6px;border:1px solid #1c3a49;display:block}
+
+
+/* v1.120: la barra de avance del censo de Forma (portada y panel). El pulso
+   es el latido: aunque el numero no cambie, el censo sigue vivo. */
+.df-carril { width:130px; height:8px; background:#1b232b; border-radius:4px;
+             overflow:hidden; display:inline-block; }
+.df-fill { display:block; height:100%; width:0%; background:#2f7fd1;
+           border-radius:4px; transition:width .5s ease;
+           animation:dfPulso 1.6s ease-in-out infinite; }
+@keyframes dfPulso { 0%,100% { opacity:1 } 50% { opacity:.55 } }
+
+/* =============================================================================
+ * v1.216 — Buscador al costado de "Elegir modelo"
+ * El fondo del dialogo (#overlay) ya es una fila flexible centrada: el panel
+ * entra a la derecha del dialogo sin tocar su estructura. Su alto lo iguala
+ * buscacarga.js al del dialogo (con un minimo para que quepan resultados).
+ * ========================================================================== */
+#bcPanel{flex:none;width:340px;max-width:30vw;max-height:80vh;margin-left:12px;box-sizing:border-box;
+  background:var(--panel);border:1px solid var(--linea-s);border-radius:10px;padding:14px;
+  display:flex;flex-direction:column;gap:6px;overflow:hidden}
+#bcPanel .bcTit{font-size:13px;font-weight:600;color:var(--texto)}
+#bcPanel .hint{margin-top:0}
+#bcPanel .bcFila{display:flex;gap:5px}
+#bcPanel .bcTodo{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--etiqueta);
+  text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer}
+#bcNiveles{display:flex;flex-direction:column;gap:5px;flex:none}
+#bcLista{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:5px}
+#bcLista .nitem{cursor:pointer}
+#bcLista .nitem input{margin-top:3px;flex:none}
+@media (max-width:1100px){#bcPanel{display:none}}
+/* Con el panel al lado, un margen para que en un portatil no toquen los bordes. */
+#overlay{padding:0 16px}
+
+/* =============================================================================
+ * v1.217 — Portada de proyectos sin fotos, autoria y acceso de visitantes
+ * ========================================================================== */
+/* Autoria: pequena, sin capturar clics. */
+.vb-autoria{font-size:10px;letter-spacing:.02em;color:var(--tenue);opacity:.72;pointer-events:none;
+  user-select:none;white-space:nowrap}
+body.pgate>.vb-autoria{position:fixed;top:14px;right:18px;z-index:5}
+/* En el visor el fondo del modelo es CLARO: tono oscuro propio y un halo claro, legible y discreto. */
+#viewerHost>.vb-autoria{position:absolute;right:12px;bottom:8px;z-index:3;opacity:.8;color:#4F5E6D;
+  text-shadow:0 0 6px rgba(255,255,255,.7)}
+
+/* Acceso: tres tarjetas (Miembro, Administrador, Visitante). */
+.gwrap.ancho{max-width:1140px}
+.gcols.tres{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:1000px){.gcols.tres{grid-template-columns:1fr}.gwrap.ancho{max-width:520px}}
+
+/* Portada: cabecera */
+#homeTop{background:radial-gradient(900px 260px at 8% -60%,rgba(56,198,224,.16),transparent 62%);
+  border-bottom:1px solid var(--linea)}
+#logoBox:empty{display:none}
+#homeTitles h1{display:flex;align-items:center;gap:14px;font-size:28px;letter-spacing:-.015em}
+#homeTitles h1::before{content:"";flex:none;width:44px;height:18px;border-radius:10px;
+  border:1.5px solid rgba(56,198,224,.7);
+  background:radial-gradient(circle at 50% 50%,#A5EEF9 0 2.2px,#38C6E0 4px,rgba(56,198,224,0) 6.5px),
+             linear-gradient(180deg,rgba(56,198,224,.16),rgba(56,198,224,.04));
+  box-shadow:0 0 16px rgba(56,198,224,.3),inset 0 0 6px rgba(56,198,224,.2)}
+.homeCuenta{margin-top:6px;font-size:12px;color:var(--etiqueta);font-family:var(--dato)}
+.homeDer{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+
+/* Portada: herramientas y filtros */
+#homeTools{flex-wrap:wrap;row-gap:8px;padding:16px 28px 6px}
+#homeSearch{max-width:520px;min-width:240px;height:38px;border-radius:999px;padding:0 16px 0 40px;font-size:13px;
+  background:var(--hondo) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238FA2B6' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.6-3.6'/%3E%3C/svg%3E") no-repeat 15px 50%/16px}
+#homeTools .sm{border-radius:999px;padding:6px 13px;background:transparent;border-color:var(--linea-s);color:var(--etiqueta)}
+#homeTools .sm:hover{border-color:var(--acento-b);color:var(--texto);background:var(--alto)}
+#quienAutodesk{flex-basis:100%;margin-left:0!important;white-space:normal!important;color:var(--tenue)!important}
+#homeFiltros{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 28px 4px}
+.hchip{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--linea-s);background:transparent;color:var(--etiqueta);font-size:12px;
+  transition:background .15s ease,border-color .15s ease,color .15s ease}
+.hchip b{font-family:var(--dato);font-weight:500;font-size:11px;color:var(--tenue)}
+.hchip:hover{border-color:var(--acento-b);color:var(--texto)}
+.hchip.on{background:var(--acento-f);border-color:var(--acento);color:var(--texto)}
+.hchip.on b{color:var(--acento)}
+.hsep{width:1px;height:18px;background:var(--linea-s);margin:0 6px}
+
+/* Portada: tarjetas con portada de plano */
+#homeGrid{grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;padding:14px 28px 36px}
+.tile{cursor:pointer}
+.tphoto{height:136px;background:#0B131B;overflow:hidden}
+.tphoto .ph{display:none}
+.tcover{position:absolute;inset:0;overflow:hidden;
+  background:radial-gradient(120% 95% at 100% 0%,rgba(56,198,224,.20),transparent 56%),
+    linear-gradient(rgba(160,190,215,.065) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,rgba(160,190,215,.065) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(160deg,#13202B,#0A1118)}
+.tcover::after{content:"";position:absolute;left:0;right:0;height:38%;top:-40%;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(56,198,224,.13),transparent)}
+.tile:hover .tcover::after{animation:vbBarre 1.3s cubic-bezier(.3,.6,.3,1) 1}
+@keyframes vbBarre{from{top:-40%}to{top:100%}}
+.tcatl{position:absolute;left:14px;top:12px;font-size:11px;letter-spacing:.04em;color:#A8EAF5}
+.tglifo{position:absolute;right:14px;top:12px;width:28px;height:28px;fill:none;stroke:var(--acento);
+  stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round;opacity:.85}
+.tcod{position:absolute;left:12px;bottom:6px;font-family:var(--dato);font-size:42px;font-weight:500;line-height:1;
+  letter-spacing:-.03em;color:transparent;-webkit-text-stroke:1px rgba(120,220,240,.42);transition:-webkit-text-stroke-color .2s ease}
+.tile:hover .tcod{-webkit-text-stroke-color:rgba(140,230,245,.85)}
+.treciente{position:absolute;right:12px;bottom:10px;font-size:10px;padding:3px 9px;border-radius:999px;
+  background:rgba(56,198,224,.16);border:1px solid rgba(56,198,224,.5);color:#CFF4FB}
+.tbody{padding:12px 14px 14px;gap:6px}
+.ttitulo{font-size:15px;font-weight:600;line-height:1.25;color:var(--texto);letter-spacing:-.005em}
+.tile .tname{font-family:var(--dato);font-size:10.5px;font-weight:400;color:var(--tenue);line-height:1.4;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .thub{align-self:flex-start;padding:2px 8px;border:1px solid var(--linea-s);border-radius:999px;color:var(--etiqueta)}
+.tile .tbtns button.primary{background:linear-gradient(180deg,#123341,#0F2A34);border-color:var(--acento-b);color:#DDF7FC;
+  font-size:12px;padding:8px 10px;border-radius:9px;font-weight:500;transition:background .15s ease,color .15s ease}
+.tile:hover .tbtns button.primary{background:var(--acento);color:#05222A;border-color:transparent}
+#homeGrid.entra .tile{animation:vbTile .5s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(min(var(--i,0),24) * 26ms)}
+@keyframes vbTile{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* =============================================================================
+ * v1.218 — Aviso legal del visitante
+ * ========================================================================== */
+#legalCapa{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;
+  padding:24px;background:rgba(6,10,15,.88)}
+#legalCaja{width:min(760px,94vw);max-height:86vh;display:flex;flex-direction:column;padding:22px 24px;
+  background:linear-gradient(180deg,#141D27,#10171F);border:1px solid rgba(160,190,215,.14);
+  border-radius:16px;box-shadow:0 30px 80px rgba(2,7,12,.6)}
+#legalCaja h2{margin:0;font-size:18px;font-weight:600;letter-spacing:-.005em;color:var(--texto)}
+#legalCaja .sub{margin:4px 0 14px;font-size:12px;color:var(--tenue)}
+#legalTexto{flex:1;min-height:0;overflow:auto;padding-right:10px;font-size:12.5px;line-height:1.55;
+  color:var(--etiqueta)}
+#legalTexto h3{margin:14px 0 4px;font-size:12.5px;font-weight:600;color:var(--texto)}
+#legalTexto h3:first-child{margin-top:0}
+#legalTexto p{margin:0}
+#legalTexto b{color:var(--texto);font-weight:600}
+#legalPie{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:16px;padding-top:14px;
+  border-top:1px solid var(--linea)}
+#legalPie .lnk{background:none;border:0;color:var(--tenue);font-size:12px;cursor:pointer;text-decoration:underline}
+#legalPie .lnk:hover{color:var(--texto)}
+
+/* =============================================================================
+ * v1.220 — Ficha del documento, microfono y boton del indice
+ * ========================================================================== */
+#fichaCapa{position:fixed;inset:0;z-index:118;display:flex;align-items:center;justify-content:center;
+  padding:24px;background:rgba(6,10,15,.8)}
+#fichaCaja{width:min(520px,94vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;
+  background:linear-gradient(180deg,#141D27,#10171F);border:1px solid rgba(160,190,215,.14);
+  border-radius:14px;box-shadow:0 26px 70px rgba(2,7,12,.6)}
+#fichaCuerpo{padding:14px 16px;overflow:auto;font-size:12.5px;color:var(--etiqueta)}
+#fichaCuerpo .fnom{font-size:13.5px;font-weight:600;color:var(--texto);margin-bottom:10px;word-break:break-word}
+#fichaCuerpo .ffila{display:flex;gap:10px;justify-content:space-between;padding:5px 0;
+  border-bottom:1px solid var(--linea)}
+#fichaCuerpo .ffila span{flex:none;color:var(--tenue)}
+#fichaCuerpo .ffila b{text-align:right;color:var(--texto);font-weight:500;word-break:break-word}
+#fichaCuerpo .fsec{margin:12px 0 4px;font-size:11.5px;font-weight:600;color:var(--acento)}
+.vozbtn{margin-top:5px;padding:5px 9px;line-height:1}
+.vozbtn.grabando{background:var(--atencion-f);border-color:var(--atencion);color:var(--atencion)}
+
+/* =============================================================================
+ * v1.221 — Contenido del documento en la ficha y respuestas con formato
+ * ========================================================================== */
+#fichaCaja{width:min(640px,94vw);max-height:86vh}
+.fcont{margin-top:4px}
+.fmd,.iamd{line-height:1.5}
+.fmd p,.iamd p{margin:0 0 7px}
+.fmd ul,.fmd ol,.iamd ul,.iamd ol{margin:3px 0 8px 18px;padding:0}
+.fmd li,.iamd li{margin:2px 0}
+.fmd b,.iamd b{color:var(--texto);font-weight:600}
+.fmd code,.iamd code{font-family:var(--dato);font-size:.92em;background:var(--hondo);padding:1px 4px;border-radius:4px}
+.iapie{margin-top:6px;font-size:10.5px;color:var(--tenue)}
+
+/* =============================================================================
+ * v1.223 — Ficha en todos los archivos, "otro tipo" a la vista y videos sin reproductor
+ * ========================================================================== */
+.nficha{margin-left:6px}
+#navModList .nitem .nficha{margin-top:5px}
+#tree .nficha{margin-left:auto;padding:2px 8px;font-size:11px;flex:none}
+#bcLista .nitem{align-items:flex-start}
+#bcLista .nficha{flex:none;align-self:center}
+.nitem.otro{opacity:.9}
+#navModOtros{margin:4px 0 6px}
+.medaviso{max-width:520px;padding:18px;line-height:1.55;color:var(--etiqueta);font-size:13px}
+.medaviso b{color:var(--texto)}
+.meddes{display:inline-block;margin-top:12px;text-decoration:none}
+
+/* =============================================================================
+ * v1.226 — La burbuja del asistente y el texto del chat, legible
+ * ========================================================================== */
+/* Lo que se escribe se tiene que VER: el campo heredaba un texto casi negro
+ * sobre fondo oscuro. */
+#iaTxt{color:var(--texto,#EAF2F8);caret-color:var(--acento,#38C6E0)}
+#iaTxt::placeholder{color:var(--tenue,#6E7F8D)}
+
+/* La capsula de nivel de la portada, ahora como boton flotante. */
+#asisBurbuja{position:fixed;right:18px;bottom:18px;z-index:116;display:flex;align-items:center;gap:10px;
+  padding:9px 15px 9px 10px;border-radius:999px;cursor:pointer;user-select:none;
+  background:linear-gradient(180deg,#141D27,#10171F);border:1px solid rgba(160,190,215,.18);
+  box-shadow:0 14px 34px rgba(2,7,12,.5);transition:transform .16s ease,box-shadow .16s ease}
+#asisBurbuja:hover{box-shadow:0 18px 42px rgba(2,7,12,.62),0 0 0 1px rgba(56,198,224,.28)}
+#asisNivel{width:46px;height:22px;border-radius:999px;flex:none;display:inline-flex;align-items:center;
+  justify-content:center;background:linear-gradient(180deg,#0A1016,#111A23);border:1px solid #2A3846;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.55)}
+#asisGota{width:12px;height:12px;border-radius:50%;
+  background:var(--burbuja,radial-gradient(circle at 40% 34%,#F2FDFF 0 12%,#8AE5F5 36%,#38C6E0 64%,#178AA1 100%));
+  box-shadow:0 0 12px rgba(56,198,224,.7);animation:asisLate 3.4s ease-in-out infinite}
+@keyframes asisLate{0%,100%{transform:translateX(-6px)}50%{transform:translateX(6px)}}
+#asisTexto{font-size:12.5px;color:var(--etiqueta,#B9C7D4);letter-spacing:.01em;white-space:nowrap}
+@media (max-width:640px){#asisTexto{display:none}}
+
+/* El chat, desplegado DESDE la burbuja: abajo a la derecha, recogido y limpio. */
+#iaPanel.desdeBurbuja{top:auto;bottom:76px;right:18px;width:min(390px,94vw);
+  z-index:130; /* v1.248: dfBi=70 y dfWf=71 lo tapaban: el clic abria el chat DETRAS */
+  max-height:min(600px,72vh);border-radius:16px;overflow:hidden;
+  box-shadow:0 26px 70px rgba(2,7,12,.6),0 0 0 1px rgba(160,190,215,.10)}
+
+/* =============================================================================
+ * v1.228 — Documentos de oficina (Word, Excel...) listados en Documentos Forma
+ * ========================================================================== */
+#navModList .nitem .nfila{display:flex;gap:6px;align-items:center;margin-top:5px}
+#navModList .nitem .nfila .nficha{margin-top:0;margin-left:0}
+#navModList .nitem .ndesc{text-decoration:none;line-height:1;flex:none}
+#navModList .nitem.oficina i{opacity:.95}
+
+/* v1.231 — Las tablas en las respuestas del asistente. */
+.iamd table.iat{border-collapse:collapse;margin:6px 0;width:100%;font-size:11.5px}
+.iamd table.iat th,.iamd table.iat td{border:1px solid var(--linea,#2A3846);padding:3px 7px;text-align:left}
+.iamd table.iat th{background:rgba(56,198,224,.08)}
+
+/* v1.232 — La ventana de Llenado: arrastrable (llBar) y redimensionable. */
+#llPanel{resize:both !important;min-width:560px;min-height:300px;max-height:92vh !important}
+
+/* v1.234 — El padre de cada componente en "● Modelo" (NWD federados). */
+.vname .vpadre{margin-left:6px;font-size:10px;color:var(--tenue,#6E7F8D);white-space:nowrap}
+
+/* v1.235 — El altavoz del asistente y los errores por lineas. */
+#iaVozBtn{margin-right:6px}
+#iaVozBtn.vozon{box-shadow:0 0 0 1px rgba(56,198,224,.5)}
+#iaPanel .tenue{color:var(--tenue,#6E7F8D);font-size:11px}
+
+/* v1.237 — El paseo de la burbuja: deslizamiento con calma. */
+#asisBurbuja{transition:transform 1.6s cubic-bezier(.45,.05,.25,1),box-shadow .16s ease}
+
+/* v1.273: en la portada, "Documentacion en Forma" y "Flujos de trabajo e incidencias" inactivos para el visitante */
+#portadaDocs:disabled, #portadaWf:disabled { opacity: .4; cursor: not-allowed; }
+/* v1.404: "Informes automaticos" ya estaba inactivo para el visitante (v1.347), pero se veia igual que activo */
+#portadaInformes:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ---------- v1.276: portada nueva — el mapa del Peru en isometria (solo con ?portada=mapa) ---------- */
+#pmMapa { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; margin: 8px 0 24px; }   /* v1.285: 360 -> 300, mas sitio al mapa */
+#pmMapa.hidden { display: none !important; }
+#pmMapa .pm-escena { position: relative; height: min(78vh, 760px); overflow: hidden;   /* v1.277: isometria real, sin perspectiva */
+  border: 1px solid var(--linea-s, #232c34); border-radius: 14px;
+  background: radial-gradient(ellipse at 50% 40%, rgba(56, 198, 224, .10), transparent 60%), var(--hondo, #0f151c); }
+#pmMapa .pm-iso { position: absolute; left: 50%; top: 50%; height: 118%; aspect-ratio: 560 / 821;
+  transform: translate(-50%, -50%) rotateX(52deg) rotateZ(-14deg); transform-style: preserve-3d; }
+#pmMapa .pm-capa { position: absolute; inset: 0; transform-style: preserve-3d; }
+#pmMapa .pm-capa svg { width: 100%; height: 100%; overflow: visible; }
+#pmMapa .pm-lado path { fill: #0b3a48; stroke: #0b3a48; stroke-width: 1.2; }
+#pmMapa .pm-top path { fill: #16323d; stroke: #3fb7cf; stroke-width: 1.1; stroke-linejoin: round; cursor: pointer; vector-effect: non-scaling-stroke;
+  transition: fill .18s ease, filter .18s ease; }
+#pmMapa .pm-top path.con { fill: #1d5566; }
+#pmMapa .pm-top path:hover { fill: #2b7f95; }
+#pmMapa .pm-top path.sel { fill: #38c6e0; filter: drop-shadow(0 0 6px rgba(56, 198, 224, .8)); }
+#pmMapa .pm-ancla { fill: transparent; pointer-events: none; }
+#pmBadges { position: absolute; inset: 0; pointer-events: none; }
+#pmBadges .pm-badge { position: absolute; transform: translate(-50%, -100%); pointer-events: auto; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 1px; background: none; border: 0; padding: 0; }
+#pmBadges .pm-n { min-width: 26px; height: 26px; padding: 0 7px; border-radius: 13px; display: flex; align-items: center; justify-content: center;
+  background: #38c6e0; color: #06232b; font-weight: 700; font-size: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, .45); }
+#pmBadges .pm-badge.on .pm-n { background: #fff; }
+#pmBadges .pm-dn { font-size: 10px; color: #cfe6ec; text-shadow: 0 1px 3px #000; white-space: nowrap; }
+#pmMapa .pm-panel { border: 1px solid var(--linea-s, #232c34); border-radius: 14px; padding: 14px; background: var(--panel, #121a22);
+  max-height: min(78vh, 760px); overflow: auto; }
+#pmMapa .pm-tit { font-weight: 700; margin-bottom: 8px; }
+#pmMapa .pm-fila { display: flex; justify-content: space-between; width: 100%; padding: 7px 10px; margin: 3px 0; border-radius: 8px;
+  border: 1px solid var(--linea-s, #232c34); background: transparent; color: inherit; cursor: pointer; font-size: 12px; }
+#pmMapa .pm-fila:hover { border-color: #38c6e0; }
+#pmMapa .pm-sel { display: flex; align-items: center; gap: 6px; justify-content: space-between; margin-bottom: 10px; }
+#pmMapa .pm-ver { width: 100%; margin-bottom: 10px; padding: 9px; border: 0; border-radius: 9px; cursor: pointer;
+  background: #38c6e0; color: #06232b; font-weight: 700; }
+#pmMapa .pm-item { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 7px 0; border-bottom: 1px solid var(--linea-s, #232c34); font-size: 12px; }
+#pmMapa .pm-in { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#pmMapa .pm-hub { color: var(--tenue, #8b98a5); font-size: 10px; }
+#pmMapa .pm-mueve { font-size: 11px; max-width: 150px; }
+/* v1.277: mapa interactivo (girar, acercar) y proyectos del departamento elegido */
+#pmMapa .pm-escena { cursor: grab; touch-action: none; user-select: none; }
+#pmMapa .pm-escena:active { cursor: grabbing; }
+#pmMapa .pm-ctrl { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 3; }
+#pmMapa .pm-ctrl button { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--linea-s, #232c34);
+  background: rgba(15, 21, 28, .9); color: #cfe6ec; font-size: 17px; cursor: pointer; }
+#pmMapa .pm-ctrl button:hover { border-color: #38c6e0; color: #fff; }
+#pmMapa .pm-ayuda { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--tenue, #8b98a5); pointer-events: none; }
+#pmBadges .pm-pin { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; width: 26px; height: 26px;
+  border-radius: 50%; border: 2px solid #06232b; background: #fff; color: #06232b; font-weight: 800; font-size: 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .5); display: flex; align-items: center; justify-content: center; }
+#pmBadges .pm-pin:hover { background: #38c6e0; }
+#pmMapa .pm-num { display: inline-flex; min-width: 20px; height: 20px; border-radius: 50%; background: #fff; color: #06232b;
+  font-size: 11px; align-items: center; justify-content: center; margin-right: 4px; }
+#pmMapa .pm-desc { grid-column: 1 / 3; color: #b9c9d1; font-size: 11px; line-height: 1.4; }
+#pmMapa .pm-acc { grid-column: 1 / 3; display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+#pmMapa .pm-item.pm-destaca { background: rgba(56, 198, 224, .15); border-radius: 8px; }
+#pmBarra { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+#pmBarra.hidden { display: none !important; }
+@media (max-width: 1000px) { #pmMapa { grid-template-columns: 1fr; } }
+/* v1.281 — directrices: cada numero, una linea hasta el rotulo con el nombre y los botones. */
+#pmRotulos { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+#pmRotulos .pm-lineas { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+#pmRotulos polyline { fill: none; stroke: rgba(207, 230, 236, .55); stroke-width: 1.2; stroke-linejoin: round; }
+#pmRotulos polyline.on { stroke: #38c6e0; stroke-width: 2.2; }
+#pmRotulos .pm-rot { position: absolute; pointer-events: auto; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column;
+  justify-content: center; gap: .35em; padding: .25em .6em; border-radius: 8px; background: rgba(11, 19, 26, .9);
+  border: 1px solid #2a3a45; color: #e6f1f5; cursor: default; line-height: 1.2; }
+#pmRotulos .pm-rot:hover, #pmRotulos .pm-rot.pm-destaca { border-color: #38c6e0; box-shadow: 0 0 0 1px rgba(56, 198, 224, .35); }
+#pmRotulos .pm-rot-t { display: flex; align-items: center; gap: .5em; min-width: 0; }
+#pmRotulos .pm-rot-n { flex: none; min-width: 1.7em; height: 1.7em; padding: 0 .3em; box-sizing: border-box; border-radius: .85em; background: #fff; color: #06232b;
+  display: inline-flex; align-items: center; justify-content: center; font-size: .9em; }
+#pmRotulos .pm-rot-nom { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#pmRotulos .pm-rot-acc { display: flex; align-items: center; gap: .4em; min-width: 0; }
+#pmRotulos .pm-rot button, #pmRotulos .pm-rot select { font-size: .92em; padding: .15em .5em; height: auto; line-height: 1.2; }
+#pmRotulos .pm-rot button { white-space: nowrap; flex: none; }
+#pmRotulos .pm-rot select { min-width: 0; flex: 1; max-width: 12em; }
+#pmRotulos .pm-m-simple, #pmRotulos .pm-m-mini { flex-direction: row; align-items: center; }
+#pmRotulos .pm-m-simple .pm-rot-t, #pmRotulos .pm-m-mini .pm-rot-t { flex: 1; }
+#pmRotulos .pm-m-simple select { flex: none; width: 3.4em; }   /* en una fila, el sitio es para el nombre */
+#pmRotulos .pm-m-mini { padding: 0 .45em; gap: .3em; border-radius: 6px; }
+#pmRotulos .pm-m-mini select { flex: none; width: 3.2em; padding: 0 .2em; }
+#pmRotulos .pm-m-mini button { padding: 0 .4em; }
+#pmBadges .pm-pin.pm-pin-on { background: #38c6e0; transform: translate(-50%, -50%) scale(1.15); }
+#pmBadges .pm-pin { z-index: 3; }   /* si al girar un numero queda bajo un rotulo, sigue a la vista y se puede pulsar */
+/* v1.282 — relieve real: la textura se ve a traves de los departamentos. */
+#pmMapa.pm-relieve .pm-escena { background: radial-gradient(ellipse at 45% 45%, #0e2233 0%, #0a1520 55%, #070d13 100%); }
+#pmMapa.pm-relieve .pm-entorno image { filter: brightness(.5) saturate(.75) contrast(1.05); }
+#pmMapa.pm-relieve .pm-tex { pointer-events: none; }
+#pmMapa.pm-relieve .pm-top path { fill: rgba(6, 18, 26, .26); stroke: rgba(170, 232, 245, .7); }
+#pmMapa.pm-relieve .pm-top path.con { fill: rgba(0, 0, 0, 0); stroke: rgba(190, 240, 250, .9); }
+#pmMapa.pm-relieve .pm-top path:hover { fill: rgba(56, 198, 224, .18); }
+#pmMapa.pm-relieve .pm-top path.sel { fill: rgba(56, 198, 224, .07); stroke: #8ff0ff; stroke-width: 2;
+  filter: drop-shadow(0 0 5px rgba(56, 198, 224, .9)); }
+#pmMapa.pm-relieve .pm-lado path { fill: #2a2118; stroke: #2a2118; }
+/* v1.282 — archivos de modelo (como la tarjeta de tu otra herramienta) */
+#pmMapa .pm-arch-fila { grid-column: 1 / 3; margin-top: 3px; font-size: 11px; color: #b9c9d1; }
+#pmMapa .pm-arch { border: 1px solid #2d6f82; border-radius: 7px; padding: 5px 8px; background: rgba(56, 198, 224, .05); }
+#pmMapa .pm-arch-t { display: flex; flex-wrap: wrap; gap: 3px 10px; font-size: 11px; color: #cfe3ea; margin-bottom: 3px; }
+#pmMapa .pm-arch-t b { color: #fff; }
+#pmMapa .pm-arch-c { font-size: 10.5px; color: #9fb4bd; line-height: 1.45; }
+#pmMapa .pm-arch-vacio { color: var(--tenue, #8b98a5); font-size: 11px; }
+#pmMapa .pm-contar-todos { width: 100%; margin: -4px 0 10px; }
+#pmRotulos #pmTarjeta { position: absolute; width: 260px; z-index: 4; pointer-events: none; padding: 8px 10px; border-radius: 9px;
+  background: rgba(9, 16, 22, .96); border: 1px solid #38c6e0; box-shadow: 0 8px 24px rgba(0, 0, 0, .55); color: #e6f1f5; }
+#pmRotulos #pmTarjeta .pm-tj-nom { font-weight: 700; font-size: 12px; margin-bottom: 6px; }
+/* v1.283 — el proyecto en foco: tres paneles de vidrio sobre el mapa */
+#pmRotulos .pm-rot-t { cursor: pointer; }
+#pmRotulos .pm-rot-t:hover .pm-rot-nom { text-decoration: underline; }
+#pmFoco { position: absolute; inset: 0; z-index: 5; pointer-events: none; display: flex; flex-direction: column; padding: 10px 12px 34px 58px; box-sizing: border-box; gap: 10px; }
+#pmFoco .pm-fc-barra { pointer-events: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; align-self: center; padding: 6px 10px;
+  border-radius: 10px; background: rgba(8, 18, 26, .82); border: 1px solid rgba(90, 200, 230, .35); backdrop-filter: blur(6px); }
+#pmFoco .pm-fc-nom { font-size: 14px; max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pmFoco .pm-fc-av { font-size: 11px; color: #9fb4bd; }
+#pmFoco .pm-fc-fila { flex: 1; min-height: 0; display: flex; gap: 12px; align-items: stretch; }
+#pmFoco .pm-fc-hueco { flex: 1; min-width: 40px; }
+#pmFoco .pm-fc { pointer-events: auto; width: clamp(230px, 20vw, 310px); display: flex; flex-direction: column; min-height: 0; border-radius: 12px;
+  background: linear-gradient(160deg, rgba(20, 44, 58, .78), rgba(8, 16, 24, .82)); border: 1px solid rgba(90, 200, 230, .45);
+  box-shadow: 0 0 18px rgba(56, 198, 224, .18), inset 0 0 22px rgba(56, 198, 224, .06); backdrop-filter: blur(7px); color: #e6f1f5; }
+#pmFoco .pm-fc-tit { font-weight: 700; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #8fe3f5; padding: 8px 12px 6px;
+  border-bottom: 1px solid rgba(90, 200, 230, .25); }
+#pmFoco .pm-fc-cu { flex: 1; min-height: 0; overflow: auto; padding: 8px 12px; }
+#pmFoco .pm-fc-pie { font-size: 10.5px; color: #9fb4bd; padding: 6px 12px 8px; border-top: 1px solid rgba(90, 200, 230, .2); }
+#pmFoco .pm-fc-st { font-size: 11px; font-weight: 600; color: #b9c9d1; margin: 6px 0 4px; }
+#pmFoco .pm-fc-tipos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+#pmFoco .pm-fc-tipo { border: 1px solid rgba(90, 200, 230, .25); border-radius: 8px; padding: 5px 4px; text-align: center; background: rgba(56, 198, 224, .06); }
+#pmFoco .pm-fc-tipo b { display: block; font-size: 17px; color: #fff; }
+#pmFoco .pm-fc-tipo span { font-size: 10px; color: #9fd6e3; }
+#pmFoco .pm-fc-tipo.cero { opacity: .45; }
+/* v1.284 — archivos por carpeta, panel Carpetas y buscador en el mapa */
+#pmFoco .pm-fc-carpetas { flex: 1; width: auto; min-width: 210px; }
+#pmFoco .pm-fc-carp { margin-bottom: 10px; }
+#pmFoco .pm-fc-carp-n { font-weight: 700; font-size: 11.5px; color: #cfeef6; margin: 2px 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pmFoco .pm-fc-carp-n span { font-weight: 400; color: #8fa6b0; font-size: 10.5px; margin-left: 4px; }
+#pmFoco .pm-fc-tipos.chico { gap: 4px; margin-bottom: 4px; }
+#pmFoco .pm-fc-tipos.chico .pm-fc-tipo { padding: 3px 2px; border-radius: 6px; }
+#pmFoco .pm-fc-tipos.chico .pm-fc-tipo b { font-size: 13px; }
+#pmFoco .pm-fc-tipos.chico .pm-fc-tipo span { font-size: 9px; }
+#pmFoco .pm-fc-tipo.pulsable { cursor: pointer; }
+#pmFoco .pm-fc-tipo.pulsable:hover { border-color: #38c6e0; background: rgba(56, 198, 224, .16); }
+#pmFoco .pm-fc-tipo.on { border-color: #8ff0ff; background: rgba(56, 198, 224, .28); box-shadow: 0 0 8px rgba(56, 198, 224, .5); }
+#pmFoco .pm-fc-tot { border-top: 1px solid rgba(90, 200, 230, .2); padding-top: 6px; }
+#pmFoco .pm-fc-arb { font-size: 12px; }
+#pmFoco .pm-fc-arb summary, #pmFoco .pm-fc-arb-h { display: flex; align-items: center; gap: 8px; padding: 3px 0; border-bottom: 1px dashed rgba(90, 200, 230, .12); cursor: default; }
+#pmFoco .pm-fc-arb summary { cursor: pointer; list-style: none; }
+#pmFoco .pm-fc-arb summary::-webkit-details-marker { display: none; }
+#pmFoco .pm-fc-arb summary::before { content: '\25B8'; color: #8fe3f5; font-size: 10px; width: 10px; }
+#pmFoco .pm-fc-arb details[open] > summary::before { content: '\25BE'; }
+#pmFoco .pm-fc-arb-h::before { content: ''; width: 10px; }
+#pmFoco .pm-fc-arb-n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pmFoco .pm-fc-arb b { color: #fff; font-size: 12px; }
+#pmFoco .pm-fc-arb a { color: #8fe3f5; font-size: 11px; text-decoration: none; white-space: nowrap; }
+#pmFoco .pm-fc-arb a:hover { text-decoration: underline; }
+#homeTools { position: relative; }
+#pmBusca { position: absolute; z-index: 50; top: 100%; left: 18px; min-width: 320px; max-width: 520px; background: #0e161d; border: 1px solid #2d6f82;
+  border-radius: 8px; box-shadow: 0 10px 28px rgba(0, 0, 0, .55); padding: 4px; }
+#pmBusca .pm-busca-f { display: flex; justify-content: space-between; gap: 12px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+#pmBusca .pm-busca-f:hover { background: rgba(56, 198, 224, .14); }
+#pmBusca .pm-busca-f span { color: #8fa6b0; font-size: 11px; }
+/* v1.285 — dos botones de abrir y la tabla de archivos de cada carpeta */
+#pmFoco .pm-fc-av-visor { font-size: 10.5px; padding: 1px 6px; }
+#pmFoco .pm-fc-tab { width: calc(100% - 12px); margin: 2px 0 6px 12px; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+#pmFoco .pm-fc-tab th { text-align: left; font-weight: 600; color: #8fa6b0; padding: 3px 4px; border-bottom: 1px solid rgba(90, 200, 230, .25); }
+#pmFoco .pm-fc-tab td { padding: 3px 4px; border-bottom: 1px solid rgba(90, 200, 230, .08); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #dfeaf0; }
+#pmFoco .pm-fc-tab td:nth-child(1), #pmFoco .pm-fc-tab td:nth-child(2) { white-space: normal; overflow-wrap: anywhere; }   /* nombres largos: en dos lineas, completos */
+#pmFoco .pm-fc-tab th:nth-child(1), #pmFoco .pm-fc-tab td:nth-child(1) { width: 17%; }   /* v1.286: el boton "Abrir en visor" */
+#pmFoco .pm-fc-tab td.pm-fc-tab-b { white-space: nowrap; overflow: visible; }
+#pmFoco .pm-fc-tab th:nth-child(2), #pmFoco .pm-fc-tab td:nth-child(2) { width: 33%; }
+#pmFoco .pm-fc-tab th:nth-child(3), #pmFoco .pm-fc-tab td:nth-child(3) { width: 24%; color: #9fc3cf; }
+#pmFoco .pm-fc-tab th:nth-child(4), #pmFoco .pm-fc-tab td:nth-child(4) { width: 8%; }
+#pmFoco .pm-fc-tab td:nth-child(2), #pmFoco .pm-fc-tab td:nth-child(3) { white-space: normal; overflow-wrap: anywhere; }
+#pmFoco .pm-fc-err { pointer-events: auto; align-self: center; font-size: 11px; color: #e8b04a; background: rgba(8, 18, 26, .85); padding: 4px 10px; border-radius: 8px; }
+#pmMapa.pm-relieve .pm-capa:nth-child(n+6) .pm-lado path { fill: #3a2d20; stroke: #3a2d20; }
+
+/* v1.286 — el selector de archivos con el mismo fondo de las tarjetas de la portada */
+#overlay #dialog { background: linear-gradient(160deg, rgba(20, 44, 58, .94), rgba(8, 16, 24, .96)); border: 1px solid rgba(90, 200, 230, .45);
+  border-radius: 12px; box-shadow: 0 0 18px rgba(56, 198, 224, .18), inset 0 0 22px rgba(56, 198, 224, .06), 0 18px 48px rgba(0, 0, 0, .55);
+  backdrop-filter: blur(7px); }
+#overlay #dialog #dlgTitle { color: #e6f1f5; }
+/* v1.286 — lo ya abierto en la sesion, bloqueado y senalado */
+#tree .node.en-sesion { opacity: .78; }
+#tree .node.en-sesion input[type=checkbox] { cursor: not-allowed; }
+#tree .nsesion { font-size: 10.5px; font-weight: 700; color: #8ff0ff; border: 1px solid rgba(56, 198, 224, .6); border-radius: 999px; padding: 1px 8px; margin-left: 8px; white-space: nowrap; }
+#tree .node.nodo-destaca { outline: 2px solid #38c6e0; border-radius: 6px; background: rgba(56, 198, 224, .12); }
+/* v1.295 — operacion y mantenimiento: enlaces legibles sobre el fondo oscuro */
+#mtPanel a { color: #8fe3f5; text-decoration: none; }
+#mtPanel a:hover { text-decoration: underline; }
+#mtPanel input, #mtPanel select { background: #0d1319; color: #dfe8ee; border: 1px solid #2a3440; border-radius: 4px; padding: 3px 6px; }
+
+/* v1.298 — verificacion LOD */
+#lodPanel a { color: #8fe3f5; text-decoration: none; }
+#lodPanel a:hover { text-decoration: underline; }
+#lodPanel input, #lodPanel select { background: #0d1319; color: #dfe8ee; border: 1px solid #2a3440; border-radius: 4px; padding: 3px 6px; }
+#lodPanel select, #lodPanel input, #mtPanel select { width: auto; display: inline-block; }
+#lodPanel #lodQ { flex: 1; }
+
+/* v1.393 — Dar acceso a alguien: como Miembro o como Invitado */
+.invitar .ifila select.invtipo { flex: none; width: auto; max-width: 240px; background: var(--fondo); border: 1px solid var(--linea); border-radius: 6px; color: var(--texto); padding: 6px 8px; font: 12px inherit; cursor: pointer; }
+.invitar .ifila select.invtipo:focus { outline: none; border-color: var(--acento); }
