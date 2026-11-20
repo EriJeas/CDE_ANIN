@@ -285,6 +285,19 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       const a1 = await subeW('SECHURA2-GHE-ZZ-XX-DR-A-0009.pdf', wipC), a2 = await subeW('SECHURA2-GHE-ZZ-XX-DR-A-0009.docx', wipC), a3 = await subeW('SECHURA2-GHE-ZZ-XX-DR-A-0009.pdf', wipC);
       ok(a1.status === 200 && a2.status === 200 && a3.status === 200 && a1.j.contenedor !== a2.j.contenedor && a3.j.contenedor === a1.j.contenedor && a2.j.n === 1 && a3.j.n === 2, 'el .pdf y el .docx del mismo código son dos documentos; otra carga del .pdf es su versión 2');
     }
+    { // v0.19.1: permisos por empresa («Empresa: …» en Agregar permisos) y la comprobación de Autodesk solo para administradores y gestores
+      const rC = 'E1/WIP/WIP CLIENTE';
+      await entra('gestor@anin.gob.pe'); const pr = (await pide('/api/proyectos/' + pw + '/carpetas/permisos?ruta=' + encodeURIComponent(rC))).j;
+      const dg = (await pide('/api/forma/diagnostico')).status;
+      await entra('autor@ghemet.com'); const da = (await pide('/api/forma/diagnostico')).status;
+      ok(dg === 200 && da === 403, 'la comprobación de la aplicación de Autodesk la ve el gestor y no un usuario sin gestión (' + dg + '/' + da + ')');
+      const antes = (await pide('/api/proyectos/' + pw)).j.arbol.some(c => c.ruta === rC);
+      await entra('gestor@anin.gob.pe'); const put = (await pide('/api/proyectos/' + pw + '/carpetas', { method: 'PUT', json: { ruta: rC, permisos: pr.entradas.concat([{ tipo: 'org', valor: 'GHEMET', nivel: 'ver-descargar' }]) } })).status;
+      await entra('autor@ghemet.com'); const despues = (await pide('/api/proyectos/' + pw)).j.arbol.some(c => c.ruta === rC);
+      await entra('gestor@anin.gob.pe'); await pide('/api/proyectos/' + pw + '/carpetas', { method: 'PUT', json: { ruta: rC, permisos: pr.propios ? pr.entradas : [] } });
+      await entra('autor@ghemet.com'); const otraVez = (await pide('/api/proyectos/' + pw)).j.arbol.some(c => c.ruta === rC);
+      ok(!antes && put === 200 && despues && !otraVez, 'un permiso por empresa (GHEMET) abre la carpeta a sus usuarios y al quitarlo se vuelve a cerrar');
+    }
     const { crcSigue } = require('../lib/zipflujo'); ok(crcSigue(0, Buffer.from('123456789')) === 0xCBF43926, 'CRC-32 del ZIP (vector de prueba 123456789)');
     // desplazar carpeta (gestor): los contenedores la siguen
     await entra('gestor@anin.gob.pe');
@@ -903,7 +916,7 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       r = await pide('/api/forma/hubs'); ok(r.status === 409 && r.j.error === 'forma-sin-conexion', 'sin conectar la cuenta no se navega Forma');
       let rr = await fetch(B + '/api/forma/conectar?pid=' + pd, { headers: { cookie: galleta }, redirect: 'manual' });
       ok(rr.status === 302 && /forma=error/.test(rr.headers.get('location')) && /direcci%C3%B3n%20de%20retorno/.test(rr.headers.get('location')), 'si la app de Autodesk no tiene registrada la dirección de retorno, el CDE lo dice en vez de mandar a la página de error de Autodesk');
-      r = await pide('/api/forma/diagnostico'); ok(r.j.credenciales === true && r.j.retornoOk === false && r.j.app === 'ueba' && /Windows/.test(r.j.origen) && !JSON.stringify(r.j).includes('secreto-prueba'), 'el diagnóstico dice qué app usa, de dónde salen las claves y qué falla, sin mostrar el secreto ' + JSON.stringify(r.j));
+      r = await pide('/api/forma/diagnostico'); ok(r.j.credenciales === true && r.j.retornoOk === false && r.j.app === 'ueba' && /variables de entorno (de Windows|del servidor|del servicio en Render)/.test(r.j.origen) && !JSON.stringify(r.j).includes('secreto-prueba'), 'el diagnóstico dice qué app usa, de dónde salen las claves y qué falla, sin mostrar el secreto ' + JSON.stringify(r.j));
       retornoValido = r.j.retorno;
       r = await pide('/api/forma/diagnostico'); ok(r.j.retornoOk === true, 'con la dirección registrada, el diagnóstico la da por buena');
       rr = await fetch(B + '/api/forma/conectar?pid=' + pd, { headers: { cookie: galleta }, redirect: 'manual' }); const ida = new URL(rr.headers.get('location')), gF = (rr.headers.get('set-cookie') || '').split(';')[0];

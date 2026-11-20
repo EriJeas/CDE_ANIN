@@ -286,8 +286,12 @@
   const ROLES_TXT = N.ROLES_TXT;
   /** Lo que se puede elegir como «Rol» al dar permisos: las FUNCIONES de los usuarios del proyecto (A-ESP-DOC…) y, además, los accesos generales. Clave = tipo:valor. */
   const rolesDe = (p) => { const fs = {}; (p.miembros || []).forEach(m => { if (m.funcion) fs[m.funcion] = (fs[m.funcion] || []).concat([m.puesto + ' · ' + m.disciplina + ' (' + m.empresa + ')']); });
-    return Object.keys(fs).sort().map(f => ({ clave: 'funcion:' + f, txt: f + ' — ' + fs[f][0] })).concat(['lector', 'miembro', 'document-control', 'revisor', 'revisor-dc', 'gestor'].map(r => ({ clave: 'rol:' + r, txt: 'Acceso: ' + ROLES_TXT[r] }))); };
-  const claveDe = (e) => e.tipo + ':' + String(e.valor || '')[e.tipo === 'rol' ? 'toLowerCase' : 'toUpperCase'](), esRol = (e) => e.tipo === 'rol' || e.tipo === 'funcion';
+    return Object.keys(fs).sort().map(f => ({ clave: 'funcion:' + f, txt: f + ' — ' + fs[f][0] })).concat(empresasDe(p).map(o => ({ clave: 'org:' + o, txt: 'Empresa: ' + o }))).concat(['lector', 'miembro', 'document-control', 'revisor', 'revisor-dc', 'gestor'].map(r => ({ clave: 'rol:' + r, txt: 'Acceso: ' + ROLES_TXT[r] }))); };
+  const txtDe = (k) => { const t = k.split(':')[0], val = k.slice(k.indexOf(':') + 1); return t === 'org' ? 'Empresa: ' + val : t === 'rol' ? 'Acceso: ' + (N.ROLES_TXT[val] || val) : val; };
+  /** Empresas que se pueden elegir al dar permisos: las de los usuarios del proyecto, ANIN y las que ya tienen permisos en alguna carpeta. */
+  const empresasDe = (p) => { const s = new Set(); (p.organizaciones || []).concat((p.miembros || []).map(m => m.organizacion)).forEach(o => { if (o) s.add(String(o).trim().toUpperCase()); });
+    ((p.config || {}).carpetas || []).forEach(c => (c.permisos || []).forEach(e => { if ((e.tipo === 'org' || e.tipo === 'organizacion') && e.valor) s.add(String(e.valor).trim().toUpperCase()); })); return [...s].filter(Boolean).sort(); };
+  const claveDe = (e) => e.tipo + ':' + String(e.valor || '')[e.tipo === 'rol' ? 'toLowerCase' : 'toUpperCase'](), esRol = (e) => e.tipo === 'rol' || e.tipo === 'funcion' || e.tipo === 'org';
   const NIVELES = Object.keys(NIVEL_TXT);
   /** Árbol de carpetas con casillas para elegir a cuáles se aplican los permisos. Devuelve las rutas elegidas (o null). */
   function eligeCarpetasPermiso(p, pre) {
@@ -306,20 +310,22 @@
   async function agregarPermisos(p, pre) {
     const rutas = await eligeCarpetasPermiso(p, pre); if (!rutas) return;
     const datos = await Promise.all(rutas.map(r => api('/api/proyectos/' + p.id + '/carpetas/permisos?ruta=' + encodeURIComponent(r))));
-    datos.forEach(d => d.entradas.forEach(e => { if (e.tipo === 'rol') e.valor = String(e.valor || '').toLowerCase(); }));
+    datos.forEach(d => d.entradas.forEach(e => { if (e.tipo === 'organizacion') e.tipo = 'org'; if (e.tipo === 'org') e.valor = String(e.valor || '').trim().toUpperCase(); if (e.tipo === 'rol') e.valor = String(e.valor || '').toLowerCase(); }));
     const una = rutas.length === 1, roles = rolesDe(p);
     let filas = una ? datos[0].entradas.filter(esRol).map(e => ({ rol: claveDe(e), nivel: e.nivel })) : []; if (!filas.length) filas = [{ rol: roles[0].clave, nivel: 'ver-descargar' }];
     const otros = una ? datos[0].entradas.filter(e => !esRol(e)) : [];
     const v = ventana('Permisos', '', { ancho: 620, alto: 500 });
     const pinta = () => {
       v.innerHTML = '<div class="pista">Se aplican a ' + (una ? 'la carpeta' : rutas.length + ' carpetas') + ':</div><div class="mono pista" style="max-height:74px;overflow:auto;margin-bottom:8px">' + rutas.map(esc).join('<br>') + '</div>' +
-        '<table class="chica"><thead><tr><th>Rol</th><th>Permiso</th><th style="width:40px"></th></tr></thead><tbody>' + filas.map((f, i) => '<tr><td><select data-fr="' + i + '">' + roles.concat(roles.some(r => r.clave === f.rol) ? [] : [{ clave: f.rol, txt: f.rol.split(':')[1] }]).map(r => '<option value="' + esc(r.clave) + '"' + (r.clave === f.rol ? ' selected' : '') + '>' + esc(r.txt) + '</option>').join('') + '</select></td><td><select data-fn="' + i + '">' + NIVELES.map(k => '<option value="' + k + '"' + (k === f.nivel ? ' selected' : '') + '>' + NIVEL_TXT[k] + '</option>').join('') + '</select></td><td><button class="mini" data-fq="' + i + '" title="Quitar">✕</button></td></tr>').join('') + '</tbody></table>' +
-        '<div style="margin:8px 0"><button id="prMas" title="Agregar otro permiso">＋ Agregar otro rol</button></div>' +
-        (otros.length ? '<div class="pista">Además se conservan ' + otros.length + ' permiso(s) ya dados por empresa o por usuario en esta carpeta (se ven en «Ver permisos»).</div>' : '') +
-        '<p class="pista">El <b>rol</b> es la función de cada usuario (empresa, cargo y disciplina), que se define al agregarlo en «Usuarios de proyecto». ' + (una ? 'Lo que dejes aquí reemplaza los permisos por rol de la carpeta.' : 'En varias carpetas, estos permisos se suman a los que cada una ya tiene.') + '</p>' +
+        '<table class="chica"><thead><tr><th>Rol o empresa</th><th>Permiso</th><th style="width:40px"></th></tr></thead><tbody>' + filas.map((f, i) => '<tr><td><select data-fr="' + i + '">' + roles.concat(roles.some(r => r.clave === f.rol) ? [] : [{ clave: f.rol, txt: txtDe(f.rol) }]).map(r => '<option value="' + esc(r.clave) + '"' + (r.clave === f.rol ? ' selected' : '') + '>' + esc(r.txt) + '</option>').join('') + '</select></td><td><select data-fn="' + i + '">' + NIVELES.map(k => '<option value="' + k + '"' + (k === f.nivel ? ' selected' : '') + '>' + NIVEL_TXT[k] + '</option>').join('') + '</select></td><td><button class="mini" data-fq="' + i + '" title="Quitar">✕</button></td></tr>').join('') + '</tbody></table>' +
+        '<div class="fila" style="margin:8px 0;gap:8px;align-items:center;flex-wrap:wrap"><button id="prMas" title="Agregar otro permiso">＋ Agregar otro rol</button><span class="pista">o una empresa que aún no tiene usuarios:</span><input id="prEmp" placeholder="p. ej. SUPERVISION" style="width:170px"><button id="prEmpAdd">＋ Agregar empresa</button></div>' +
+        (otros.length ? '<div class="pista">Además se conservan ' + otros.length + ' permiso(s) ya dados a un usuario concreto o a todos en esta carpeta (se ven en «Ver permisos»).</div>' : '') +
+        '<p class="pista">Puedes dar el permiso por <b>función</b> (empresa, cargo y disciplina de cada usuario), por <b>empresa</b> (todos los usuarios de esa organización) o por <b>nivel de acceso</b>. La empresa y la función se definen al agregar a cada usuario en «Usuarios de proyecto»; la empresa debe escribirse igual que allí. ' + (una ? 'Lo que dejes aquí reemplaza los permisos por rol y por empresa de la carpeta.' : 'En varias carpetas, estos permisos se suman a los que cada una ya tiene.') + '</p>' +
         '<div class="fila" style="gap:8px;margin-top:6px"><button class="primario" id="prOk">Guardar</button>' + (una && datos[0].propios ? '<button id="prHer">Volver a heredar del padre</button>' : '') + '</div><div id="prMsg"></div>';
       v.querySelectorAll('[data-fr]').forEach(x => x.onchange = () => { filas[+x.dataset.fr].rol = x.value; }); v.querySelectorAll('[data-fn]').forEach(x => x.onchange = () => { filas[+x.dataset.fn].nivel = x.value; });
       v.querySelectorAll('[data-fq]').forEach(b => b.onclick = () => { filas.splice(+b.dataset.fq, 1); pinta(); });
+      v.querySelector('#prEmpAdd').onclick = () => { const o = String(v.querySelector('#prEmp').value || '').trim().toUpperCase(); if (!o) return N.toast('Escribe el nombre de la empresa.', 'mal'); const k = 'org:' + o;
+        if (!roles.some(r => r.clave === k)) roles.splice(roles.findIndex(r => r.clave.startsWith('rol:')), 0, { clave: k, txt: 'Empresa: ' + o }); if (!filas.some(f => f.rol === k)) filas.push({ rol: k, nivel: 'ver-descargar' }); pinta(); };
       v.querySelector('#prMas').onclick = () => { filas.push({ rol: (roles.find(r => !filas.some(f => f.rol === r.clave)) || roles[0]).clave, nivel: 'ver-descargar' }); pinta(); };
       v.querySelector('#prOk').onclick = async () => {
         const limp = filas.filter((f, i) => filas.findIndex(x => x.rol === f.rol) === i).map(f => ({ tipo: f.rol.split(':')[0], valor: f.rol.slice(f.rol.indexOf(':') + 1), nivel: f.nivel }));
