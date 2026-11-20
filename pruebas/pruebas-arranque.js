@@ -597,6 +597,28 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       const QAm = require('../lib/qa'); ok(QAm.revisionEsperada([], true) === 'R00' && QAm.revisionEsperada(['R00', 'R01'], false) === 'R02' && QAm.revisionEsperada(['P01', 'P02'], false) === 'R02' && QAm.revisionEsperada(['P01'], true) === 'R00', 'revisión que corresponde: R00 la primera vez, luego la siguiente');
     }
 
+    { // v0.24.1: QA gráfica (cajas sobre la portada), sello pegado como imagen y nombre del documento solo con el título del recuadro
+      console.log('\n14d. Validación QA gráfica: cajas en la portada, sello como imagen y título sin «PROYECTO:»');
+      const K = (n) => '100030-JYS01-000-XXX-' + n, sube = (nombre, cuerpo, carpeta) => subeG14(nombre, cuerpo, '?carpeta=' + encodeURIComponent(carpeta)), fx = typeof firma === 'function' ? firma : (b) => b;
+      const QAm = require('../lib/qa');
+      let q = await QAm.validaArchivo(PT.pdf({ codigo: K('PLN-ARQ-E2-000060'), titulo: 'PLAN DE GESTIÓN DE DISEÑO', proyecto: 'PROYECTO: “MEJORAMIENTO DE LA COBERTURA DE LOS SERVICIOS DE SALUD”' }), 'x.pdf', { codigo: K('PLN-ARQ-E2-000060') });
+      ok(q.ok && q.datos.titulo === 'PLAN DE GESTIÓN DE DISEÑO', 'el nombre del documento es solo el título del recuadro: el bloque «PROYECTO: …» de debajo no entra (' + q.datos.titulo + ')');
+      q = await QAm.validaArchivo(PT.pdf({ codigo: K('INF-ARQ-E2-000061'), sello: false, selloImagen: {} }), 'x.pdf', { codigo: K('INF-ARQ-E2-000061') });
+      const cS = q.zonas && q.zonas.cajas.find(z => z.id === 'sello');
+      ok(q.ok && q.checks.find(c => c.id === 'sello').ok && cS && !cS.esperada && Math.round(cS.w) === 150, 'el sello pegado como imagen bajo el cajetín se reconoce (ubicación, forma, fondo claro y marco)');
+      q = await QAm.validaArchivo(PT.pdf({ codigo: K('INF-ARQ-E2-000062'), sello: false, selloImagen: { marco: false } }), 'x.pdf', { codigo: K('INF-ARQ-E2-000062') });
+      ok(!q.ok && q.checks.find(c => c.id === 'sello' && !c.ok) && q.zonas.cajas.find(z => z.id === 'sello').esperada, 'una imagen sin marco en ese lugar no es el sello: falta, y se marca dónde debería ir');
+      q = await QAm.validaArchivo(PT.pdf({ codigo: K('INF-ARQ-E2-000063') }), 'x.pdf', { codigo: K('INF-ARQ-E2-000063') });
+      ok(q.zonas && q.zonas.pagina.w === 612 && ['cajetin', 'revision', 'emision', 'codigo', 'titulo', 'direccion', 'cuadro', 'sello'].every(id => q.zonas.cajas.some(z => z.id === id && z.w > 0 && z.h > 0)), 'la QA devuelve la caja de cada comprobación sobre la portada (cajetín, revisión, emisión, código, nombre, dirección, cuadro y sello)');
+      let x = await sube(K('INF-ARQ-E2-000064') + '.pdf', fx(PT.pdf({ codigo: K('INF-ARQ-E2-000064'), sello: false, selloImagen: {} })), COMg);
+      ok(x.status === 200 && x.j.qa && x.j.qa.ok, 'un PDF con el sello como imagen entra al compartido (' + x.status + ' ' + (x.j.mensaje || '') + ')');
+      x = await sube(K('INF-ARQ-E2-000065') + '.pdf', PT.pdf({ codigo: K('INF-ARQ-E2-000066') }), COMg);
+      ok(x.status === 422 && x.j.qa.tipo === 'pdf' && x.j.qa.zonas.cajas.some(z => z.id === 'codigo'), 'si no pasa, la respuesta trae las cajas para dibujar la portada con lo que está mal');
+      x = await sube('memoria con sello imagen.pdf', PT.pdf({ codigo: K('MDE-ARQ-E2-000067'), sello: false, selloImagen: {} }), WIPg);
+      const v = await pide('/api/proyectos/' + pg + '/qa/contenedores', { json: { ids: [x.j.contenedor], carpeta: COMg } });
+      ok(v.j.resultados[0].version && v.j.resultados[0].qa.zonas && v.j.resultados[0].qa.checks.find(c => c.id === 'sello').ok, 'la validación previa al desplazar dice qué versión dibujar y trae sus cajas');
+    }
+
     // ───────────── 15. Plantilla por zonas y flujo de revisión en paralelo (DC · especialistas · GP)
     console.log('\n15. Plantilla por zonas y flujo paralelo');
     galleta = ''; await pide('/api/acceso/local', { json: { email: 'admin@anin.gob.pe', clave: 'prueba' } });

@@ -57,17 +57,7 @@
     v.querySelector('#cmU').onclick = (e) => e.target.select();
     v.querySelector('#cmC').onclick = async () => { const ok = await copia(url); v.querySelector('#cmM').innerHTML = ok ? '<div class="aviso verde">Enlace copiado.</div>' : '<div class="aviso ambar">Selecciona el enlace y cópialo (Ctrl+C).</div>'; };
   }
-  /** Detalle de la Validación QA de una portada: cada comprobación con su resultado y los datos que se leyeron. */
-  N.qaDetalle = (qa, nombre) => {
-    qa = qa || {}; const d = qa.datos || {}, malas = (qa.checks || []).filter(x => !x.ok).length;
-    const dato = (k, v) => v ? '<tr><td class="pista">' + k + '</td><td>' + esc(v) + '</td></tr>' : '';
-    ventana('Validación QA · ' + esc(nombre || qa.archivo || ''), '<div class="qadet">' +
-      '<div class="aviso ' + (qa.ok ? 'verde' : 'rojo') + '">' + (qa.ok ? '✓ La portada cumple la plantilla ANIN: el documento puede entrar al compartido.' : '✗ La portada tiene ' + malas + ' observación(es): corrige el documento y vuelve a cargarlo.') + '</div>' +
-      '<table class="chica qachecks"><tbody>' + (qa.checks || []).map(c => '<tr class="' + (c.ok ? 'ok' : 'mal') + '"><td class="qaico">' + (c.ok ? '✓' : '✗') + '</td><td><b>' + esc(c.titulo) + '</b><div class="pista">' + esc(c.detalle) + '</div></td></tr>').join('') + '</tbody></table>' +
-      '<h3>Lo que se leyó en la portada</h3><table class="chica qadatos"><tbody>' + dato('Revisión (cajetín)', d.revision) + dato('Emisión (cajetín)', d.emision) + dato('Última fila del cuadro', d.ultimaFila ? d.ultimaFila.rev + ' · ' + d.ultimaFila.fecha : '') + dato('Revisión que corresponde', d.esperada) +
-      dato('Código del documento', d.codigo) + dato('Código en la portada', d.codigoPortada) + dato('Nombre (descripción)', d.titulo) + dato('Contrato', d.contrato) + dato('Región', d.region) + '</tbody></table>' +
-      '<p class="pista">Plantilla: «Plantilla contratistas 2026 ANIN» (cajetín, código y nombre, dirección y cuadro de revisiones) y el sello «Revisión de documentos técnicos». La revisión empieza en R00 la primera vez que el documento entra al compartido y sigue R01, R02… en cada entrega.</p></div>', { ancho: 640, alto: 620 });
-  };
+  // N.qaDetalle (detalle de la Validación QA, gráfico sobre la portada): public/js/modulos/qa-grafica.js (v0.24.1)
   /** Resultados de una validación previa (desplazar / copiar al compartido) en una lista corta con «Ver detalle». */
   const qaLista = (rs) => rs.map((r, i) => '<div class="qafila ' + (!r.aplica ? 'na' : r.ok ? 'ok' : 'mal') + '"><span class="qaico">' + (!r.aplica ? '—' : r.ok ? '✓' : '✗') + '</span><span class="mono">' + esc(r.nombre) + '</span><span class="pista">' + (!r.aplica ? esc(r.motivo || 'No aplica') : r.ok ? 'QA aprobada' + (r.qa && r.qa.datos && r.qa.datos.revision ? ' · ' + esc(r.qa.datos.revision) : '') + (r.renombrar ? ' · nombre: ' + esc(r.renombrar) : '') : (r.qa.checks || []).filter(x => !x.ok).length + ' observación(es)') + '</span>' + (r.aplica ? '<a href="#" data-qad="' + i + '">Ver detalle</a>' : '') + '</div>').join('');
 
@@ -107,7 +97,7 @@
           const rs = r.resultados || [], n = rs.filter(x => x.aplica).length, malos = rs.filter(x => x.aplica && !x.ok).length;
           qaOk = !!r.ok; o.qaResultados = rs;
           caja.innerHTML = '<div class="aviso ' + (qaOk ? 'verde' : 'rojo') + '">' + (qaOk ? '✓ Validación QA aprobada' + (n ? ': ' + n + ' documento(s)' : ' (ningún documento PDF o Word la requiere)') + '.' : '✗ ' + malos + ' de ' + n + ' documento(s) no pasan la Validación QA: corrígelos antes de ' + (o.qa.copia ? 'copiarlos' : 'desplazarlos') + ' al compartido.') + '</div><div class="qalista">' + qaLista(rs) + '</div>';
-          caja.querySelectorAll('[data-qad]').forEach(a => a.onclick = (e) => { e.preventDefault(); const x = rs[+a.dataset.qad]; N.qaDetalle(x.qa, x.nombre); });
+          caja.querySelectorAll('[data-qad]').forEach(a => a.onclick = (e) => { e.preventDefault(); const x = rs[+a.dataset.qad]; N.qaDetalle(x.qa, x.nombre, x.version ? { url: '/api/proyectos/' + p.id + '/versiones/' + x.version + '/descargar' } : null); });
         } catch (e) { caja.innerHTML = '<div class="aviso rojo">' + esc(e.message) + '</div>'; }
         b.disabled = false; v.querySelector('#dsOk').disabled = sel === null || !qaOk; v.querySelector('#dsOk').title = qaOk ? '' : 'Primero la Validación QA';
       };
@@ -619,7 +609,7 @@
       const porCarpeta = new Map(); for (const x of items) { const k = destino + (x.rel ? '/' + x.rel : ''); if (!porCarpeta.has(k)) porCarpeta.set(k, []); porCarpeta.get(k).push(x); }
       const listos = [];
       for (const [carp, grupo] of porCarpeta) {
-        const res = await N.rejillaConformidad(p, carp, grupo.map(x => ({ nombre: x.file.name, tam: x.file.size, file: x.file, ref: x })), { modo: 'cargar', qa: zonaDeCarpeta(p, destino) === 'compartido' });
+        const res = await N.rejillaConformidad(p, carp, grupo.map(x => ({ nombre: x.file.name.replace(/\s*\[R\](?=\.pdf$)/i, ''), tam: x.file.size, file: x.file, ref: x })), { modo: 'cargar', qa: zonaDeCarpeta(p, destino) === 'compartido' });   // «…[R].pdf» de ReFirma PDF → «….pdf»
         if (!res) continue;
         for (const r of res) { const x = r.ref || { file: r.file, rel: grupo[0].rel }; if (r.nombre !== x.file.name) x.nombre = r.nombre; x.revision = r.revision; x.idoneidad = r.idoneidad; x.atributos = r.atributos; listos.push(x); }
       }
@@ -669,7 +659,7 @@
     $('#cgCambia').onclick = async () => { const d = await eligeDestino(p, { titulo: 'Seleccionar carpeta de destino', boton: 'Seleccionar', inicial: destino, permitida: (c) => c.subir, motivo: () => 'Sin permiso de carga' }); if (d !== null) { destino = d; pintaDest(); } };
     $('#cgMin').onclick = minimiza;
     $('#cgQa').onclick = () => { for (const x of cola) if (x.estado === 'qa') { x.estado = 'cola'; x.msg = 'En cola · Validación QA'; fila(x); } resumen(); if (!corriendo) procesa(); };
-    $('#cgLista').addEventListener('click', (e) => { const a = e.target.closest('[data-qa]'); if (!a) return; e.preventDefault(); const x = cola[+a.dataset.qa]; if (x && x.qa) N.qaDetalle(x.qa, x.nombre || x.file.name); });
+    $('#cgLista').addEventListener('click', (e) => { const a = e.target.closest('[data-qa]'); if (!a) return; e.preventDefault(); const x = cola[+a.dataset.qa]; if (x && x.qa) N.qaDetalle(x.qa, x.nombre || x.file.name, { archivo: x.file }); });
     $('#cgArch').onclick = () => $('#cgInA').click(); $('#cgCarp').onclick = () => $('#cgInC').click();
     $('#cgInA').onchange = (e) => { agrega([...e.target.files].map(f => ({ file: f, rel: '' }))); e.target.value = ''; };
     $('#cgInC').onchange = (e) => { agrega([...e.target.files].map(f => ({ file: f, rel: (f.webkitRelativePath || '').split('/').slice(0, -1).join('/') }))); e.target.value = ''; };

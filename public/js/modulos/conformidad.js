@@ -19,6 +19,17 @@
     return new Promise(async (resuelve) => {
       let D; try { D = await api('/api/proyectos/' + pid + '/valida-nombres', { json: { carpeta, nombres: items.map(x => x.nombre) } }); } catch (e) { N.toast(esc(e.message), 'mal'); return resuelve(null); }
       if (D.libre || !D.norma) return resuelve(items.map(x => ({ ref: x.ref, nombre: x.nombre, revision: '', idoneidad: '', atributos: {}, ok: true })));
+      // v0.24.1 · en el compartido (Validación QA) la portada da la revisión, la descripción y el código: la rejilla solo se abre para
+      // los archivos cuyo nombre no cumple la norma, y solo con los campos del nombre (más algún atributo que el proyecto exija).
+      if (o.qa) {
+        const exigidos = (D.personalizados || []).some(d => d.obligatorio && d.id !== 'descripcion') || D.atributos.parteDesignada.requerido || D.atributos.contrato.requerido;
+        const listos = [], faltan = [], filasF = [];
+        items.forEach((it, i) => { const f = D.filas[i]; if (f && f.ok && !exigidos) listos.push({ ref: it.ref, file: it.file, nombre: it.nombre, revision: '', idoneidad: '', atributos: {}, ok: true }); else { faltan.push(it); filasF.push(f); } });
+        if (!faltan.length) return resuelve(listos);
+        if (listos.length) { items = faltan; D = Object.assign({}, D, { filas: filasF }); }
+        o.soloNombre = true; o.listos = listos;
+      }
+      const OC = o.soloNombre ? ' cf-oc' : '', ocP = (d) => o.soloNombre && !(d.obligatorio && d.id !== 'descripcion') ? 'cf-oc' : '';
       const NORMA = D.norma, A = D.atributos, PERS = [{ id: 'descripcion', nombre: 'Descripción', tipo: 'texto', obligatorio: !o.qa, valores: [] }]   /* en el compartido la descripción la pone la Validación QA: el nombre del documento en su portada */.concat((D.personalizados || []).filter(d => d.id !== 'descripcion')), nC = NORMA.campos.length;
       const rxParte = A.parteDesignada.rx ? new RegExp(A.parteDesignada.rx) : null, rxContrato = A.contrato.rx ? new RegExp(A.contrato.rx) : null;
       let previa = true; try { previa = localStorage.getItem('cde.cf.previa') !== '0'; } catch (e) {}
@@ -54,7 +65,7 @@
       const malNombre = (r) => !r.okNombre;
 
       const cab = '<th class="chk"><input type="checkbox" id="cfTodos"></th><th class="cf-nom">Nombre de archivo</th>' + NORMA.campos.map((c, i) => '<th title="' + esc(c.descripcion) + '">' + esc(c.nombre) + (c.obligatorio ? ' <i>*</i>' : '') + '</th>' + (i < nC - 1 ? '<th class="cf-g"></th>' : '')).join('') +
-        '<th class="cf-sep">Código de estado</th><th>Revisión <i>*</i></th>' + (A.parteDesignada.pista ? '<th title="' + esc(A.parteDesignada.pista) + '">Parte designada' + (A.parteDesignada.requerido ? ' <i>*</i>' : '') + '</th>' : '') + (A.contrato.pista ? '<th title="' + esc(A.contrato.pista) + '">Contrato' + (A.contrato.requerido ? ' <i>*</i>' : '') + '</th>' : '') + PERS.map(d => '<th>' + esc(d.nombre) + (d.obligatorio ? ' <i>*</i>' : '') + '</th>').join('') + '<th></th>';
+        '<th class="cf-sep' + OC + '">Código de estado</th><th class="' + OC + '">Revisión' + (o.qa ? '' : ' <i>*</i>') + '</th>' + (A.parteDesignada.pista ? '<th class="' + (A.parteDesignada.requerido ? '' : OC) + '" title="' + esc(A.parteDesignada.pista) + '">Parte designada' + (A.parteDesignada.requerido ? ' <i>*</i>' : '') + '</th>' : '') + (A.contrato.pista ? '<th class="' + (A.contrato.requerido ? '' : OC) + '" title="' + esc(A.contrato.pista) + '">Contrato' + (A.contrato.requerido ? ' <i>*</i>' : '') + '</th>' : '') + PERS.map(d => '<th class="' + ocP(d) + '">' + esc(d.nombre) + (d.obligatorio ? ' <i>*</i>' : '') + '</th>').join('') + '<th></th>';
       const listas = NORMA.campos.map((c, i) => c.tipo === 'lista' && c.valores.length > 5000 ? '<datalist id="cfdl' + i + '">' + c.valores.map(v => '<option value="' + esc(v) + '">' + esc(c.etiquetas && c.etiquetas[v] ? v + ' - ' + c.etiquetas[v] : v) + '</option>').join('') + '</datalist>' : '').join('');
       const v = ventana(copiar ? 'Copiar a otra carpeta' : mover ? 'Desplazar archivos' : 'Cargar archivos', '<div class="cf">' +
         '<div class="cf-aviso" id="cfAviso"></div>' +
@@ -72,10 +83,10 @@
         if (!r.tr) { r.tr = document.createElement('tr'); }
         r.tr.innerHTML = '<td class="chk"><input type="checkbox" data-x="m"' + (r.marcado ? ' checked' : '') + '></td><td class="cf-nom"><div class="fila" style="gap:8px;align-items:center"><span data-x="ico"></span><div style="min-width:0"><div class="mono n1" title="' + esc(r.orig) + '">' + esc(r.orig) + '</div><div class="mono n2" data-x="nuevo"></div></div></div></td>' +
           NORMA.campos.map((c, i) => '<td>' + celdaCampo(r, c, i) + '</td>' + (i < nC - 1 ? '<td class="cf-g">-</td>' : '')).join('') +
-          '<td class="cf-sep"><select data-a="idon"><option value="">Selec…</option>' + A.codigosEstado.map(x => '<option value="' + esc(x.valor) + '"' + (r.idon === x.valor ? ' selected' : '') + ' title="' + esc(x.descripcion) + '">' + esc(x.valor + ' - ' + x.descripcion) + '</option>').join('') + '</select></td>' +
-          '<td><input data-a="rev" value="' + esc(r.rev) + '" placeholder="' + (o.qa ? 'De la portada' : /R/.test(A.revision.pista) ? 'R00' : 'P01') + '" title="' + (o.qa ? 'En el compartido la revisión la pone la portada (Validación QA)' : '') + '" maxlength="6"></td>' +
-          (A.parteDesignada.pista ? '<td><input data-a="parte" value="' + esc(r.parte) + '" placeholder="XXXXX" maxlength="20"></td>' : '') + (A.contrato.pista ? '<td><input data-a="contrato" value="' + esc(r.contrato) + '" placeholder="#####" maxlength="40"></td>' : '') +
-          PERS.map(d => '<td>' + celdaPers(r, d) + '</td>').join('') + '<td><button class="cf-x" data-x="quita" title="Quitar de la lista">✕</button></td>';
+          '<td class="cf-sep' + OC + '"><select data-a="idon"><option value="">Selec…</option>' + A.codigosEstado.map(x => '<option value="' + esc(x.valor) + '"' + (r.idon === x.valor ? ' selected' : '') + ' title="' + esc(x.descripcion) + '">' + esc(x.valor + ' - ' + x.descripcion) + '</option>').join('') + '</select></td>' +
+          '<td class="' + OC + '"><input data-a="rev" value=""' + esc(r.rev) + '" placeholder="' + (o.qa ? 'De la portada' : /R/.test(A.revision.pista) ? 'R00' : 'P01') + '" title="' + (o.qa ? 'En el compartido la revisión la pone la portada (Validación QA)' : '') + '" maxlength="6"></td>' +
+          (A.parteDesignada.pista ? '<td class="' + (A.parteDesignada.requerido ? '' : OC) + '"><input data-a="parte" value="' + esc(r.parte) + '" placeholder="XXXXX" maxlength="20"></td>' : '') + (A.contrato.pista ? '<td class="' + (A.contrato.requerido ? '' : OC) + '"><input data-a="contrato" value="' + esc(r.contrato) + '" placeholder="#####" maxlength="40"></td>' : '') +
+          PERS.map(d => '<td class="' + ocP(d) + '">' + celdaPers(r, d) + '</td>').join('') + '<td><button class="cf-x" data-x="quita" title="Quitar de la lista">✕</button></td>';
         r.tr.querySelectorAll('[data-f]').forEach(el => { const i = +el.dataset.f; const pone = () => { let x = el.value; if (el.tagName === 'INPUT') { const y = x.replace(/[-\s]/g, ''); if (y !== x) { el.value = y; x = y; } } r.partes[i] = x; if (i === A.parteDesignada.campo && !r.tocado.parte && (!rxParte || rxParte.test(x))) { r.parte = x; const pe = r.tr.querySelector('[data-a="parte"]'); if (pe) pe.value = x; } marca(r); valida(); }; el.oninput = pone; el.onchange = pone; });
         r.tr.querySelectorAll('[data-a]').forEach(el => { const k = el.dataset.a; const pone = () => { r[k] = k === 'rev' || k === 'parte' ? el.value.trim().toUpperCase() : el.value.trim(); r.tocado[k] = true; marca(r); if (k === 'rev' && NORMA.conRevision) valida(); else resumen(); }; el.oninput = pone; el.onchange = pone; });
         r.tr.querySelectorAll('[data-p]').forEach(el => { const pone = () => { r.pers[el.dataset.p] = el.value.trim(); marca(r); resumen(); }; el.oninput = pone; el.onchange = pone; });
@@ -121,7 +132,7 @@
         }, ya ? 0 : 260);
       }
       const pintaTodo = () => { const tb = Q('#cfCuerpo'); tb.innerHTML = ''; for (const r of filas) { pintaFila(r); tb.appendChild(r.tr); } resumen(); };
-      function cierra(res) { if (hecho) return; hecho = true; win.remove(); resuelve(res); }
+      function cierra(res) { if (hecho) return; hecho = true; win.remove(); resuelve(res && o.listos ? o.listos.concat(res) : res); }
 
       // ---------- Editar todo ----------
       function editarTodo() {

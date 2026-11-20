@@ -332,3 +332,8 @@ html.tema-oscuro .ini:not(.foto) { background: #1f6f84; color: #e9f7fb; }
 /* Usuarios de proyecto sigue al modo de todo el CDE */
 html.tema-oscuro main.principal:has(.usu) { background: radial-gradient(1100px 520px at 72% -8%, #163a4c 0%, rgba(7, 20, 28, 0) 62%), linear-gradient(180deg, #0a1c26 0%, #06121a 100%); }
 html.tema-oscuro .pcfila .pcnom mark { background-color: var(--ambar2); color: var(--ambar) }
+
+/* v0.24.1 · Validación QA gráfica (la portada sigue blanca: es papel) */
+html.tema-oscuro .qg-cab.ok { background: var(--verde2); color: var(--verde); } html.tema-oscuro .qg-cab.mal { background: var(--rojo2); color: var(--rojo); }
+html.tema-oscuro .qg-it.ok b { color: var(--verde); } html.tema-oscuro .qg-it.mal { background: var(--rojo2); border-color: var(--rojo); } html.tema-oscuro .qg-it.mal b, html.tema-oscuro .qg-it.mal small { color: var(--rojo); }
+html.tema-oscuro .qg-it.aviso { border-color: var(--ambar); } html.tema-oscuro .qg-it.aviso b { color: var(--ambar); }

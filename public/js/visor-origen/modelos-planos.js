@@ -1,5 +1,5 @@
 /*
- * v1.379 — "MODELOS / PLANOS" (componente del visor): como Fieldwire, pero con el modelo.
+ * v1.379 — "MODELOS / PLANOS" (componente del visor): planos y modelo en un mismo componente.
  *
  * Eliges un nivel del modelo en "Visor con filtros" (el filtro ● Nivel, o los botones de nivel de este panel, que
  * marcan ese mismo filtro) y a la DERECHA salen los planos de ese nivel —los generales y los de sectores—,
