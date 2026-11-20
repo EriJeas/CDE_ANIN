@@ -123,7 +123,7 @@
       const cols = colsActivas(), nombres = Object.fromEntries(C.columnas);
       const celda = (f, k) => { switch (k) {
         case 'archivo': return '<td class="chk"><input type="checkbox" data-sv="' + esc(f.vid) + '"' + (ESTADO.sel.has(f.vid) ? ' checked' : '') + '></td><td>' + ICO_ARCH(f.extension) + '</td>';
-        case 'numero': return '<td class="mono"><a href="#/p/' + esc(f.proyecto_id) + '/documentos/' + esc(f.cid) + '">' + esc(f.numero) + '</a>' + (f.fragmento ? '<div class="pista frag">…' + esc(f.fragmento) + '…</div>' : '') + '</td>';
+        case 'numero': return '<td class="mono"><a href="#/p/' + esc(f.proyecto_id) + '/documentos/' + esc(f.cid) + '">' + esc(f.numero) + (f.extension ? '<span class="ext">.' + esc(String(f.extension).toLowerCase()) + '</span>' : '') + '</a>' + (f.fragmento ? '<div class="pista frag">…' + esc(f.fragmento) + '…</div>' : '') + '</td>';
         case 'titulo': return '<td class="tit" title="' + esc(f.titulo || '') + '">' + (f.titulo ? esc(f.titulo) : '<span class="pista">Sin descripción</span>') + '</td>';
         case 'version': return '<td class="num">' + f.version + '</td>';
         case 'estatusRev': return '<td class="azul">' + esc(f.estatusRev || '') + '</td>';

@@ -280,6 +280,11 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     // descargar carpeta en ZIP
     r = await fetch(B + '/api/proyectos/' + pw + '/carpetas/descargar?ruta=' + encodeURIComponent('E3_DISEÑO'), { headers: { cookie: galleta } }); const zip = Buffer.from(await r.arrayBuffer());
     ok(r.status === 200 && zip.readUInt32LE(0) === 0x04034b50 && zip.includes(Buffer.from('COM/COM CONTRATISTA/SECHURA2-GHE-ZZ-XX-DR-A-0001-P01.pdf')) && zip.includes(Buffer.from('WIP/WIP CONTRATISTA/SECHURA2-GHE-ZZ-XX-M3-A-0003-P01.rvt')) && zip.readUInt32LE(zip.length - 22) === 0x06054b50 && zip.readUInt16LE(zip.length - 12) === 3, 'ZIP de E3_DISEÑO con 3 archivos y sus subcarpetas (' + r.status + ', ' + zip.length + ' bytes)');
+    { // v0.19: el mismo codigo en otro formato es otro documento (como en Forma), con sus propias versiones
+      const wipC = 'E3_DISEÑO/WIP/WIP CONTRATISTA';
+      const a1 = await subeW('SECHURA2-GHE-ZZ-XX-DR-A-0009.pdf', wipC), a2 = await subeW('SECHURA2-GHE-ZZ-XX-DR-A-0009.docx', wipC), a3 = await subeW('SECHURA2-GHE-ZZ-XX-DR-A-0009.pdf', wipC);
+      ok(a1.status === 200 && a2.status === 200 && a3.status === 200 && a1.j.contenedor !== a2.j.contenedor && a3.j.contenedor === a1.j.contenedor && a2.j.n === 1 && a3.j.n === 2, 'el .pdf y el .docx del mismo código son dos documentos; otra carga del .pdf es su versión 2');
+    }
     const { crcSigue } = require('../lib/zipflujo'); ok(crcSigue(0, Buffer.from('123456789')) === 0xCBF43926, 'CRC-32 del ZIP (vector de prueba 123456789)');
     // desplazar carpeta (gestor): los contenedores la siguen
     await entra('gestor@anin.gob.pe');

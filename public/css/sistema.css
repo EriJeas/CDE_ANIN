@@ -269,3 +269,6 @@ tr.clic:hover, tr.item:hover, .acctabla tr.item:hover > td, .acctabla tr:hover t
 .ctcl { height: 100%; overflow: auto; } .ctclcab b { display: block; font-size: 15px; } .ctclcab span { display: block; margin-top: 3px; font-size: 13px; color: var(--anin); font-weight: 600; } .ctclcab span.pista { color: var(--tenue); font-weight: 400; font-size: 12px; }
 .ctcl blockquote { margin: 14px 0; padding: 12px 14px; border-left: 3px solid var(--anin); background: var(--lienzo); border-radius: 0 var(--radio) var(--radio) 0; font-size: 13.5px; line-height: 1.55; } .ctcl mark { background: #ffe9a8; padding: 0 2px; border-radius: 2px; } .ctcl h3 { font-size: 12.5px; margin: 14px 0 6px; color: var(--tenue); font-weight: 600; }
 .ctleido { width: 100%; border-collapse: collapse; font-size: 13px; } .ctleido td { padding: 6px 0; border-top: 1px solid var(--linea2); vertical-align: top; } .ctleido td:first-child { width: 130px; color: var(--tenue); }
+
+/* ── Formato del documento junto a su código (v0.19.0) ── */
+.nom .ext, h2 .ext, td .ext { color: var(--tenue); font-weight: 400; }
