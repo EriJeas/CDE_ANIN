@@ -47,7 +47,7 @@
   N.MODULOS = [
     { r: '/inicio', nombre: 'Inicio del proyecto', ico: 'proyectos', titulo: 'Inicio del proyecto', oculto: true },
     { r: '', nombre: 'Documentos de proyecto', ico: 'archivos', titulo: 'Documentos de proyecto' },
-    { r: '/documentos', nombre: 'Búsqueda de documentos', ico: 'documentos', titulo: 'Búsqueda de documentos' },
+    { r: '/documentos', nombre: 'Búsqueda de documentos', ico: 'documentos', titulo: 'Documentos de proyecto', oculto: true },   // ahora es la pestaña «Búsqueda» de Documentos de proyecto
     { r: '/revisiones', nombre: 'Revisión contractual', ico: 'revisiones', titulo: 'Revisión contractual' },
     { r: '/transmisiones', nombre: 'Avances de proyecto', ico: 'transmisiones', titulo: 'Avances de proyecto' },
     { r: '/incidencias', nombre: 'Observaciones contractuales', ico: 'incidencias', titulo: 'Observaciones contractuales' },
