@@ -849,13 +849,20 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     r = await pide(O + '/registros/virus'); ok(r.status === 404, 'no existe otro tipo de registro');
     // planos desde la nube: un servidor local hace de servicio de archivos (solo en pruebas)
     process.env.OBRA_NUBE_PRUEBA = '1'; let pdfNube = Buffer.from('%PDF-1.4 plano version uno');
-    const nube = require('http').createServer((q2, s2) => { if (q2.url.startsWith('/redir')) { s2.writeHead(302, { location: '/archivo/A-201.pdf' }); return s2.end(); } if (q2.url.startsWith('/html')) { s2.writeHead(200); return s2.end('<html>vista previa</html>'); } s2.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="A-201 Planta.pdf"' }); s2.end(pdfNube); });
+    const nube = require('http').createServer((q2, s2) => { if (q2.url.startsWith('/redir')) { s2.writeHead(302, { location: '/archivo/A-201.pdf' }); return s2.end(); } if (q2.url.startsWith('/html')) { s2.writeHead(200); return s2.end('<html>vista previa</html>'); } s2.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="' + (q2.url.startsWith('/otro') ? 'B-305 Corte.pdf' : 'A-201 Planta.pdf') + '"' }); s2.end(pdfNube); });
     await new Promise(ok2 => nube.listen(0, '127.0.0.1', ok2)); const UN = 'http://127.0.0.1:' + nube.address().port;
     r = await pide(O + '/nube', { json: { url: UN + '/redir', coleccion: 'Paquete 11', carpeta: 'Nube' } }); const cN = r.j.contenedor; ok(r.status === 200 && r.j.nombre === 'A-201 Planta.pdf' && cN, 'un enlace compartido se baja al CDE y queda como plano (' + r.status + ' ' + (r.j.mensaje || r.j.carpetaCde) + ')');
     r = await pide(O + '/planos'); ok(r.j.planos.some(x => x.id === cN && x.carpeta === 'Nube' && x.n === 1), 'el plano de la nube está en Seguimiento de obra, versión 1');
     r = await pide(O + '/nube/sincronizar', { json: {} }); ok(r.j.actualizados === 0 && r.j.errores === 0, 'sincronizar sin cambios no crea versiones');
     pdfNube = Buffer.from('%PDF-1.4 plano version dos'); r = await pide(O + '/nube/sincronizar', { json: {} }); const r3 = await pide(O + '/planos'); ok(r.j.actualizados === 1 && r3.j.planos.find(x => x.id === cN).n === 2, 'si el archivo cambió en la nube, entra como versión nueva del mismo documento');
     r = await pide(O + '/nube', { json: { url: UN + '/html' } }); ok(r.status === 400 && /PDF/.test(r.j.mensaje), 'un enlace que no entrega un PDF se rechaza');
+    { // v0.21.1: quien trae el plano elige la carpeta del CDE
+      let rr = await pide(O + '/nube', { json: { url: UN + '/otro', coleccion: 'Paquete 11', carpeta: 'Nube', carpetaCde: 'WIP/ETAPA 2/SUPERVISION' } });
+      const cB = rr.j.contenedor, cont = cB ? (await pide('/api/proyectos/' + pd + '/contenedores/' + cB)).j : {};
+      const mala = await pide(O + '/nube', { json: { url: UN + '/otro', carpetaCde: 'NO/EXISTE' } });
+      ok(rr.status === 200 && rr.j.carpetaCde === 'WIP/ETAPA 2/SUPERVISION' && cont.carpeta === 'WIP/ETAPA 2/SUPERVISION' && mala.status === 400, 'el plano de la nube se carga en la carpeta del CDE que se elige (' + rr.status + ' ' + (rr.j.mensaje || rr.j.carpetaCde) + ')');
+      if (cB) { await pide(O + '/planos/' + cB, { method: 'DELETE' }); const en = (await pide(O + '/nube')).j.enlaces.find(x => x.contenedor_id === cB); if (en) await pide(O + '/nube/' + en.id, { method: 'DELETE' }); }   // no altera los conteos de las pruebas que siguen
+    }
     delete process.env.OBRA_NUBE_PRUEBA; r = await pide(O + '/nube', { json: { url: UN + '/redir' } }); ok(r.status === 400, 'fuera de pruebas, una dirección local se rechaza (' + r.status + ')');
     r = await pide(O + '/nube', { json: { url: 'https://ejemplo.com/a.pdf' } }); ok(r.status === 400 && /Dropbox/.test(r.j.mensaje), 'y un dominio que no es Dropbox, OneDrive ni Box también');
     nube.close();
