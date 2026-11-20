@@ -71,6 +71,9 @@
   ICO.cuadros = '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
   N.ICO = ICO;
   N.iniciales = (s) => String(s || '?').split('@')[0].split(/[._\- ]+/).map(x => x[0] || '').join('').slice(0, 2).toUpperCase();
+  /** Foto de perfil (si la persona la puso) o sus iniciales, en el círculo. La foto vive en la base del CDE, no en el programa. */
+  N.fotoUrl = (f) => f && f.clave ? '/api/perfil/foto/' + encodeURIComponent(f.clave) + '?v=' + encodeURIComponent(f.v || '') : '';
+  N.circulo = (email, foto) => foto && foto.clave ? '<i class="ini foto"><img src="' + N.fotoUrl(foto) + '" alt=""></i>' : '<i class="ini">' + N.iniciales(email) + '</i>';
   N.avatar = (email, org) => '<span class="av" data-av="' + esc(email || '') + '"><i class="ini">' + N.iniciales(email) + '</i><span><b>' + esc(String(email || '').split('@')[0]) + '</b><small>' + esc(org || '') + '</small></span></span>';
   N.PROYECTOS = null;  // cache para el selector de proyectos de la barra superior
 
@@ -85,7 +88,7 @@
     const yo = N.YO || {};
     const barra = '<header class="barra"><a class="app" href="#/" title="Direcciones ejecutoras"><img class="logoa" src="' + N.MARCA.logo + '" alt="ANIN"><b>CDE</b><span class="sep"></span></a>' +
       (p ? '<button class="selp" id="selProyecto"><span class="mono">' + esc(p.codigo) + '</span> · ' + esc(p.nombre) + ' <i>▾</i></button>' : '<span class="selp pista">Direcciones ejecutoras</span>') +
-      '<div class="crece"></div><a class="redondo" href="docs/README.html" target="_blank" title="Ayuda" onclick="return false">' + ICO.ayuda + '</a><button class="redondo usuario" id="menuUsuario" title="' + esc(yo.email || '') + '"><i class="ini">' + N.iniciales(yo.email) + '</i> <i>▾</i></button></header>';
+      '<div class="crece"></div><a class="redondo" href="docs/README.html" target="_blank" title="Ayuda" onclick="return false">' + ICO.ayuda + '</a><button class="redondo usuario" id="menuUsuario" title="' + esc(yo.email || '') + '">' + N.circulo(yo.email, yo.foto) + ' <i>▾</i></button></header>';
     const ub = p && p.ubicacion, donde = p ? '<a class="donde" href="#/p/' + p.id + '/inicio" title="Inicio del proyecto"><small>' + esc(ub ? ub.direccion : 'Sin dirección') + '</small><small class="n2">' + esc(ub ? ub.subNombre : 'Sin subdirección') + '</small><b>' + esc(p.nombre) + '</b></a>' : '';
     const lateral = '<aside class="lateral">' + (p ? donde + '<nav>' + N.MODULOS.filter(x => !x.abajo && !x.oculto).map(x => '<a class="' + (x.r === modulo ? 'activo' : '') + '" href="#/p/' + p.id + x.r + '">' + ICO[x.ico] + '<span>' + x.nombre + '</span></a>').join('') +
       '<a href="visor.html?pid=' + p.id + '" target="_blank">' + ICO.visor + '<span>Visor GIS/BIM</span></a></nav><div class="crece"></div><nav class="abajo">' + N.MODULOS.filter(x => x.abajo).map(x => '<a class="' + (x.r === modulo ? 'activo' : '') + '" href="#/p/' + p.id + x.r + '">' + ICO[x.ico] + '<span>' + x.nombre + '</span></a>').join('') + '</nav>' : '<nav><a class="activo" href="#/">' + ICO.proyectos + '<span>Direcciones ejecutoras</span></a></nav><div class="crece"></div>') +
@@ -180,7 +183,7 @@
   // ---------- enrutador ----------
   async function ruta() {
     const h = location.hash.replace(/^#/, '') || '/';
-    if (!N.YO && h !== '/acceso') { try { N.YO = await api('/api/acceso/quien'); } catch (e) { location.hash = '#/acceso'; return; } }
+    if (!N.YO && h !== '/acceso') { try { N.YO = await api('/api/acceso/quien'); } catch (e) { location.hash = '#/acceso'; return; } try { Object.assign(N.YO, await api('/api/perfil')); } catch (e) {} }
     if (N.YO && N.YO.cambiar && h !== '/acceso' && N.cambiaClave) return N.cambiaClave(true);   // clave temporal: primero se cambia
     const V = N.vistas;
     try {

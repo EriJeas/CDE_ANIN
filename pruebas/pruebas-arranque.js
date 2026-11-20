@@ -298,6 +298,19 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       await entra('autor@ghemet.com'); const otraVez = (await pide('/api/proyectos/' + pw)).j.arbol.some(c => c.ruta === rC);
       ok(!antes && put === 200 && despues && !otraVez, 'un permiso por empresa (GHEMET) abre la carpeta a sus usuarios y al quitarlo se vuelve a cerrar');
     }
+    { // v0.20: foto de perfil solo para administradores y gestores; se guarda en la base (disco permanente), no en la carpeta del programa
+      const jpg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200, 7)]);
+      const subeF = (b) => fetch(B + '/api/perfil/foto', { method: 'POST', headers: { cookie: galleta, 'Content-Type': 'image/jpeg' }, body: b }).then(async x => ({ status: x.status, j: await x.json() }));
+      await entra('autor@ghemet.com'); const pa = (await pide('/api/perfil')).j, sa = (await subeF(jpg)).status;
+      ok(pa.puedeFoto === false && sa === 403, 'un usuario que no es gestor ni administrador no pone foto de perfil');
+      await entra('gestor@anin.gob.pe'); const pg0 = (await pide('/api/perfil')).j, r1 = await subeF(jpg), r2 = await subeF(Buffer.from('esto no es una imagen'));
+      const pg1 = (await pide('/api/perfil')).j, img = await fetch(B + '/api/perfil/foto/' + (pg1.foto || {}).clave, { headers: { cookie: galleta } }), byt = Buffer.from(await img.arrayBuffer());
+      const fp = (await pide('/api/proyectos/' + pw + '/fotos')).j;
+      ok(pg0.puedeFoto === true && r1.status === 200 && r2.status === 400 && img.status === 200 && img.headers.get('content-type') === 'image/jpeg' && byt.equals(jpg) && fp.fotos['gestor@anin.gob.pe'] && !JSON.stringify(pg1).includes('@'), 'el gestor pone su foto (solo JPG, PNG o WEBP), se sirve tal cual y aparece en las fotos del proyecto sin el correo en la dirección');
+      const BDp = require('../lib/bd'); const enBase = BDp.q.uno("SELECT length(datos) AS n FROM perfiles_foto WHERE email = 'gestor@anin.gob.pe'");
+      ok(enBase && enBase.n === jpg.length, 'la foto queda guardada dentro de la base de datos del CDE (en Render, en el disco permanente)');
+      await pide('/api/perfil/foto', { method: 'DELETE' }); const pg2 = (await pide('/api/perfil')).j; ok(pg2.foto === null, 'el gestor puede quitar su foto');
+    }
     const { crcSigue } = require('../lib/zipflujo'); ok(crcSigue(0, Buffer.from('123456789')) === 0xCBF43926, 'CRC-32 del ZIP (vector de prueba 123456789)');
     // desplazar carpeta (gestor): los contenedores la siguen
     await entra('gestor@anin.gob.pe');

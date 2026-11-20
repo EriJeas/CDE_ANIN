@@ -71,6 +71,7 @@ require('./lib/conector-forma').monta(app, ctx);
 require('./lib/conector-aconex').monta(app, ctx);
 require('./lib/conector-microsoft').monta(app, ctx);   // OneDrive y SharePoint (Microsoft Graph)
 require('./lib/contrato').monta(app, ctx);   // Línea de tiempo contractual
+require('./lib/perfiles').monta(app, ctx);   // foto de perfil de administradores y gestores (se guarda en la base, en el disco permanente)
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'no-existe', mensaje: 'Ruta no encontrada.' }));
 app.use((err, req, res, next) => { console.error(err); if (res.headersSent) return next(err); res.status(err.status || 500).json({ error: 'servidor', mensaje: err.message || 'Error interno.' }); });
