@@ -863,6 +863,41 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       ok(rr.status === 200 && rr.j.carpetaCde === 'WIP/ETAPA 2/SUPERVISION' && cont.carpeta === 'WIP/ETAPA 2/SUPERVISION' && mala.status === 400, 'el plano de la nube se carga en la carpeta del CDE que se elige (' + rr.status + ' ' + (rr.j.mensaje || rr.j.carpetaCde) + ')');
       if (cB) { await pide(O + '/planos/' + cB, { method: 'DELETE' }); const en = (await pide(O + '/nube')).j.enlaces.find(x => x.contenedor_id === cB); if (en) await pide(O + '/nube/' + en.id, { method: 'DELETE' }); }   // no altera los conteos de las pruebas que siguen
     }
+    { // v0.21.2: OneDrive personal con enlaces nuevos (1drv.ms/b/c/…): la API anterior responde 401 aunque el vínculo sea de «Cualquier persona»
+      const NUBE = require('../lib/obra-nube'), NOM = '100010-HVCSA001-000-01-DR-AR-000002[AB].pdf', b64d = (id) => Buffer.from(id.slice(2).replace(/_/g, '/').replace(/-/g, '+'), 'base64').toString();
+      let UM = '', fichaCaida = false;
+      const msS = require('http').createServer((q2, s2) => {
+        const url = new URL(q2.url, 'http://x');
+        if (url.pathname.startsWith('/1drv/')) { s2.writeHead(301, { location: '/?redeem=' + Buffer.from('https://1drv.ms' + url.pathname.slice(5)).toString('base64').replace(/=+$/, '') }); return s2.end(); }
+        if (q2.method === 'POST' && url.pathname === '/v1.0/token') { let b = ''; q2.on('data', c => b += c); q2.on('end', () => { const j = JSON.parse(b || '{}'); if (fichaCaida || !j.appId) { s2.writeHead(503); return s2.end(); } s2.writeHead(200, { 'content-type': 'application/json' }); s2.end(JSON.stringify({ token: 'ficha-visitante' })); }); return; }
+        if (/^\/v1\.0\/shares\/[^/]+\/root\/content$/.test(url.pathname)) { s2.writeHead(401, { 'content-type': 'application/json' }); return s2.end('{"error":{"code":"unauthenticated"}}'); }
+        const m = /^\/(?:v1\.0|_api\/v2\.0)\/shares\/([^/]+)\/driveItem$/.exec(url.pathname);
+        if (m) {
+          if (q2.headers.authorization !== 'Badger ficha-visitante' || q2.headers.prefer !== 'autoredeem') { s2.writeHead(401); return s2.end(); }
+          s2.writeHead(200, { 'content-type': 'application/json' });
+          return s2.end(JSON.stringify(/carpeta/.test(b64d(m[1])) ? { name: 'Planos', folder: { childCount: 3 } } : { name: NOM, file: { mimeType: 'application/pdf' }, '@content.downloadUrl': UM + '/descarga/abc?tempauth=t' }));
+        }
+        if (url.pathname.startsWith('/descarga/')) { if (q2.headers.authorization) { s2.writeHead(400); return s2.end('la ficha no debe reenviarse'); } s2.writeHead(200, { 'content-type': 'application/pdf' }); return s2.end(Buffer.from('%PDF-1.7 plano compartido en OneDrive')); }
+        s2.writeHead(404); s2.end();
+      });
+      await new Promise(ok2 => msS.listen(0, '127.0.0.1', ok2)); UM = 'http://127.0.0.1:' + msS.address().port; process.env.OBRA_NUBE_PRUEBA_MS = UM;
+      const enlace = UM + '/1drv/b/c/8484218bc4425bde/IQDeW0LEiyGEIICEKZkBAAAAAZW4kLRuC2eZcJN1dl8zoos?e=Yhfjhf';
+      const viejo = await fetch(UM + '/v1.0/shares/u!' + Buffer.from(enlace).toString('base64').replace(/=+$/, '') + '/root/content');
+      ok(viejo.status === 401, 'reproduce a OneDrive: la API de enlaces compartidos que usaba el CDE responde 401 al enlace nuevo (' + viejo.status + ')');
+      const a = await NUBE.descarga(enlace).catch(e => ({ error: e.message }));
+      ok(a.nombre === NOM && a.datos && a.datos.slice(0, 5).toString() === '%PDF-', 'el enlace nuevo de OneDrive se baja con la ficha de visitante, con su nombre real (' + (a.nombre || a.error) + ')');
+      const eC = await NUBE.descarga(UM + '/1drv/b/c/8484218bc4425bde/carpeta-Planos').then(() => null, e => e);
+      ok(eC && /carpeta/.test(eC.message), 'un enlace de carpeta de OneDrive se rechaza con un mensaje claro');
+      let rr = await pide(O + '/nube', { json: { url: enlace, coleccion: 'Hospital La Caleta', carpeta: 'Arquitectura', carpetaCde: 'WIP/ETAPA 2/SUPERVISION' } });
+      ok(rr.status === 200 && rr.j.nombre === NOM && rr.j.carpetaCde === 'WIP/ETAPA 2/SUPERVISION', 'desde Seguimiento de obra → Desde la nube, el PDF de OneDrive entra al CDE en la carpeta elegida (' + rr.status + ' ' + (rr.j.mensaje || rr.j.nombre) + ')');
+      const cO = rr.j.contenedor; if (cO) { await pide(O + '/planos/' + cO, { method: 'DELETE' }); const en = (await pide(O + '/nube')).j.enlaces.find(x => x.contenedor_id === cO); if (en) await pide(O + '/nube/' + en.id, { method: 'DELETE' }); }
+      fichaCaida = true; const otroEnlace = UM + '/1drv/b/c/8484218bc4425bde/OTRO?e=x';
+      const eF = await NUBE.descarga(otroEnlace).then(() => null, e => e);   // la ficha guardada sigue valiendo: no depende del servicio de fichas
+      ok(eF === null, 'la ficha de visitante se reutiliza mientras OneDrive la acepte');
+      NUBE.olvidaFicha(); const eS = await NUBE.descarga(otroEnlace).then(() => null, e => e);
+      ok(eS && /sin iniciar sesión/.test(eS.message) && /Detalle técnico: .*503.*api anterior 401/.test(eS.message), 'si OneDrive no entrega la ficha, el mensaje dice qué paso falló (' + (eS && eS.message.split('Detalle técnico: ')[1]) + ')');
+      delete process.env.OBRA_NUBE_PRUEBA_MS; msS.close();
+    }
     delete process.env.OBRA_NUBE_PRUEBA; r = await pide(O + '/nube', { json: { url: UN + '/redir' } }); ok(r.status === 400, 'fuera de pruebas, una dirección local se rechaza (' + r.status + ')');
     r = await pide(O + '/nube', { json: { url: 'https://ejemplo.com/a.pdf' } }); ok(r.status === 400 && /Dropbox/.test(r.j.mensaje), 'y un dominio que no es Dropbox, OneDrive ni Box también');
     nube.close();

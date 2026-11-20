@@ -397,3 +397,18 @@ main.principal.usu-oscuro .usutema button.activa { background: #1f7f97; color: #
 .ofppt .oftbl { border-collapse: collapse; width: 100%; } .ofppt .oftbl td { border: 1px solid #9aa3ad; vertical-align: top; } .ofppt .oftbl .oftx { padding: 3px 6px; }
 .oftxt { margin: 0; font: 12.5px/1.6 "DejaVu Sans Mono", Consolas, monospace; white-space: pre-wrap; box-sizing: border-box; height: 100%; }
 .paginas-lista .pthv.ofeti { display: grid; place-items: center; padding: 6px; font-size: 11px; color: var(--tenue); text-align: center; background: #fff; border: 1px solid var(--linea); min-height: 70px; }
+
+/* v0.21.2 · Agregar permisos: buscador de carpetas y herencia en gris */
+.pcbusca { position: relative; display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+.pcbusca input { flex: 1; height: var(--al-ctl); padding: 0 10px 0 32px; border: 1px solid var(--borde); border-radius: var(--radio); background: var(--fondo); color: var(--texto); font-size: 13px; }
+.pcbusca input:focus { outline: none; border-color: var(--azul); box-shadow: 0 0 0 3px var(--azul2); }
+.pcbusca .pclupa { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--gris); display: inline-flex; pointer-events: none; } .pcbusca .pclupa svg { width: 16px; height: 16px; }
+.pcbusca #pcQn { white-space: nowrap; font-size: 12px; }
+.pcfila .pcnom mark { background: #ffe9a8; color: inherit; padding: 0 1px; border-radius: 2px; }
+.pcfila.pcctx .pcnom { color: var(--tenue); }
+.pcfila.pchereda { color: var(--gris); } .pcfila.pchereda .pcnom, .pcfila.pchereda .mico { color: var(--gris); opacity: .75; } .pcfila.pchereda input { opacity: .55; cursor: not-allowed; }
+.pctag { font-size: 11px; line-height: 16px; padding: 0 6px; border-radius: 8px; margin-left: 4px; white-space: nowrap; }
+.pctag:empty { display: none; }
+.pcher { color: var(--gris); border: 1px dashed var(--borde); }
+.pcprop { color: var(--tenue); background: var(--lienzo); border: 1px solid var(--borde); }
+

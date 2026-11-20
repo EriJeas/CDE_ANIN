@@ -300,17 +300,54 @@
     ((p.config || {}).carpetas || []).forEach(c => (c.permisos || []).forEach(e => { if ((e.tipo === 'org' || e.tipo === 'organizacion') && e.valor) s.add(String(e.valor).trim().toUpperCase()); })); return [...s].filter(Boolean).sort(); };
   const claveDe = (e) => e.tipo + ':' + String(e.valor || '')[e.tipo === 'rol' ? 'toLowerCase' : 'toUpperCase'](), esRol = (e) => e.tipo === 'rol' || e.tipo === 'funcion' || e.tipo === 'org';
   const NIVELES = Object.keys(NIVEL_TXT);
-  /** Árbol de carpetas con casillas para elegir a cuáles se aplican los permisos. Devuelve las rutas elegidas (o null). */
+  /** Árbol de carpetas con casillas para elegir a cuáles se aplican los permisos. Devuelve las rutas elegidas (o null).
+   *  · Buscador: muestra las carpetas cuyo nombre coincide (sin distinguir tildes ni mayúsculas) y sus carpetas madre, para no perder la ubicación.
+   *  · Herencia: al marcar una carpeta, sus subcarpetas sin permisos propios quedan en gris y marcadas («hereda»), porque recibirán el permiso
+   *    de la madre. Una subcarpeta con permisos propios NO hereda (sus permisos reemplazan a los heredados): sigue elegible y lo indica, y la
+   *    herencia se corta ahí. Solo se guardan las carpetas marcadas a propósito, nunca las que solo heredan. */
   function eligeCarpetasPermiso(p, pre) {
     return new Promise((ok) => {
-      const L = p.arbol.filter(c => !c.paso), puede = (c) => c.control || R[p.rol] >= 3, marc = new Set(pre || []);
-      const v = ventana('Agregar permisos · elige las carpetas', '<p class="pista" style="margin-top:0">Marca las carpetas a las que se aplicarán los permisos. Las subcarpetas sin permisos propios heredan los de su carpeta madre.</p><div class="exlista" style="max-height:none;flex:1;overflow:auto">' +
-        L.map(c => '<label class="rvchk" style="padding-left:' + (c.ruta.split('/').length - 1) * 20 + 'px"><input type="checkbox" data-pc="' + esc(c.ruta) + '"' + (marc.has(c.ruta) ? ' checked' : '') + (puede(c) ? '' : ' disabled title="Solo quien tiene control sobre la carpeta"') + '> <span class="mico" style="display:inline-block;width:16px;vertical-align:middle">' + (N.ICO.abrir || '') + '</span> <span' + (puede(c) ? '' : ' class="pista"') + '>' + esc(c.ruta.split('/').pop()) + '</span></label>').join('') +
-        '</div><div class="fila" style="justify-content:flex-end;gap:8px;margin-top:10px"><span class="pista" id="pcN" style="flex:1"></span><button id="pcNo">Cancelar</button><button class="primario" id="pcOk">Continuar</button></div>', { ancho: 560, alto: 600 });
+      const L = p.arbol.filter(c => !c.paso), puede = (c) => c.control || R[p.rol] >= 3, marc = new Set((pre || []).filter(r => L.some(c => c.ruta === r)));
+      const TODAS = new Map(p.arbol.map(c => [c.ruta, c])), madreDe = (r) => r.includes('/') ? r.slice(0, r.lastIndexOf('/')) : '';
+      const sinTilde = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const v = ventana('Agregar permisos · elige las carpetas', '<p class="pista" style="margin-top:0">Marca las carpetas a las que se aplicarán los permisos. Las subcarpetas sin permisos propios heredan los de su carpeta madre: al marcar una carpeta, sus subcarpetas quedan en gris.</p>' +
+        '<div class="pcbusca"><span class="pclupa">' + (N.ICO.buscar || '') + '</span><input id="pcQ" type="search" placeholder="Buscar carpeta por nombre…" autocomplete="off" spellcheck="false"><span class="pista" id="pcQn"></span></div>' +
+        '<div class="exlista" id="pcLista" style="max-height:none;flex:1;overflow:auto">' +
+        L.map(c => '<label class="rvchk pcfila" data-fila="' + esc(c.ruta) + '" style="padding-left:' + (c.ruta.split('/').length - 1) * 20 + 'px"><input type="checkbox" data-pc="' + esc(c.ruta) + '"' + (puede(c) ? '' : ' disabled title="Solo quien tiene control sobre la carpeta"') + '> <span class="mico" style="display:inline-block;width:16px;vertical-align:middle">' + (N.ICO.abrir || '') + '</span> <span class="pcnom' + (puede(c) ? '' : ' pista') + '">' + esc(c.ruta.split('/').pop()) + '</span>' +
+          (c.propios ? '<span class="pctag pcprop" title="Esta carpeta tiene permisos propios: reemplazan a los que heredaría de su carpeta madre">permisos propios</span>' : '') + '<span class="pctag pcher"></span></label>').join('') +
+        '<div class="pista" id="pcVacio" style="display:none;padding:10px 4px"></div></div><div class="fila" style="justify-content:flex-end;gap:8px;margin-top:10px"><span class="pista" id="pcN" style="flex:1"></span><button id="pcNo">Cancelar</button><button class="primario" id="pcOk">Continuar</button></div>', { ancho: 560, alto: 600 });
       v.style.display = 'flex'; v.style.flexDirection = 'column';
-      const cuenta = () => { v.querySelector('#pcN').textContent = v.querySelectorAll('[data-pc]:checked').length + ' carpeta(s) elegida(s)'; }; v.querySelectorAll('[data-pc]').forEach(x => x.onchange = cuenta); cuenta();
+      const filas = [...v.querySelectorAll('.pcfila')], caja = (f) => f.querySelector('[data-pc]');
+      /** De qué carpeta marcada hereda una ruta ('' si no hereda): sube por sus madres hasta una marcada; una madre con permisos propios corta la herencia. */
+      const heredaDe = (ruta) => { if ((TODAS.get(ruta) || {}).propios) return ''; for (let a = madreDe(ruta); a; a = madreDe(a)) { if (marc.has(a)) return a; if ((TODAS.get(a) || {}).propios) return ''; } return ''; };
+      const conAncestroMarcado = (ruta) => { for (let a = madreDe(ruta); a; a = madreDe(a)) if (marc.has(a)) return true; return false; };
+      const repinta = () => {
+        let nHer = 0;
+        for (const f of filas) {
+          const r = f.dataset.fila, x = caja(f), c = TODAS.get(r) || {}, de = heredaDe(r), t = f.querySelector('.pcher');
+          if (de) { marc.delete(r); nHer++; x.checked = true; x.disabled = true; f.classList.add('pchereda'); f.title = 'Hereda el permiso de «' + de.split('/').pop() + '» (' + de + ')'; t.textContent = 'hereda'; }
+          else { x.checked = marc.has(r); x.disabled = !puede(c); f.classList.remove('pchereda'); f.title = '';
+            t.textContent = c.propios && !marc.has(r) && conAncestroMarcado(r) ? 'no hereda' : ''; }
+        }
+        v.querySelector('#pcN').textContent = marc.size + ' carpeta(s) elegida(s)' + (nHer ? ' · ' + nHer + ' subcarpeta(s) heredan el permiso' : '');
+      };
+      filas.forEach(f => { const x = caja(f); x.onchange = () => { if (x.checked) marc.add(f.dataset.fila); else marc.delete(f.dataset.fila); repinta(); }; });
+      // buscador: coincidencias + sus carpetas madre (contexto); el texto que coincide se resalta
+      const q = v.querySelector('#pcQ'), nomOrig = new Map(filas.map(f => [f, f.querySelector('.pcnom').textContent]));
+      const filtra = () => {
+        const t = sinTilde(q.value.trim()), ver = new Set(); let n = 0;
+        filas.forEach(f => { const nom = nomOrig.get(f), el = f.querySelector('.pcnom'), k = t ? sinTilde(nom).indexOf(t) : -1;
+          if (t && k >= 0) { n++; for (let a = f.dataset.fila; a; a = madreDe(a)) ver.add(a); el.innerHTML = esc(nom.slice(0, k)) + '<mark>' + esc(nom.slice(k, k + t.length)) + '</mark>' + esc(nom.slice(k + t.length)); }
+          else el.textContent = nom; });
+        filas.forEach(f => { f.style.display = !t || ver.has(f.dataset.fila) ? '' : 'none'; f.classList.toggle('pcctx', !!t && ver.has(f.dataset.fila) && sinTilde(nomOrig.get(f)).indexOf(t) < 0); });
+        v.querySelector('#pcQn').textContent = t ? n + (n === 1 ? ' coincidencia' : ' coincidencias') : '';
+        const vacio = v.querySelector('#pcVacio'); vacio.style.display = t && !n ? '' : 'none'; vacio.textContent = 'Ninguna carpeta coincide con «' + q.value.trim() + '».';
+        v.querySelector('#pcLista').scrollTop = 0;
+      };
+      q.oninput = filtra; q.onkeydown = (e) => { if (e.key === 'Escape' && q.value) { e.stopPropagation(); q.value = ''; filtra(); } };
+      repinta(); setTimeout(() => q.focus(), 30);
       v.querySelector('#pcNo').onclick = () => { v.closest('.ventana').remove(); ok(null); };
-      v.querySelector('#pcOk').onclick = () => { const r = [...v.querySelectorAll('[data-pc]:checked')].map(x => x.dataset.pc); if (!r.length) return N.toast('Marca al menos una carpeta.', 'mal'); v.closest('.ventana').remove(); ok(r); };
+      v.querySelector('#pcOk').onclick = () => { const r = L.map(c => c.ruta).filter(x => marc.has(x)); if (!r.length) return N.toast('Marca al menos una carpeta.', 'mal'); v.closest('.ventana').remove(); ok(r); };
     });
   }
   /** «Agregar permisos»: 1) carpetas; 2) filas Rol · Permiso con «+». En una sola carpeta las filas reemplazan sus permisos por rol; en varias, se suman. */
