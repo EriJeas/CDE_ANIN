@@ -1,13 +1,25 @@
 /* CDE ANIN — utilidades comunes de la web: llamadas a la API, ventanas flotantes (se mueven y se agrandan), formato. */
 (function () {
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // Memoria corta de las lecturas que casi no cambian y que pide cada pantalla (la ficha del proyecto con su árbol de carpetas, la
+  // lista de proyectos, los catálogos). En un servidor lejano cada viaje cuesta: sin esto, cada clic volvía a pedir la ficha entera.
+  // Cualquier escritura (POST/PUT/DELETE, por api, fetch o XMLHttpRequest) la vacía, así que lo que uno cambia se ve en el acto.
+  const MEMO = new Map(), MEMO_MS = 45000, MEMORIZABLE = /^\/api\/(proyectos(\/[^/?#]+)?|estructura|documentos\/catalogos)$/;
+  const olvida = () => MEMO.clear(), escribe = (m) => !/^(GET|HEAD)$/i.test(String(m || 'GET'));
+  const fetchOrig = window.fetch.bind(window);
+  window.fetch = function (i, o) { const m = (o && o.method) || (i && typeof i === 'object' && i.method) || 'GET'; if (!escribe(m)) return fetchOrig(i, o); olvida(); return fetchOrig(i, o).finally(olvida); };
+  const xhrOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (m) { if (escribe(m)) { olvida(); this.addEventListener('loadend', olvida); } return xhrOpen.apply(this, arguments); };
   async function api(ruta, opciones) {
     const o = Object.assign({ headers: {} }, opciones || {});
     if (o.json !== undefined) { o.method = o.method || 'POST'; o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(o.json); delete o.json; }
+    const lee = !escribe(o.method) && MEMORIZABLE.test(ruta) && !o.fresco; delete o.fresco;
+    if (lee) { const m = MEMO.get(ruta); if (m && Date.now() - m.t < MEMO_MS) return JSON.parse(m.texto); }
     const r = await fetch(ruta, o);
-    let j = null; try { j = await r.json(); } catch (e) { j = null; }
+    let texto = '', j = null; try { texto = await r.text(); j = texto ? JSON.parse(texto) : null; } catch (e) { j = null; }
     if (r.status === 401 && !/\/api\/acceso\//.test(ruta)) { location.hash = '#/acceso'; throw new Error('Inicia sesion.'); }
     if (!r.ok) { const e = new Error((j && (j.mensaje || j.error)) || ('HTTP ' + r.status)); e.datos = j; e.status = r.status; throw e; }
+    if (lee && j) MEMO.set(ruta, { t: Date.now(), texto });
     return j;
   }
   const fecha = (s) => { if (!s) return ''; const d = new Date(s); return isNaN(d) ? String(s) : d.toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }); };
@@ -99,5 +111,5 @@
     const max = Math.max(1, ...items.map(x => x[1])), t = total || items.reduce((s, x) => s + x[1], 0);
     return items.map(([k, n]) => '<div class="barra' + (activo === k ? ' activa' : '') + '" data-k="' + esc(k) + '"><div class="k" title="' + esc(k) + '">' + esc(k || '(vacio)') + '</div><div class="b"><i style="width:' + Math.round(100 * n / max) + '%"></i></div><div class="v">' + num(n) + '</div></div>').join('') + '<div class="pista">' + num(t) + ' en total · clic en una barra para filtrar</div>';
   }
-  window.CDE = { esc, api, fecha, tam, num, ventana, barras, sube };
+  window.CDE = { esc, api, fecha, tam, num, ventana, barras, sube, olvida };
 })();
