@@ -1,0 +1,127 @@
+/*
+ * CDE en CELULAR (Android / iPhone). Solo actúa en pantallas angostas: en escritorio no cambia nada.
+ *  · El lateral se vuelve un cajón que se abre con el botón ☰ de la barra superior.
+ *  · Barra compacta, cabeceras de módulo que bajan de línea, pestañas y barras de módulos deslizables.
+ *  · Ventanas a pantalla completa (los diálogos chicos, como hoja que sube desde abajo).
+ *  · Tablas anchas: se deslizan dentro de su caja, sin agrandar la página.
+ *  · iPhone: alto real de pantalla (dvh), zonas seguras (muesca y barra inferior) y textos de 16 px en los campos
+ *    para que Safari no acerque la pantalla al escribir.
+ */
+.barra .hamb, .cajonfondo { display: none; }
+
+@media (max-width: 760px) {
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  :root { --al-barra: 52px; --an-lat: 0px; }
+  body:has(.marco .lateral), body.plegado:has(.marco .lateral) { --hoja-izq: 0px; }
+  body { overflow-x: hidden; }
+  body.cajon { overflow: hidden; }
+
+  /* ── barra superior ── */
+  .barra { height: calc(var(--al-barra) + env(safe-area-inset-top)); padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) 0 max(6px, env(safe-area-inset-left)); gap: 4px; }
+  .barra .hamb { display: grid; flex: none; }
+  .barra .hamb svg { width: 22px; height: 22px; }
+  .barra .app { flex: none; gap: 0; }
+  .barra .app b, .barra .app .sep { display: none; }
+  .barra .logoa { height: 24px; width: auto; }
+  .barra .selp { min-width: 0; flex: 0 1 auto; max-width: 46vw; padding: 6px 6px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .barra .selp .mono, .barra .selp .selsep { display: none; }
+  .barra > [data-btema] { display: none; }
+  .barra .crece { min-width: 4px; }
+  .barra a.redondo[title="Ayuda"] { display: none; }
+  .barra .irA { flex: none; margin-right: 0; padding: 0 9px; height: 34px; }
+  .barra .redondo { flex: none; width: 36px; height: 36px; }
+  .barra .usuario { width: auto; padding: 0 2px; } .barra .usuario > i:not(.ini) { display: none; }
+
+  /* ── lateral → cajón ── */
+  .marco .lateral, body.plegado .marco .lateral { position: fixed; left: 0; top: calc(var(--al-barra) + env(safe-area-inset-top)); bottom: 0; height: auto; width: min(300px, 84vw);
+    padding: 12px 10px calc(12px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); transform: translateX(-104%); transition: transform .22s ease, box-shadow .22s ease; z-index: 46; overflow-y: auto; }
+  body.cajon .marco .lateral { transform: none; box-shadow: 0 0 44px rgba(5, 14, 26, .45); }
+  .marco .lateral nav a, body.plegado .marco .lateral nav a { justify-content: flex-start; padding: 11px 12px; font-size: 14px; }
+  .marco .lateral nav a span, body.plegado .marco .lateral nav a span { display: inline; }
+  .marco .lateral .donde, body.plegado .marco .lateral .donde { display: flex; }
+  .marco .lateral .lopcion { display: block; }
+  .marco .lateral .plegar { display: none; }
+  .cajonfondo { display: block; position: fixed; left: 0; right: 0; bottom: 0; top: calc(var(--al-barra) + env(safe-area-inset-top)); background: rgba(9, 20, 33, .45); opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 45; }
+  body.cajon .cajonfondo { opacity: 1; pointer-events: auto; }
+
+  /* ── área principal ── */
+  .marco > .cuerpo { display: block; }
+  .principal { width: 100%; min-width: 0; }
+  .supra { flex-wrap: wrap; align-items: flex-start; gap: 8px; padding: 14px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); }
+  .supra > div:first-child { flex: 1 1 100%; min-width: 0; }
+  .supra > .crece { display: none; }
+  .supra h1 { font-size: 19px; overflow-wrap: anywhere; }
+  .supra > button, .supra > .boton, .supra > a, .supra > div:not(:first-child) { flex: 0 1 auto; max-width: 100%; }
+  .supra > div:not(:first-child) { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pag { padding: 4px max(12px, env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); min-width: 0; }
+  .fila { flex-wrap: wrap; }
+
+  /* tablas anchas: se deslizan dentro de su caja */
+  .pag table, .ventana table { display: block; width: max-content; min-width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .pag table > thead, .pag table > tbody, .pag table > tfoot, .ventana table > thead, .ventana table > tbody { width: 100%; }
+
+  /* pestañas, barras de módulos y grupos de botones: una fila deslizable */
+  .tabs, .modbarra, .tbpsel, .usutema { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; max-width: 100%; }
+  .tabs::-webkit-scrollbar, .modbarra::-webkit-scrollbar { display: none; }
+  .tabs > *, .modbarra > * { flex: none; }
+
+  /* Documentos de proyecto: árbol arriba, lista debajo */
+  .acc { flex-direction: column; gap: 10px; min-height: 0; }
+  .accarbol { width: 100%; max-height: 38vh; flex: none; border-right: 1px solid var(--linea); }
+  .acc > :not(.accarbol) { min-width: 0; width: 100%; }
+
+  /* encabezados con botones: el título ocupa su línea y los botones bajan */
+  .fila > h2, .fila > h3, .tbg header h2 { flex: 1 1 100% !important; min-width: 0; }
+  .tbg header { flex-wrap: wrap; }
+  /* campos de búsqueda que comparten fila con filtros: el campo ocupa su línea */
+  .pag .fila > input[style*="flex:1"], .pag .fila > input[style*="flex: 1"] { flex: 1 1 100% !important; min-width: 0; }
+  .pag .fila > select[style*="width"] { width: auto !important; flex: 1 1 auto; min-width: 0; }
+  /* barra de búsqueda de Documentos */
+  .accbarra { flex-wrap: wrap; gap: 8px; } .accbarra > .crece { display: none; }
+  .accbarra .buscar { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; min-width: 0; } .accbarra .buscar input#fq { flex: 1; min-width: 0; width: auto; }
+
+  /* tarjetas y rejillas */
+  .pag .tarjeta[style*="min-width"] { min-width: 0 !important; }
+  .fila > .tarjeta, .fila.paneles > * { flex: 1 1 100% !important; min-width: 0 !important; width: 100%; }
+  .tbgrid { grid-template-columns: 1fr; } .tbg.ancha { grid-column: auto; }
+  .tarjeta { min-width: 0; }
+  .ucards, .ucards.g { grid-template-columns: 1fr; }
+  .ugrid .upcuerpo, .p2grid .upcuerpo { max-height: none; min-height: 0; }
+
+  /* ── portadas ── */
+  .pcab { padding: calc(8px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); gap: 10px; }
+  .pcab img { height: 32px; }
+  .plema { padding-left: 10px; } .plema b { font-size: 12.5px; line-height: 1.25; } .plema span { display: none; }
+  .pcentro { padding: 16px 12px; }
+  .portada .acceso { width: min(392px, 100%); padding: 24px 20px; }
+  .portada.p2 .pcuerpo.p2cuerpo { padding: 14px 12px calc(20px + env(safe-area-inset-bottom)); }
+  .pt h1 { font-size: 19px; }
+  .p2op { padding: 12px; gap: 10px; } .p2ico { width: 34px; height: 34px; }
+
+  /* ── ventanas: pantalla completa; los diálogos chicos suben desde abajo ── */
+  .ventana, .ventana.v-hoja, .ventana.v-libre, .ventana.panel-lado, .ventana.panel-lado.max { left: 0 !important; top: 0 !important; right: auto !important; bottom: auto !important; transform: none !important;
+    width: 100vw !important; height: 100vh !important; height: 100dvh !important; max-width: 100vw !important; max-height: 100dvh !important; min-width: 0 !important; min-height: 0 !important; border-radius: 0 !important; resize: none !important; }
+  .ventana.v-dialogo { top: auto !important; bottom: 0 !important; height: auto !important; max-height: 90dvh !important; border-radius: 16px 16px 0 0 !important; }
+  .ventana .vcab { padding-top: env(safe-area-inset-top); padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(6px, env(safe-area-inset-right)); cursor: default !important; min-height: 52px; }
+  .ventana.v-dialogo .vcab { padding-top: 0; }
+  .ventana .vcab b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .ventana [data-ancho], .ventana [data-libre], .ventana [data-max] { display: none !important; }
+  .ventana .vborde { display: none; }
+  .ventana .vcuerpo { padding: 14px max(12px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+  .ventana.v-hoja .vcuerpo { margin: 10px 8px calc(16px + env(safe-area-inset-bottom)); padding: 14px 12px; }
+  .ventana.v-hoja.verventana .vcuerpo { margin: 0; padding: 0; }
+
+  /* menús flotantes dentro de la pantalla */
+  .menuf { max-width: calc(100vw - 16px); }
+  .menuf .op { min-height: 40px; }
+
+  /* ── toque y escritura ── */
+  input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea { font-size: 16px; }
+  button, .boton { min-height: 34px; }
+  button.mini { min-height: 30px; }
+}
+
+/* tabletas y celulares en horizontal: el lateral también como cajón */
+@media (min-width: 761px) and (max-width: 1024px) {
+  .accarbol { width: 240px; }
+}

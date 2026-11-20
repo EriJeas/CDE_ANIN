@@ -42,7 +42,7 @@
   };
   // Identidad de la entidad en las portadas. «lema» es la frase institucional (vacía = no se muestra).
   window.CDE_PORTAL = true;   // comun.js: ventanas centradas y con fondo atenuado (el visor conserva las suyas)
-  document.addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; const m = document.querySelector('.menuf'); if (m) { document.querySelectorAll('.menuf').forEach(x => x.remove()); return; } const vs = [...document.querySelectorAll('#ventanas .ventana')].sort((x, y) => (Number(x.style.zIndex) || 0) - (Number(y.style.zIndex) || 0)); const v = vs[vs.length - 1]; if (v && !/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '')) { const b = v.querySelector('[data-cerrar]'); if (b) b.click(); } });
+  document.addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; if (document.body.classList.contains('cajon')) { document.body.classList.remove('cajon'); return; } const m = document.querySelector('.menuf'); if (m) { document.querySelectorAll('.menuf').forEach(x => x.remove()); return; } const vs = [...document.querySelectorAll('#ventanas .ventana')].sort((x, y) => (Number(x.style.zIndex) || 0) - (Number(y.style.zIndex) || 0)); const v = vs[vs.length - 1]; if (v && !/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '')) { const b = v.querySelector('[data-cerrar]'); if (b) b.click(); } });
   N.MARCA = { logo: 'img/anin-logo.png', entidad: 'Autoridad Nacional de Infraestructura', lema: '', sistema: 'Entorno Común de Datos' };
   N.MODULOS = [
     { r: '/inicio', nombre: 'Opciones del proyecto', ico: 'proyectos', titulo: 'Opciones del proyecto', oculto: true },
@@ -114,8 +114,9 @@
     const m = N.MODULOS.find(x => x.r === modulo) || N.MODULOS[1];
     const yo = N.YO || {};
     const op = p && modulo !== '/inicio' ? N.opcionDe(p.id, modulo) : null;   // en el inicio del proyecto se eligen las opciones: el lateral las lista todas
-    const barra = '<header class="barra"><a class="app" href="#/" title="Direcciones ejecutoras"><img class="logoa" src="' + N.MARCA.logo + '" alt="ANIN"><b>CDE</b><span class="sep"></span></a>' +
-      (p ? '<button class="selp" id="selProyecto"><span class="mono">' + esc(p.codigo) + '</span> · ' + esc(p.nombre) + ' <i>▾</i></button>' : '<span class="selp pista">Direcciones ejecutoras</span>') +
+    document.body.classList.remove('cajon');   // al cambiar de página, el cajón del celular queda cerrado
+    const barra = '<header class="barra">' + (p ? '<button class="redondo hamb" id="hamb" title="Menú" aria-label="Abrir el menú" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>' : '') + '<a class="app" href="#/" title="Direcciones ejecutoras"><img class="logoa" src="' + N.MARCA.logo + '" alt="ANIN"><b>CDE</b><span class="sep"></span></a>' +
+      (p ? '<button class="selp" id="selProyecto"><span class="mono">' + esc(p.codigo) + '</span><span class="selsep"> · </span>' + esc(p.nombre) + ' <i>▾</i></button>' : '<span class="selp pista">Direcciones ejecutoras</span>') +
       '<div class="crece"></div>' + (op ? '<button class="irA" id="irA" title="Pasar a otra opción del proyecto">Ir a <i>▾</i></button>' : '') + N.botonTema() + '<a class="redondo" href="docs/README.html" target="_blank" title="Ayuda" onclick="return false">' + ICO.ayuda + '</a><button class="redondo usuario" id="menuUsuario" title="' + esc(yo.email || '') + '">' + N.circulo(yo.email, yo.foto) + ' <i>▾</i></button></header>';
     const ub = p && p.ubicacion, donde = p ? '<a class="donde" href="#/p/' + p.id + '/inicio" title="Opciones del proyecto"><small>' + esc(ub ? ub.direccion : 'Sin dirección') + '</small><small class="n2">' + esc(ub ? ub.subNombre : 'Sin subdirección') + '</small><b>' + esc(p.nombre) + '</b></a>' : '';
     const navOp = !p ? '' : op ? '<div class="lopcion" title="Opción del proyecto que tienes abierta">' + esc(op.nombre) + '</div><nav>' + N.MODULOS.filter(x => !x.abajo && !x.oculto && op.mods.includes(x.r)).map(x => '<a class="' + (x.r === modulo ? 'activo' : '') + '" href="#/p/' + p.id + x.r + '">' + ICO[x.ico] + '<span>' + x.nombre + '</span></a>').join('') +
@@ -126,13 +127,18 @@
     const cab = '<div class="supra"><div><h1>' + (sub ? esc(sub) : (p ? esc(m.titulo) : 'Direcciones ejecutoras')) + '</h1>' + (sub ? '<div class="migas"><a href="#/p/' + p.id + modulo + '">' + esc(m.nombre) + '</a> › <span class="mono">' + esc(sub) + '</span></div>' : '') + '</div><div class="crece"></div>' + (acciones || '') + '</div>';
     setTimeout(() => {
       const sp = document.getElementById('selProyecto'); if (sp) sp.onclick = async (e) => { e.stopPropagation(); let lista = N.PROYECTOS; if (!lista) { try { lista = N.PROYECTOS = (await api('/api/proyectos')).proyectos; } catch (err) { return; } } N.menuFlotante(sp, lista.map(x => ({ texto: '<span class="mono">' + esc(x.codigo) + '</span> · ' + esc(x.nombre), accion: () => { location.hash = '#/p/' + x.id + modulo; } })).concat([{ texto: 'Direcciones ejecutoras (todos los proyectos)', accion: () => { location.hash = '#/'; } }])); };
-      const mu = document.getElementById('menuUsuario'); if (mu) mu.onclick = (e) => { e.stopPropagation(); N.menuFlotante(mu, [{ texto: '<b>' + esc(yo.email || '') + '</b>' + (p ? '<br><small>' + esc(p.rol + (p.organizacion ? ' · ' + p.organizacion : '')) + '</small>' : ''), accion: null }, ...(N.menuCuenta ? N.menuCuenta() : []), { texto: 'Cerrar sesión', accion: async () => { await api('/api/acceso/salir', { method: 'POST' }); N.YO = null; location.hash = '#/acceso'; } }], 'derecha'); };
+      const mu = document.getElementById('menuUsuario'); if (mu) mu.onclick = (e) => { e.stopPropagation(); N.menuFlotante(mu, [{ texto: '<b>' + esc(yo.email || '') + '</b>' + (p ? '<br><small>' + esc(p.rol + (p.organizacion ? ' · ' + p.organizacion : '')) + '</small>' : ''), accion: null }, ...(N.menuCuenta ? N.menuCuenta() : []), ...(innerWidth <= 760 ? [{ texto: N.tema() === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro', accion: () => N.ponTema(N.tema() === 'oscuro' ? 'claro' : 'oscuro') }] : []), { texto: 'Cerrar sesión', accion: async () => { await api('/api/acceso/salir', { method: 'POST' }); N.YO = null; location.hash = '#/acceso'; } }], 'derecha'); };
       const ir = document.getElementById('irA'); if (ir) ir.onclick = (e) => { e.stopPropagation(); N.menuFlotante(ir, N.OPCIONES.filter(o => o.id !== op.id).map(o => ({ ico: 'op_' + o.id, texto: esc(o.nombre), accion: () => N.irOpcion(p.id, o.id) })), 'derecha'); };
       document.querySelectorAll('[data-lop]').forEach(a => a.onclick = (e) => { e.preventDefault(); N.irOpcion(p.id, a.dataset.lop); });
+      // celular: el lateral es un cajón que abre ☰ y se cierra al tocar fuera, al elegir un módulo o con Esc
+      const hb = document.getElementById('hamb'), cajon = (abre) => { document.body.classList.toggle('cajon', abre); if (hb) hb.setAttribute('aria-expanded', abre ? 'true' : 'false'); };
+      if (hb) hb.onclick = (e) => { e.stopPropagation(); cajon(!document.body.classList.contains('cajon')); };
+      const cf = document.getElementById('cajonFondo'); if (cf) cf.onclick = () => cajon(false);
+      document.querySelectorAll('.lateral nav a, .lateral .donde').forEach(a => a.addEventListener('click', () => cajon(false)));
       const pl = document.getElementById('plegar'); if (pl) pl.onclick = () => { document.body.classList.toggle('plegado'); try { localStorage.setItem('cde.plegado', document.body.classList.contains('plegado') ? '1' : ''); } catch (err) {} };
       try { if (localStorage.getItem('cde.plegado') === '1') document.body.classList.add('plegado'); } catch (err) {}
     }, 0);
-    return '<div class="marco">' + barra + '<div class="cuerpo">' + lateral + '<main class="principal">' + cab + '<div class="pag">';
+    return '<div class="marco">' + barra + '<div class="cuerpo">' + lateral + '<div class="cajonfondo" id="cajonFondo"></div><main class="principal">' + cab + '<div class="pag">';
   };
   N.cierra = () => '</div></main></div></div>';
   /** Iconos de linea de los menus (los de Autodesk Docs). */
