@@ -516,3 +516,5 @@ body.plegado .lateral .lopcion { display: none; }
 .qg-esq tr.qg-uf.ok td { background: rgba(31, 138, 76, .12); } .qg-esq tr.qg-uf.mal td { background: rgba(211, 47, 47, .15); }
 .qg-nota { margin-top: auto; text-align: center; }
 @media (max-width: 760px) { .qg-cuerpo { flex-direction: column; } .qg-hoja { flex: none; height: 62vh; padding: 8px; } .qg-lado { width: auto; overflow: visible; } .qg-ley { display: none; } .qg-cab { flex-wrap: wrap; } }
+
+.cargar td.est .cg-meta { color: var(--texto); font-size: 12px; margin-top: 2px; }   /* v0.24.2: la descripción que vino de la portada */

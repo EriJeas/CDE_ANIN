@@ -5,8 +5,8 @@
  * Uso: N.qaDetalle(qa, nombre, fuente) · fuente: { archivo: File|Blob } o { url } (o nada → esquema). */
 (function () {
   const N = CDE.N, { esc, ventana } = N;
-  const ORDEN = ['lectura', 'cajetin', 'llenado', 'revision', 'emision', 'codigo', 'titulo', 'direccion', 'cuadro', 'coincide', 'correlativa', 'sello'];
-  const CORTO = { lectura: 'Lectura de la portada', cajetin: 'Cajetín de la plantilla', llenado: 'Contrato, región y logo', revision: 'Revisión', emision: 'Emisión', codigo: 'Código del documento', titulo: 'Nombre del documento', direccion: 'Dirección', cuadro: 'Cuadro de revisiones', coincide: 'Revisión y fecha = última fila', correlativa: 'Revisión que corresponde', sello: 'Sello de revisión ANIN' };
+  const ORDEN = ['lectura', 'cajetin', 'llenado', 'revision', 'emision', 'paginas', 'codigo', 'proyecto', 'titulo', 'direccion', 'cuadro', 'coincide', 'correlativa', 'sello'];
+  const CORTO = { lectura: 'Lectura de la portada', cajetin: 'Cajetín de la plantilla', llenado: 'Contrato, región y logo', revision: 'Revisión', emision: 'Emisión', paginas: 'Páginas del documento', codigo: 'Código del documento', proyecto: 'Código del proyecto', titulo: 'Descripción del documento', direccion: 'Dirección', cuadro: 'Cuadro de revisiones', coincide: 'Revisión y fecha = última fila', correlativa: 'Revisión que corresponde', sello: 'Sello de revisión ANIN' };
 
   N.qaDetalle = (qa, nombre, fuente) => {
     qa = qa || {}; const d = qa.datos || {}, checks = (qa.checks || []).slice().sort((a, b) => ORDEN.indexOf(a.id) - ORDEN.indexOf(b.id)), malas = checks.filter(c => !c.ok).length;
@@ -20,7 +20,7 @@
         '<button class="mini" data-z="-">−</button><button class="mini" data-z="0">Ajustar</button><button class="mini" data-z="+">+</button></div>' +
       '<div class="qg-cuerpo"><div class="qg-hoja"><div class="qg-pag" id="qgPag"><div class="pista" style="padding:30px">Dibujando la portada…</div></div></div>' +
         '<div class="qg-lado"><ol class="qg-lista">' + lista + '</ol>' +
-        '<details class="qg-datos"><summary>Lo que se leyó</summary><table class="chica"><tbody>' + dato('Revisión (cajetín)', d.revision) + dato('Emisión (cajetín)', d.emision) + dato('Última fila del cuadro', d.ultimaFila ? d.ultimaFila.rev + ' · ' + d.ultimaFila.fecha : '') + dato('Revisión que corresponde', d.esperada) + dato('Código del documento', d.codigo) + dato('Código en la portada', d.codigoPortada) + dato('Nombre (descripción)', d.titulo) + dato('Elaborado por (última fila)', d.elabPor) + dato('Contrato', d.contrato) + dato('Región', d.region) + '</tbody></table></details></div></div></div>',
+        '<details class="qg-datos"><summary>Lo que se leyó</summary><table class="chica"><tbody>' + dato('Revisión (cajetín)', d.revision) + dato('Emisión (cajetín)', d.emision) + dato('Páginas', d.paginas ? 'portada: ' + (d.paginasPortada || '—') + ' · archivo: ' + d.paginas : '') + dato('Última fila del cuadro', d.ultimaFila ? d.ultimaFila.rev + ' · ' + d.ultimaFila.fecha : '') + dato('Revisión que corresponde', d.esperada) + dato('Código del documento', d.codigo) + dato('Código en la portada', d.codigoPortada) + dato('Nombre (descripción)', d.titulo) + dato('Elaborado por (última fila)', d.elabPor) + dato('Contrato', d.contrato) + dato('Región', d.region) + '</tbody></table></details></div></div></div>',
       { ancho: 1180, alto: 820 });
     const pag = v.querySelector('#qgPag'), hoja = v.querySelector('.qg-hoja'); let escala = 1, base = 1, ancho = 0, dibuja = null;
     const marca = (id, on) => { v.querySelectorAll('.qg-caja').forEach(b => b.classList.toggle('apagada', on && b.dataset.id !== id)); v.querySelectorAll('.qg-caja[data-id="' + id + '"]').forEach(b => b.classList.toggle('viva', on)); v.querySelectorAll('.qg-it').forEach(li => li.classList.toggle('viva', on && li.dataset.id === id)); };

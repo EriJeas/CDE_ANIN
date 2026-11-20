@@ -234,7 +234,8 @@ button.desple { padding-left: 6px; padding-right: 6px; margin-left: -1px; border
 .cf-tabla td.cf-nom .n1 { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 205px; } .cf-tabla td.cf-nom .n2 { font-size: 12px; font-style: italic; color: var(--suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 205px; } .cf-tabla td.cf-nom .n2.igual { display: none; }
 .cf-tabla td.cf-g, .cf-tabla th.cf-g { width: 8px; padding: 0; text-align: center; color: var(--suave); }
 .cf-tabla th.cf-sep, .cf-tabla td.cf-sep { padding-left: 14px; }
-.cf-tabla th.cf-oc, .cf-tabla td.cf-oc { display: none; }   /* v0.24.1: en el compartido la portada da revisión, descripción y código */
+.cf-tabla th.cf-oc, .cf-tabla td.cf-oc { display: none; }
+.cf-tabla input.cf-deportada { background: var(--azul2); color: var(--texto); font-weight: 600; cursor: default; }   /* v0.24.2: la descripción viene de la portada */   /* v0.24.1: en el compartido la portada da revisión, descripción y código */
 .cf-tabla td input, .cf-tabla td select { width: 118px; height: 34px; padding: 4px 8px; font-size: 13px; border: 1px solid #b8c0c8; border-radius: 2px; background: #fff; margin: 0; font-family: inherit; }
 .cf-tabla td input.mal, .cf-tabla td select.mal { border-color: #d92d2d; box-shadow: inset 0 0 0 1px #d92d2d; }
 .cf-ico { display: inline-flex; width: 20px; height: 20px; border-radius: 50%; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 13px; flex: none; cursor: help; } .cf-ico.mal { background: #e5392f; } .cf-ico.ok { background: #2f9e44; }

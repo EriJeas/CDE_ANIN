@@ -12,7 +12,7 @@ function lineas(o) {
   const L = [];
   if (o.vacia) return L;
   L.push([150, 740, 'PRESIDENCIA DEL CONSEJO DE MINISTROS', 9], [440, 740, 'Revisión: ' + o.rev, 10], [150, 726, 'AUTORIDAD NACIONAL DE INFRAESTRUCTURA', 10]);
-  L.push([150, 705, o.contrato, 9], [440, 705, 'Emisión: ' + o.emision, 10], [150, 684, o.region, 9], [440, 684, 'Página: 1 de 1', 10]);
+  L.push([150, 705, o.contrato, 9], [440, 705, 'Emisión: ' + o.emision, 10], [150, 684, o.region, 9], [440, 684, o.pagina || 'Página: 1 de 1', 10]);
   L.push([150, 520, o.titulo, 16], [150, o.proyecto ? 484 : 498, o.codigo, 12], [180, 460, o.direccion, 14]);
   if (o.proyecto) L.push([150, 504, o.proyecto, 11]);   // el «PROYECTO: …» que va bajo el título (no es el nombre del documento)
   if (o.sello) L.push([330, 430, 'REVISIÓN DE DOCUMENTOS TÉCNICOS', 9], [330, 416, 'A- ACEPTADO', 9], [330, 402, 'B- RECHAZADO', 9], [340, 380, 'FIRMA', 8], [450, 380, 'FECHA', 8]);

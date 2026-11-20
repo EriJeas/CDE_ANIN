@@ -29,7 +29,7 @@
         if (listos.length) { items = faltan; D = Object.assign({}, D, { filas: filasF }); }
         o.soloNombre = true; o.listos = listos;
       }
-      const OC = o.soloNombre ? ' cf-oc' : '', ocP = (d) => o.soloNombre && !(d.obligatorio && d.id !== 'descripcion') ? 'cf-oc' : '';
+      const OC = o.soloNombre ? ' cf-oc' : '', ocP = (d) => o.soloNombre && d.id !== 'descripcion' && !d.obligatorio ? 'cf-oc' : '';   // la descripción (de la portada) siempre a la vista
       const NORMA = D.norma, A = D.atributos, PERS = [{ id: 'descripcion', nombre: 'Descripción', tipo: 'texto', obligatorio: !o.qa, valores: [] }]   /* en el compartido la descripción la pone la Validación QA: el nombre del documento en su portada */.concat((D.personalizados || []).filter(d => d.id !== 'descripcion')), nC = NORMA.campos.length;
       const rxParte = A.parteDesignada.rx ? new RegExp(A.parteDesignada.rx) : null, rxContrato = A.contrato.rx ? new RegExp(A.contrato.rx) : null;
       let previa = true; try { previa = localStorage.getItem('cde.cf.previa') !== '0'; } catch (e) {}
@@ -78,7 +78,7 @@
 
       const opcionesDe = (c, val) => (val && !c.valores.includes(val) ? '<option value="' + esc(val) + '" selected>' + esc(val) + ' ✗</option>' : '') + '<option value=""' + (val ? '' : ' selected') + '>Selec…</option>' + c.valores.map(x => '<option value="' + esc(x) + '"' + (x === val ? ' selected' : '') + '>' + esc(c.etiquetas && c.etiquetas[x] ? x + ' - ' + c.etiquetas[x] : x) + '</option>').join('');
       const celdaCampo = (r, c, i) => c.tipo === 'lista' && c.valores.length <= 5000 ? '<select data-f="' + i + '">' + opcionesDe(c, r.partes[i]) + '</select>' : '<input data-f="' + i + '" value="' + esc(r.partes[i]) + '" placeholder="' + esc(c.mascara) + '"' + (c.tipo === 'lista' ? ' list="cfdl' + i + '"' : '') + ' autocomplete="off" spellcheck="false">';
-      const celdaPers = (r, d) => d.tipo === 'lista' && d.valores.length ? '<select data-p="' + esc(d.id) + '"><option value="">Selec…</option>' + d.valores.map(x => '<option' + (r.pers[d.id] === x ? ' selected' : '') + '>' + esc(x) + '</option>').join('') + '</select>' : '<input data-p="' + esc(d.id) + '" value="' + esc(r.pers[d.id] || '') + '"' + (d.tipo === 'fecha' ? ' type="date"' : '') + (o.qa && d.id === 'descripcion' ? ' placeholder="Del nombre en la portada" title="En el compartido la descripción es el nombre del documento en su portada (Validación QA)"' : '') + '>';
+      const celdaPers = (r, d) => d.tipo === 'lista' && d.valores.length ? '<select data-p="' + esc(d.id) + '"><option value="">Selec…</option>' + d.valores.map(x => '<option' + (r.pers[d.id] === x ? ' selected' : '') + '>' + esc(x) + '</option>').join('') + '</select>' : '<input data-p="' + esc(d.id) + '" value="' + esc(r.pers[d.id] || '') + '"' + (d.tipo === 'fecha' ? ' type="date"' : '') + (o.qa && d.id === 'descripcion' ? ' readonly class="cf-deportada" placeholder="Se llena con el título de la portada" title="En el compartido la descripción es el título del recuadro de la portada (Validación QA)"' : '') + '>';
       function pintaFila(r) {
         if (!r.tr) { r.tr = document.createElement('tr'); }
         r.tr.innerHTML = '<td class="chk"><input type="checkbox" data-x="m"' + (r.marcado ? ' checked' : '') + '></td><td class="cf-nom"><div class="fila" style="gap:8px;align-items:center"><span data-x="ico"></span><div style="min-width:0"><div class="mono n1" title="' + esc(r.orig) + '">' + esc(r.orig) + '</div><div class="mono n2" data-x="nuevo"></div></div></div></td>' +

@@ -619,6 +619,37 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       ok(v.j.resultados[0].version && v.j.resultados[0].qa.zonas && v.j.resultados[0].qa.checks.find(c => c.id === 'sello').ok, 'la validación previa al desplazar dice qué versión dibujar y trae sus cajas');
     }
 
+    { // v0.24.2: el código de proyecto del nombre y de la portada debe ser el del proyecto; la portada da nombre, revisión y descripción
+      console.log('\n14e. Código del proyecto y lectura previa de la portada al cargar al compartido');
+      const K = (n) => '100030-JYS01-000-XXX-' + n, fx = typeof firma === 'function' ? firma : (b) => b;
+      const BDp = require('../lib/bd'), codAntes = BDp.q.uno('SELECT codigo FROM proyectos WHERE id = ?', pg).codigo; BDp.q.corre('UPDATE proyectos SET codigo = ? WHERE id = ?', '100030', pg);   // el proyecto de prueba pasa a tener código de 6 dígitos
+      const ajeno = '100099-JYS01-000-XXX-INF-ARQ-E2-000070.pdf';
+      let v = await pide('/api/proyectos/' + pg + '/valida-nombres', { json: { carpeta: COMg, nombres: [ajeno, K('INF-ARQ-E2-000070') + '.pdf'] } });
+      ok(v.j.filas[0].ok === false && /100030/.test(v.j.filas[0].erroresCampo[0] || '') && v.j.filas[1].ok === true, 'la rejilla marca el código de proyecto de otro proyecto (100099 en el proyecto 100030)');
+      let x = await subeG14(ajeno, fx(PT.pdf({ codigo: '100099-JYS01-000-XXX-INF-ARQ-E2-000070' })), '?carpeta=' + encodeURIComponent(COMg));
+      ok(x.status === 400 && x.j.error === 'nomenclatura' && /100099.*100030/.test(x.j.mensaje), 'la carga rechaza un nombre con el código de otro proyecto (' + x.status + ' ' + (x.j.mensaje || '') + ')');
+      const lee = async (nombre, cuerpo) => { const r = await fetch(B + '/api/proyectos/' + pg + '/qa/leer?carpeta=' + encodeURIComponent(COMg), { method: 'POST', headers: { cookie: galleta, 'x-nombre': encodeURIComponent(nombre), 'content-type': 'application/octet-stream' }, body: cuerpo }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+      let L = await lee('Plan de gestion de diseño.pdf', fx(PT.pdf({ codigo: K('PLN-ARQ-E2-000071'), titulo: 'PLAN DE GESTIÓN DE DISEÑO', proyecto: 'PROYECTO: “MEJORAMIENTO DEL HOSPITAL”' })));
+      ok(L.status === 200 && L.j.aplica && !L.j.conforme && L.j.qa.ok && L.j.sugerido === K('PLN-ARQ-E2-000071') + '.pdf' && L.j.qa.datos.titulo === 'PLAN DE GESTIÓN DE DISEÑO' && L.j.qa.datos.esperada === 'R00' && L.j.token, 'lectura previa: de la portada salen el nombre (código), la revisión que corresponde (R00) y la descripción');
+      x = await fetch(B + '/api/proyectos/' + pg + '/subir?carpeta=' + encodeURIComponent(COMg), { method: 'POST', headers: { cookie: galleta, 'x-nombre': encodeURIComponent(L.j.sugerido), 'x-qa-pre': L.j.token, 'content-type': 'application/octet-stream' } }).then(async r => ({ status: r.status, j: await r.json() }));
+      let f = x.j.contenedor ? await pide('/api/proyectos/' + pg + '/contenedores/' + x.j.contenedor) : { j: {} };
+      ok(x.status === 200 && x.j.revision === 'R00' && f.j.atributos && f.j.atributos.descripcion === 'PLAN DE GESTIÓN DE DISEÑO' && f.j.versiones[0].tamano > 1000, 'la carga usa el archivo de la lectura previa (no se sube dos veces): entra en R00 con la descripción de la portada (' + x.status + ' ' + (x.j.mensaje || '') + ')');
+      L = await lee('otro proyecto.pdf', fx(PT.pdf({ codigo: '100099-JYS01-000-XXX-INF-ARQ-E2-000072' })));
+      const cP = L.j.qa && L.j.qa.checks.find(c => c.id === 'proyecto');
+      ok(L.status === 200 && L.j.qa.ok === false && cP && !cP.ok && /100099.*100030/.test(cP.detalle) && L.j.qa.zonas.cajas.some(z => z.id === 'proyecto'), 'una portada de otro proyecto no pasa la QA («Código del proyecto»: 100099 ≠ 100030) y se marca en la portada');
+      L = await lee('planilla.xlsx', Buffer.from('x')); ok(L.status === 200 && L.j.aplica === false && L.j.token, 'lo que no lleva QA (p. ej. una hoja de cálculo) vuelve a la rejilla de siempre');
+      x = await subeG14('memoria otro proyecto.pdf', PT.pdf({ codigo: '100099-JYS01-000-XXX-MDE-ARQ-E2-000073' }), '?carpeta=' + encodeURIComponent(WIPg));
+      v = await pide('/api/proyectos/' + pg + '/qa/contenedores', { json: { ids: [x.j.contenedor], carpeta: COMg } });
+      ok(v.j.resultados[0].qa.checks.some(c => c.id === 'proyecto' && !c.ok), 'al desplazar del WIP, una portada de otro proyecto tampoco pasa');
+      x = await pide('/api/proyectos/' + pg + '/contenedores/' + x.j.contenedor + '/renombrar', { json: { nombre: '100099-JYS01-000-XXX-MDE-ARQ-E2-000073.pdf', carpeta: COMg } });
+      ok(x.status === 400 && /100030/.test(x.j.mensaje || ''), 'y no se puede renombrar con el código de otro proyecto para una carpeta con norma');
+      BDp.q.corre('UPDATE proyectos SET codigo = ? WHERE id = ?', codAntes, pg);
+      { const QAm = require('../lib/qa'); let q = await QAm.validaArchivo(PT.pdf({ codigo: K('INF-ARQ-E2-000074'), pagina: 'Página 1 de 1' }), 'x.pdf', { codigo: K('INF-ARQ-E2-000074') });
+        ok(q.ok && q.checks.find(c => c.id === 'paginas').ok && q.zonas.cajas.some(z => z.id === 'paginas'), '«Página 1 de 1» sin dos puntos también vale, y el total coincide con las páginas del archivo');
+        q = await QAm.validaArchivo(PT.pdf({ codigo: K('INF-ARQ-E2-000074'), pagina: 'Página: 1 de 78' }), 'x.pdf', { codigo: K('INF-ARQ-E2-000074') });
+        ok(!q.ok && q.checks.filter(c => !c.ok).map(c => c.id).join() === 'paginas' && /78.*1 página/.test(q.checks.find(c => c.id === 'paginas').detalle), 'si la portada dice «1 de 78» y el archivo tiene 1 página, no pasa (' + q.checks.find(c => c.id === 'paginas').detalle + ')'); }
+    }
+
     // ───────────── 15. Plantilla por zonas y flujo de revisión en paralelo (DC · especialistas · GP)
     console.log('\n15. Plantilla por zonas y flujo paralelo');
     galleta = ''; await pide('/api/acceso/local', { json: { email: 'admin@anin.gob.pe', clave: 'prueba' } });

@@ -606,6 +606,11 @@
       if (todos.length > LIMITES.archivos || dirs.size > LIMITES.carpetas || prof > LIMITES.niveles) return avisa('Supera el límite de una carga: ' + todos.length + ' archivos, ' + dirs.size + ' carpetas, ' + prof + ' niveles (máximo ' + LIMITES.archivos + ', ' + LIMITES.carpetas + ' y ' + LIMITES.niveles + '). Cárgalo por partes.');
       // Carpeta con norma de nomenclatura (compartido / publicado): primero la rejilla «Cargar archivos» de Forma, campo por campo y con sus atributos.
       // Solo pasa a la cola lo que la rejilla devuelve (ya con su nombre conforme). Las carpetas libres (WIP) cargan como siempre.
+      // v0.24.2 · al compartido, los PDF y Word esperan la Validación QA: el CDE lee su portada y de ella toma nombre, revisión y descripción
+      const qaAqui = enCom(), conQa = qaAqui ? items.filter(x => /\.(pdf|docx?)$/i.test(x.file.name)) : [];
+      for (const x of conQa) { x.nombre = x.file.name.replace(/\s*\[R\](?=\.pdf$)/i, ''); if (x.nombre === x.file.name) delete x.nombre; x.estado = 'qa'; x.msg = 'Pendiente de Validación QA'; x.pct = 0; x.destino = destino; cola.push(x); fila(x); }
+      if (conQa.length) { $('#cgZona').classList.add('conlista'); $('#cgLista').classList.add('on'); resumen(); }
+      items = items.filter(x => !conQa.includes(x)); if (!items.length) return;
       const porCarpeta = new Map(); for (const x of items) { const k = destino + (x.rel ? '/' + x.rel : ''); if (!porCarpeta.has(k)) porCarpeta.set(k, []); porCarpeta.get(k).push(x); }
       const listos = [];
       for (const [carp, grupo] of porCarpeta) {
@@ -615,10 +620,9 @@
       }
       if (!listos.length) return;
       items = listos;
-      const qaAqui = enCom();   // al compartido: esperan el botón «Validación QA» (el servidor valida cada portada y solo carga lo que la cumple)
-      for (const x of items) { x.estado = qaAqui ? 'qa' : 'cola'; x.msg = qaAqui ? 'Pendiente de Validación QA' : 'En cola'; x.pct = 0; x.destino = destino; cola.push(x); fila(x); }
+      for (const x of items) { x.estado = 'cola'; x.msg = 'En cola'; x.pct = 0; x.destino = destino; cola.push(x); fila(x); }
       $('#cgZona').classList.add('conlista'); $('#cgLista').classList.add('on'); resumen();
-      if (!corriendo && !qaAqui) procesa();
+      if (!corriendo) procesa();
     }
     async function asegura(dest, rel) { // crea las subcarpetas que faltan (destino/rel)
       const ps = rel.split('/'); let padre = dest;
@@ -630,11 +634,48 @@
         const xhr = new XMLHttpRequest(); xhr.open('POST', '/api/proyectos/' + pid + '/subir?carpeta=' + encodeURIComponent(carpeta) + (x.revision ? '&revision=' + encodeURIComponent(x.revision) : '') + (x.idoneidad ? '&idoneidad=' + encodeURIComponent(x.idoneidad) : ''));
         if (x.atributos && Object.keys(x.atributos).length) meta = Object.assign({}, meta || {}, { atributos: x.atributos });
         xhr.setRequestHeader('x-nombre', encodeURIComponent(x.nombre || x.file.name)); xhr.setRequestHeader('Content-Type', 'application/octet-stream'); if (meta) xhr.setRequestHeader('x-meta', encodeURIComponent(JSON.stringify(meta)));
+        if (x.pre) xhr.setRequestHeader('x-qa-pre', x.pre);   // v0.24.2: el archivo ya lo tiene el CDE (lectura previa de la portada)
         xhr.upload.onprogress = (e) => { if (e.lengthComputable) { x.pct = Math.round(100 * e.loaded / e.total); x.msg = 'Cargando ' + x.pct + ' %'; fila(x); } };
+        xhr.onload = () => { let j = {}; try { j = JSON.parse(xhr.responseText); } catch (e) {} ok({ ok: xhr.status >= 200 && xhr.status < 300, j }); };
+        xhr.onerror = () => ok({ ok: false, j: { mensaje: 'Se cortó la conexión' } });
+        xhr.send(x.pre ? null : x.file);
+      });
+    }
+    /** v0.24.2 · Lectura previa de la portada (sube el archivo una sola vez; la carga final usa el mismo archivo). */
+    function leePortada(x, carpeta) {
+      return new Promise((ok) => {
+        const xhr = new XMLHttpRequest(); xhr.open('POST', '/api/proyectos/' + pid + '/qa/leer?carpeta=' + encodeURIComponent(carpeta));
+        xhr.setRequestHeader('x-nombre', encodeURIComponent(x.nombre || x.file.name)); xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) { x.pct = Math.round(100 * e.loaded / e.total); x.msg = 'Leyendo la portada… ' + x.pct + ' %'; fila(x); } };
         xhr.onload = () => { let j = {}; try { j = JSON.parse(xhr.responseText); } catch (e) {} ok({ ok: xhr.status >= 200 && xhr.status < 300, j }); };
         xhr.onerror = () => ok({ ok: false, j: { mensaje: 'Se cortó la conexión' } });
         xhr.send(x.file);
       });
+    }
+    async function validaQA() {
+      corriendo = true; resumen(); const aRejilla = [];
+      for (const x of cola) {
+        if (x.estado !== 'qa') continue;
+        try {
+          x.msg = 'Leyendo la portada…'; fila(x);
+          const carpetaX = x.rel ? await asegura(x.destino, x.rel) : x.destino; x.carpetaX = carpetaX;
+          const r = await leePortada(x, carpetaX);
+          if (!r.ok) { x.estado = 'mal'; x.msg = esc(r.j.mensaje || r.j.error || 'No se pudo leer la portada'); fila(x); continue; }
+          x.pre = r.j.token;
+          if (!r.j.aplica) { x.estado = 'espera'; x.msg = 'Sin Validación QA (' + esc(r.j.motivo || 'no aplica') + '): faltan sus metadatos'; fila(x); aRejilla.push(x); continue; }
+          x.qa = r.j.qa;
+          if (!r.j.qa.ok) { x.estado = 'mal'; x.pct = 0; x.msg = '✗ No pasó la Validación QA: ' + r.j.qa.checks.filter(c => !c.ok).length + ' observación(es) · <a href="#" data-qa="' + cola.indexOf(x) + '">Ver detalle</a>'; fila(x); continue; }
+          if (!r.j.conforme && r.j.sugerido) { x.nombre = r.j.sugerido; x.nombreDePortada = true; }
+          x.estado = 'cola'; x.revision = ''; x.idoneidad = ''; x.atributos = {}; x.pct = 0; x.msg = '✓ QA aprobada · en cola'; fila(x);
+        } catch (e) { x.estado = 'mal'; x.msg = esc(e.message); fila(x); }
+      }
+      // lo que no lleva QA (p. ej. planos) pasa por la rejilla de siempre
+      const porC = new Map(); for (const x of aRejilla) { if (!porC.has(x.carpetaX)) porC.set(x.carpetaX, []); porC.get(x.carpetaX).push(x); }
+      for (const [carp, grupo] of porC) {
+        const res = await N.rejillaConformidad(p, carp, grupo.map(x => ({ nombre: x.nombre || x.file.name, tam: x.file.size, file: x.file, ref: x })), { modo: 'cargar' });
+        for (const x of grupo) { const rr = res && res.find(z => z.ref === x); if (!rr) { x.estado = 'mal'; x.msg = 'Carga cancelada en la rejilla'; fila(x); continue; } if (rr.nombre !== x.file.name) x.nombre = rr.nombre; x.revision = rr.revision; x.idoneidad = rr.idoneidad; x.atributos = rr.atributos; x.estado = 'cola'; x.msg = 'En cola'; fila(x); }
+      }
+      corriendo = false; await procesa();
     }
     async function procesa() {
       corriendo = true; resumen();
@@ -642,12 +683,12 @@
         if (x.estado !== 'cola') continue;
         try {
           x.msg = 'Validando nombre…'; fila(x);
-          const carpetaX = x.rel ? await asegura(x.destino, x.rel) : x.destino;
+          const carpetaX = x.carpetaX || (x.rel ? await asegura(x.destino, x.rel) : x.destino);
           const val = await api('/api/proyectos/' + pid + '/valida-nombre', { json: { nombre: x.nombre || x.file.name, carpeta: carpetaX } });
           if (!val.ok && !val.retenido) { x.estado = 'mal'; x.msg = 'No cumple la norma de la carpeta' + (val.norma ? ' «' + esc(val.norma.nombre) + '»' : '') + ': ' + esc(val.errores.join(' · ')); fila(x); resumen(); continue; }
           const r = await envia(x, carpetaX, modo === 'vinculados' && cola[0] !== x ? { vinculadoA: cola[0].file.name } : null);
           if (!r.ok && r.j.error === 'qa') { x.estado = 'mal'; x.qa = r.j.qa; x.msg = '✗ No pasó la Validación QA: ' + (r.j.qa.checks || []).filter(c => !c.ok).length + ' observación(es) · <a href="#" data-qa="' + cola.indexOf(x) + '">Ver detalle</a>'; fila(x); resumen(); continue; }
-          if (r.ok) { x.estado = 'ok'; x.pct = 100; cambios++; x.qa = r.j.qa && r.j.qa.ok ? r.j.qa : null; x.msg = (r.j.qa && r.j.qa.ok ? '✓ QA aprobada · ' : '') + (r.j.retenido ? '⚠ Retenido (no cumple la norma): queda en el Área de retención hasta que lo renombres' : '✓ V' + r.j.n + ' ' + esc(r.j.revision) + ' · ' + esc(r.j.estado) + (r.j.libre && !r.j.conforme ? ' · nombre libre (WIP): para compartirlo deberá cumplir la norma' : '')) + (r.j.revisionAutomatica ? ' · revisión iniciada (' + esc(r.j.revisionAutomatica.flujo) + ')' : '') + (r.j.qa && r.j.qa.aplica === false ? ' · QA de portada: ' + esc(r.j.qa.motivo) : ''); }
+          if (r.ok) { x.estado = 'ok'; x.pct = 100; cambios++; const qaOk = r.j.qa && r.j.qa.ok; x.qa = qaOk && x.qa && x.qa.checks ? x.qa : null; x.msg = (qaOk ? '✓ QA aprobada · ' + (x.qa ? '<a href="#" data-qa="' + cola.indexOf(x) + '">Ver portada</a> · ' : '') : '') + (r.j.retenido ? '⚠ Retenido (no cumple la norma): queda en el Área de retención hasta que lo renombres' : '✓ V' + r.j.n + ' ' + esc(r.j.revision) + ' · ' + esc(r.j.estado) + (r.j.libre && !r.j.conforme ? ' · nombre libre (WIP): para compartirlo deberá cumplir la norma' : '')) + (r.j.revisionAutomatica ? ' · revisión iniciada (' + esc(r.j.revisionAutomatica.flujo) + ')' : '') + (r.j.qa && r.j.qa.aplica === false ? ' · QA de portada: ' + esc(r.j.qa.motivo) : '') + (qaOk && r.j.qa.titulo ? '<div class="cg-meta">Descripción: <b>' + esc(r.j.qa.titulo) + '</b>' + (x.nombreDePortada ? ' · nombre tomado del código de la portada' : '') + '</div>' : ''); }
           else { x.estado = 'mal'; x.msg = esc(r.j.mensaje || r.j.error || 'Error') + (r.j.errores ? ': ' + esc(r.j.errores.join(' · ')) : ''); }
         } catch (e) { x.estado = 'mal'; x.msg = esc(e.message); }
         fila(x); resumen();
@@ -658,7 +699,7 @@
     pintaDest();
     $('#cgCambia').onclick = async () => { const d = await eligeDestino(p, { titulo: 'Seleccionar carpeta de destino', boton: 'Seleccionar', inicial: destino, permitida: (c) => c.subir, motivo: () => 'Sin permiso de carga' }); if (d !== null) { destino = d; pintaDest(); } };
     $('#cgMin').onclick = minimiza;
-    $('#cgQa').onclick = () => { for (const x of cola) if (x.estado === 'qa') { x.estado = 'cola'; x.msg = 'En cola · Validación QA'; fila(x); } resumen(); if (!corriendo) procesa(); };
+    $('#cgQa').onclick = () => { if (!corriendo) validaQA(); };
     $('#cgLista').addEventListener('click', (e) => { const a = e.target.closest('[data-qa]'); if (!a) return; e.preventDefault(); const x = cola[+a.dataset.qa]; if (x && x.qa) N.qaDetalle(x.qa, x.nombre || x.file.name, { archivo: x.file }); });
     $('#cgArch').onclick = () => $('#cgInA').click(); $('#cgCarp').onclick = () => $('#cgInC').click();
     $('#cgInA').onchange = (e) => { agrega([...e.target.files].map(f => ({ file: f, rel: '' }))); e.target.value = ''; };
