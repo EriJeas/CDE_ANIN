@@ -45,7 +45,7 @@
   document.addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; const m = document.querySelector('.menuf'); if (m) { document.querySelectorAll('.menuf').forEach(x => x.remove()); return; } const vs = [...document.querySelectorAll('#ventanas .ventana')].sort((x, y) => (Number(x.style.zIndex) || 0) - (Number(y.style.zIndex) || 0)); const v = vs[vs.length - 1]; if (v && !/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '')) { const b = v.querySelector('[data-cerrar]'); if (b) b.click(); } });
   N.MARCA = { logo: 'img/anin-logo.png', entidad: 'Autoridad Nacional de Infraestructura', lema: '', sistema: 'Entorno Común de Datos' };
   N.MODULOS = [
-    { r: '/inicio', nombre: 'Inicio del proyecto', ico: 'proyectos', titulo: 'Inicio del proyecto', oculto: true },
+    { r: '/inicio', nombre: 'Opciones del proyecto', ico: 'proyectos', titulo: 'Opciones del proyecto', oculto: true },
     { r: '', nombre: 'Documentos de proyecto', ico: 'archivos', titulo: 'Documentos de proyecto' },
     { r: '/documentos', nombre: 'Búsqueda de documentos', ico: 'documentos', titulo: 'Documentos de proyecto', oculto: true },   // ahora es la pestaña «Búsqueda» de Documentos de proyecto
     { r: '/revisiones', nombre: 'Revisión contractual', ico: 'revisiones', titulo: 'Revisión contractual' },
@@ -60,6 +60,26 @@
     { r: '/miembros', nombre: 'Usuarios de proyecto', ico: 'miembros', titulo: 'Usuarios de proyecto', abajo: true },
     { r: '/ajustes', nombre: 'Configuración', ico: 'ajustes', titulo: 'Configuración', abajo: true }
   ];
+  /** Las 4 OPCIONES del proyecto (portada 2 → proyecto → opción). Cada una muestra en el lateral solo sus módulos; Usuarios de proyecto
+   *  y Configuración van siempre abajo. «inicio» es el módulo que abre la opción. Un módulo que no es de ninguna (Inicio, Usuarios,
+   *  Configuración) conserva la última opción usada en ese proyecto. */
+  N.OPCIONES = [
+    { id: 'gestion', nombre: 'Gestión documentaria de proyecto', ico: 'archivos', inicio: '', mods: ['', '/documentos', '/revisiones', '/transmisiones', '/incidencias'], visor: true,
+      desc: 'Carpetas WIP, COM y PUB con su nomenclatura y metadatos, revisión contractual con rondas, avances de proyecto, observaciones contractuales y el visor GIS/BIM.' },
+    { id: 'comunicaciones', nombre: 'Comunicaciones contractuales', ico: 'correspondencia', inicio: '/correspondencia', mods: ['/correspondencia', '/registros'],
+      desc: 'Comunicaciones numeradas entre las partes con su línea de respuestas, y los registros NEC de alertas tempranas y eventos compensables con sus plazos.' },
+    { id: 'obra', nombre: 'Seguimiento de obra e integración con otros CDE', ico: 'obra', inicio: '/obra', mods: ['/obra', '/puente'],
+      desc: 'Planos, tareas, fotos y recorridos de obra, y los conectores que traen la información de Autodesk Forma, Aconex, OneDrive y SharePoint.' },
+    { id: 'tableros', nombre: 'Tableros de control', ico: 'tableros', inicio: '/tableros', mods: ['/tableros', '/contrato'],
+      desc: 'Tableros de las incidencias por disciplina, carpeta y documento, y la línea de tiempo contractual con las entregas estimadas del contratista.' }
+  ];
+  const memOp = (pid, id) => { try { if (id) localStorage.setItem('cde.opcion.' + pid, id); return localStorage.getItem('cde.opcion.' + pid) || ''; } catch (e) { return id || ''; } };
+  /** Opción a la que pertenece un módulo (y se recuerda como la última del proyecto); si el módulo no es de ninguna, la última usada. */
+  N.opcionDe = (pid, modulo) => { const o = N.OPCIONES.find(x => x.mods.includes(modulo)); if (o) { memOp(pid, o.id); return o; } const g = memOp(pid); return N.OPCIONES.find(x => x.id === g) || N.OPCIONES[0]; };
+  /** Abre una opción del proyecto en su primer módulo. */
+  N.irOpcion = (pid, id) => { const o = N.OPCIONES.find(x => x.id === id) || N.OPCIONES[0], h = '#/p/' + pid + o.inicio; memOp(pid, o.id); if (location.hash === h) N.ruta(); else location.hash = h; };
+  /** Nombres de los módulos de una opción, en el orden del lateral. */
+  N.modulosDe = (o) => N.MODULOS.filter(x => !x.oculto && !x.abajo && o.mods.includes(x.r)).map(x => x.nombre).concat(o.visor ? ['Visor GIS/BIM'] : []);
 
   ICO.contrato = '<svg viewBox="0 0 24 24"><path d="M3 12h18"/><circle cx="6" cy="12" r="2"/><circle cx="13" cy="12" r="2"/><path d="M19 9l2 3-2 3"/><path d="M6 10V5M13 14v5"/></svg>';
   ICO.tableros = '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>';
@@ -74,7 +94,7 @@
   N.ICO = ICO;
   /** Modo claro u oscuro de todo el CDE (lo recuerda cada navegador). Se aplica al <html>: las hojas oscuro.css hacen el resto. */
   N.tema = () => { try { const t = localStorage.getItem('cde.tema'); if (t) return t === 'oscuro' ? 'oscuro' : 'claro'; if (localStorage.getItem('cde.usuTema') === 'oscuro') return 'oscuro'; } catch (e) {} return N._tema || 'claro'; };
-  N.ponTema = (t) => { N._tema = t === 'oscuro' ? 'oscuro' : 'claro'; try { localStorage.setItem('cde.tema', N._tema); } catch (e) {} document.documentElement.classList.toggle('tema-oscuro', N._tema === 'oscuro'); document.querySelectorAll('[data-btema]').forEach(b => { b.innerHTML = N._tema === 'oscuro' ? ICO.sol : ICO.luna; b.title = N._tema === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'; }); };
+  N.ponTema = (t) => { N._tema = t === 'oscuro' ? 'oscuro' : 'claro'; try { localStorage.setItem('cde.tema', N._tema); } catch (e) {} document.documentElement.classList.toggle('tema-oscuro', N._tema === 'oscuro'); document.querySelectorAll('.usu').forEach(u => { u.classList.toggle('oscuro', N._tema === 'oscuro'); u.classList.toggle('claro', N._tema !== 'oscuro'); }); document.querySelectorAll('[data-btema]').forEach(b => { b.innerHTML = N._tema === 'oscuro' ? ICO.sol : ICO.luna; b.title = N._tema === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'; }); };
   N.botonTema = () => '<button class="redondo" data-btema title="' + (N.tema() === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro') + '" onclick="CDE.N.ponTema(CDE.N.tema() === \'oscuro\' ? \'claro\' : \'oscuro\')">' + (N.tema() === 'oscuro' ? ICO.sol : ICO.luna) + '</button>';
   document.documentElement.classList.toggle('tema-oscuro', N.tema() === 'oscuro');
   N.iniciales = (s) => String(s || '?').split('@')[0].split(/[._\- ]+/).map(x => x[0] || '').join('').slice(0, 2).toUpperCase();
@@ -93,17 +113,22 @@
     N.PROY_ACTUAL = p;
     const m = N.MODULOS.find(x => x.r === modulo) || N.MODULOS[1];
     const yo = N.YO || {};
+    const op = p && modulo !== '/inicio' ? N.opcionDe(p.id, modulo) : null;   // en el inicio del proyecto se eligen las opciones: el lateral las lista todas
     const barra = '<header class="barra"><a class="app" href="#/" title="Direcciones ejecutoras"><img class="logoa" src="' + N.MARCA.logo + '" alt="ANIN"><b>CDE</b><span class="sep"></span></a>' +
       (p ? '<button class="selp" id="selProyecto"><span class="mono">' + esc(p.codigo) + '</span> · ' + esc(p.nombre) + ' <i>▾</i></button>' : '<span class="selp pista">Direcciones ejecutoras</span>') +
-      '<div class="crece"></div>' + N.botonTema() + '<a class="redondo" href="docs/README.html" target="_blank" title="Ayuda" onclick="return false">' + ICO.ayuda + '</a><button class="redondo usuario" id="menuUsuario" title="' + esc(yo.email || '') + '">' + N.circulo(yo.email, yo.foto) + ' <i>▾</i></button></header>';
-    const ub = p && p.ubicacion, donde = p ? '<a class="donde" href="#/p/' + p.id + '/inicio" title="Inicio del proyecto"><small>' + esc(ub ? ub.direccion : 'Sin dirección') + '</small><small class="n2">' + esc(ub ? ub.subNombre : 'Sin subdirección') + '</small><b>' + esc(p.nombre) + '</b></a>' : '';
-    const lateral = '<aside class="lateral">' + (p ? donde + '<nav>' + N.MODULOS.filter(x => !x.abajo && !x.oculto).map(x => '<a class="' + (x.r === modulo ? 'activo' : '') + '" href="#/p/' + p.id + x.r + '">' + ICO[x.ico] + '<span>' + x.nombre + '</span></a>').join('') +
-      '<a href="visor.html?pid=' + p.id + '" target="_blank">' + ICO.visor + '<span>Visor GIS/BIM</span></a></nav><div class="crece"></div><nav class="abajo">' + N.MODULOS.filter(x => x.abajo).map(x => '<a class="' + (x.r === modulo ? 'activo' : '') + '" href="#/p/' + p.id + x.r + '">' + ICO[x.ico] + '<span>' + x.nombre + '</span></a>').join('') + '</nav>' : '<nav><a class="activo" href="#/">' + ICO.proyectos + '<span>Direcciones ejecutoras</span></a></nav><div class="crece"></div>') +
+      '<div class="crece"></div>' + (op ? '<button class="irA" id="irA" title="Pasar a otra opción del proyecto">Ir a <i>▾</i></button>' : '') + N.botonTema() + '<a class="redondo" href="docs/README.html" target="_blank" title="Ayuda" onclick="return false">' + ICO.ayuda + '</a><button class="redondo usuario" id="menuUsuario" title="' + esc(yo.email || '') + '">' + N.circulo(yo.email, yo.foto) + ' <i>▾</i></button></header>';
+    const ub = p && p.ubicacion, donde = p ? '<a class="donde" href="#/p/' + p.id + '/inicio" title="Opciones del proyecto"><small>' + esc(ub ? ub.direccion : 'Sin dirección') + '</small><small class="n2">' + esc(ub ? ub.subNombre : 'Sin subdirección') + '</small><b>' + esc(p.nombre) + '</b></a>' : '';
+    const navOp = !p ? '' : op ? '<div class="lopcion" title="Opción del proyecto que tienes abierta">' + esc(op.nombre) + '</div><nav>' + N.MODULOS.filter(x => !x.abajo && !x.oculto && op.mods.includes(x.r)).map(x => '<a class="' + (x.r === modulo ? 'activo' : '') + '" href="#/p/' + p.id + x.r + '">' + ICO[x.ico] + '<span>' + x.nombre + '</span></a>').join('') +
+        (op.visor ? '<a href="visor.html?pid=' + p.id + '" target="_blank">' + ICO.visor + '<span>Visor GIS/BIM</span></a>' : '') + '</nav>'
+      : '<div class="lopcion">Opciones del proyecto</div><nav>' + N.OPCIONES.map(o => '<a href="#/p/' + p.id + o.inicio + '" data-lop="' + o.id + '">' + ICO[o.ico] + '<span>' + esc(o.nombre) + '</span></a>').join('') + '</nav>';
+    const lateral = '<aside class="lateral">' + (p ? donde + navOp + '<div class="crece"></div><nav class="abajo">' + N.MODULOS.filter(x => x.abajo).map(x => '<a class="' + (x.r === modulo ? 'activo' : '') + '" href="#/p/' + p.id + x.r + '">' + ICO[x.ico] + '<span>' + x.nombre + '</span></a>').join('') + '</nav>' : '<nav><a class="activo" href="#/">' + ICO.proyectos + '<span>Direcciones ejecutoras</span></a></nav><div class="crece"></div>') +
       '<button class="plegar" id="plegar" title="Contraer el panel">|←</button></aside>';
     const cab = '<div class="supra"><div><h1>' + (sub ? esc(sub) : (p ? esc(m.titulo) : 'Direcciones ejecutoras')) + '</h1>' + (sub ? '<div class="migas"><a href="#/p/' + p.id + modulo + '">' + esc(m.nombre) + '</a> › <span class="mono">' + esc(sub) + '</span></div>' : '') + '</div><div class="crece"></div>' + (acciones || '') + '</div>';
     setTimeout(() => {
       const sp = document.getElementById('selProyecto'); if (sp) sp.onclick = async (e) => { e.stopPropagation(); let lista = N.PROYECTOS; if (!lista) { try { lista = N.PROYECTOS = (await api('/api/proyectos')).proyectos; } catch (err) { return; } } N.menuFlotante(sp, lista.map(x => ({ texto: '<span class="mono">' + esc(x.codigo) + '</span> · ' + esc(x.nombre), accion: () => { location.hash = '#/p/' + x.id + modulo; } })).concat([{ texto: 'Direcciones ejecutoras (todos los proyectos)', accion: () => { location.hash = '#/'; } }])); };
       const mu = document.getElementById('menuUsuario'); if (mu) mu.onclick = (e) => { e.stopPropagation(); N.menuFlotante(mu, [{ texto: '<b>' + esc(yo.email || '') + '</b>' + (p ? '<br><small>' + esc(p.rol + (p.organizacion ? ' · ' + p.organizacion : '')) + '</small>' : ''), accion: null }, ...(N.menuCuenta ? N.menuCuenta() : []), { texto: 'Cerrar sesión', accion: async () => { await api('/api/acceso/salir', { method: 'POST' }); N.YO = null; location.hash = '#/acceso'; } }], 'derecha'); };
+      const ir = document.getElementById('irA'); if (ir) ir.onclick = (e) => { e.stopPropagation(); N.menuFlotante(ir, N.OPCIONES.filter(o => o.id !== op.id).map(o => ({ ico: 'op_' + o.id, texto: esc(o.nombre), accion: () => N.irOpcion(p.id, o.id) })), 'derecha'); };
+      document.querySelectorAll('[data-lop]').forEach(a => a.onclick = (e) => { e.preventDefault(); N.irOpcion(p.id, a.dataset.lop); });
       const pl = document.getElementById('plegar'); if (pl) pl.onclick = () => { document.body.classList.toggle('plegado'); try { localStorage.setItem('cde.plegado', document.body.classList.contains('plegado') ? '1' : ''); } catch (err) {} };
       try { if (localStorage.getItem('cde.plegado') === '1') document.body.classList.add('plegado'); } catch (err) {}
     }, 0);
@@ -179,6 +204,7 @@
   };
   /** Avatar chico (iniciales con color por correo) y lista de avatares apilados, como en Forma. */
   N.avatarMini = (email, titulo) => { const s = String(email || ''); let h = 0; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) & 0xffff; return '<i class="avm" style="background:hsl(' + (h % 360) + ',55%,45%)" title="' + esc(titulo || s) + '">' + N.iniciales(s) + '</i>'; };
+  N.OPCIONES.forEach(o => { N.ICO['op_' + o.id] = SV(String(ICO[o.ico] || '').replace(/^<svg[^>]*>|<\/svg>$/g, '')); });
   N.ICO.ajustes = N.ICO.engranaje; N.ICO.filtro = N.ICO.ordenar; N.ICO.puente = N.ICO.puente || N.ICO.enlace;
   N.avatares = (lista, max) => { const L = [...new Set((lista || []).filter(Boolean))]; return '<span class="avs">' + L.slice(0, max || 3).map(e => N.avatarMini(e)).join('') + (L.length > (max || 3) ? '<i class="avm mas">+' + (L.length - (max || 3)) + '</i>' : '') + '</span>'; };
   /** Aviso breve abajo (el "toast" de ACC). */

@@ -412,3 +412,48 @@ main.principal.usu-oscuro .usutema button.activa { background: #1f7f97; color: #
 .pcher { color: var(--gris); border: 1px dashed var(--borde); }
 .pcprop { color: var(--tenue); background: var(--lienzo); border: 1px solid var(--borde); }
 
+/* v0.22.0 · Portada 2 en tres paneles (Direcciones · Proyectos · Opciones), opciones del proyecto, «Ir a» y lateral por opción */
+.portada.p2 .pcuerpo.p2cuerpo { width: auto; max-width: 1640px; margin: 0; padding: 22px 28px 28px; }
+.p2cuerpo .pt { margin-bottom: 14px; }
+.p2grid { display: grid; grid-template-columns: minmax(260px, .9fr) minmax(340px, 1.25fr) minmax(340px, 1.2fr); gap: 12px; align-items: stretch; }
+@media (max-width: 1180px) { .p2grid { grid-template-columns: 1fr 1fr; } .p2grid .p2opc { grid-column: 1 / -1; } }
+@media (max-width: 760px) { .p2grid { grid-template-columns: 1fr; } .portada.p2 .pcuerpo.p2cuerpo { padding: 16px 12px; } }
+.p2grid .upcuerpo { max-height: calc(100vh - 250px); min-height: 420px; overflow: auto; }
+.p2subs { display: flex; flex-direction: column; gap: 6px; }
+.usu .p2sub { display: flex; align-items: center; gap: 8px; width: 100%; height: auto; min-height: 0; padding: 9px 12px; text-align: left; background: var(--up-tile); border: 1px solid var(--up-tile-b); border-radius: 8px; color: var(--up-txt); font-weight: normal; box-shadow: none; cursor: pointer; }
+.p2sub > span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.p2sub b { font-size: 13px; font-weight: 600; color: var(--up-txt); } .p2sub small { font-size: 11.5px; color: var(--up-tenue); }
+.p2sub > i { font-style: normal; color: var(--up-tenue); font-size: 16px; }
+.usu .p2sub:hover { border-color: var(--up-act); background: var(--up-tile); }
+.usu .p2sub.activa { border-color: var(--up-act); box-shadow: inset 0 0 0 1px var(--up-act); } .usu .p2sub.activa > i { color: var(--up-act); }
+.usu .p2sub.cero:not(.activa) { opacity: .62; }
+.usu .p2proy[data-pid] { cursor: pointer; } .usu .p2proy[data-pid]:hover { border-color: var(--up-act); }
+.usu .p2proy.activa { border-color: var(--up-act); box-shadow: inset 0 0 0 1px var(--up-act); }
+.usu .p2proy:focus-visible { outline: 2px solid var(--up-act); outline-offset: 2px; }
+.p2proy .mini { margin-top: 5px; }
+.usu .p2proy.sin { opacity: .8; } .usu .p2proy.sin .ini { background: var(--up-tile-b); color: var(--up-tenue); }
+.usect.p2sep { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--up-borde); }
+.p2vacio { margin: 2px 0 6px; }
+.ucards.g.p2lista { grid-template-columns: 1fr; }
+.p2ops { display: flex; flex-direction: column; gap: 8px; }
+.usu .p2op { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--up-tile-b); background: var(--up-tile); border-radius: 10px; color: var(--up-txt); }
+a.p2op, a.p2op:hover, a.p2op * { text-decoration: none; }
+.usu a.p2op:hover { border-color: var(--up-act); }
+.p2op > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.p2op b { font: 600 14px var(--up-letra); color: var(--up-tit); }
+.p2op small { font-size: 12px; line-height: 1.45; color: var(--up-tenue); }
+.p2op .p2mods { font-size: 11.5px; line-height: 1.4; color: var(--up-txt); }
+.p2op .p2dato { font-size: 11.5px; color: var(--up-act); font-weight: 600; }
+.p2op > i { font-style: normal; color: var(--up-tenue); align-self: center; font-size: 18px; } .usu a.p2op:hover > i { color: var(--up-act); }
+.p2ico { width: 38px; height: 38px; flex: none; border-radius: 10px; display: grid; place-items: center; background: var(--anin); color: #fff; }
+.p2ico svg { width: 20px; height: 20px; }
+.usu.oscuro .p2ico { background: #1f6f84; color: #e9f7fb; }
+.usu .p2op.off { align-items: center; opacity: .45; }
+.p2espera .pista { margin: 14px 0 0; text-align: center; }
+.p2inicio { max-width: 820px; }
+.barra .irA { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; margin-right: 6px; border: 1px solid var(--linea); border-radius: var(--radio); background: var(--fondo); color: var(--texto); font-size: 13px; font-weight: 500; box-shadow: none; }
+.barra .irA:hover { border-color: var(--anin); color: var(--anin); } .barra .irA i { font-style: normal; font-size: 11px; color: var(--tenue); }
+.lateral .lopcion { margin: 2px 10px 6px; font-size: 11.5px; line-height: 1.35; color: #8fa3bd; }
+body.plegado .lateral .lopcion { display: none; }
+@media (max-width: 900px) { .lateral .lopcion { display: none; } }
+
