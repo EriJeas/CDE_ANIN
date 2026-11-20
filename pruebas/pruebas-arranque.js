@@ -311,6 +311,11 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       ok(enBase && enBase.n === jpg.length, 'la foto queda guardada dentro de la base de datos del CDE (en Render, en el disco permanente)');
       await pide('/api/perfil/foto', { method: 'DELETE' }); const pg2 = (await pide('/api/perfil')).j; ok(pg2.foto === null, 'el gestor puede quitar su foto');
     }
+    { // v0.21: filosofía del CDE — una carpeta sin permisos la ven todos; solo la administración de permisos limita
+      const CARp = require('../lib/carpetas'), L = [{ ruta: 'LIBRE' }, { ruta: 'LIBRE/SUB' }, { ruta: 'CERRADA', permisos: [{ tipo: 'org', valor: 'OTRA', nivel: 'ver' }] }, { ruta: 'CERRADA/SUB' }], u = { email: 'x@y.pe', rol: 'miembro', organizacion: 'GHEMET' };
+      const a = CARp.permiso(L, u, 'LIBRE/SUB'), b = CARp.permiso(L, u, 'CERRADA/SUB'), t = CARp.arbol(L, u, {}).map(x => x.ruta);
+      ok(a.leer && a.descargar && !a.subir && !b.leer && t.includes('LIBRE/SUB') && !t.includes('CERRADA'), 'una carpeta sin permisos la ven y descargan todos; la que tiene permisos solo quien está en ellos');
+    }
     const { crcSigue } = require('../lib/zipflujo'); ok(crcSigue(0, Buffer.from('123456789')) === 0xCBF43926, 'CRC-32 del ZIP (vector de prueba 123456789)');
     // desplazar carpeta (gestor): los contenedores la siguen
     await entra('gestor@anin.gob.pe');
@@ -787,6 +792,15 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     r = await subeDoc('WIP/ETAPA 1/CONTRATISTA', 'PLANO-A-101.pdf'); const cPlano = r.j.contenedor && r.j.contenedor.id || r.j.contenedor; ok(r.status === 200 && cPlano, 'se carga un PDF al WIP para usarlo como plano');
     r = await pide(O + '/planos?disponibles=1'); ok(r.status === 200 && r.j.planos.length === 0 && r.j.disponibles.some(d => d.id === cPlano), 'el PDF del CDE aparece como plano disponible (' + (r.j.disponibles || []).length + ')');
     r = await pide(O + '/planos', { json: { contenedores: [cPlano, 'no-existe'], coleccion: 'Paquete 11', carpeta: 'Arquitectura' } }); ok(r.j.agregados === 1, 'se registra en una colección y carpeta de obra, sin duplicar el archivo');
+    { // v0.21: lo registrado en Seguimiento de obra lo ven todos los usuarios del proyecto, aunque no lean la carpeta del CDE donde está el PDF
+      await pide('/api/proyectos/' + pd + '/miembros', { json: { email: 'obra.sup@superv.com', rol: 'lector', organizacion: 'SUPERV' } });
+      galleta = ''; await pide('/api/acceso/local', { json: { email: 'obra.sup@superv.com', clave: 'prueba' } });
+      const vP = (await pide(O + '/planos')).j, plano = (vP.planos || []).find(x => x.id === cPlano);
+      const pdf = plano ? await fetch(B + O + '/pdf/' + plano.version_id, { headers: { cookie: galleta } }) : { status: 0, headers: new Map() }, cde = plano ? await fetch(B + '/api/proyectos/' + pd + '/versiones/' + plano.version_id + '/descargar', { headers: { cookie: galleta } }) : { status: 0 };
+      const otro = await fetch(B + O + '/pdf/no-existe', { headers: { cookie: galleta } });
+      ok(plano && pdf.status === 200 && pdf.headers.get('content-type') === 'application/pdf' && cde.status === 403 && otro.status === 404, 'un usuario de otra empresa ve y abre en Seguimiento de obra el plano que registró otro, sin ganar permiso sobre la carpeta del CDE (' + [!!plano, pdf.status, cde.status, otro.status].join('/') + ')');
+      galleta = ''; await pide('/api/acceso/local', { json: { email: 'admin@anin.gob.pe', clave: 'prueba' } });
+    }
     r = await pide(O + '/tareas', { json: { titulo: 'CORREGIR EN OBRA', estado: 'p1', categoria: 'Arquitectura', plano_id: cPlano, x: 0.4, y: 1.7, horas: '2,5', costo: 120 } }); const tO = r.j.id; ok(r.status === 200 && r.j.numero === 1, 'tarea #1 creada sobre el plano');
     r = await pide(O + '/tareas/' + tO, { method: 'PUT', json: { estado: 'completado', fin: '15/11/2026', checklist: [{ texto: 'Picar', hecho: true }, { texto: '' }], etiquetas: 'muro, acabado' } }); ok(r.j.cambios === 4, 'se edita estado, fecha, checklist y etiquetas (' + r.j.cambios + ')');
     r = await pide(O + '/tareas/' + tO + '/mensaje', { json: { texto: 'Listo para comprobar' } });

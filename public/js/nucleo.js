@@ -69,7 +69,14 @@
   ICO.miembros = '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.5a5 5 0 0 1 6 5"/></svg>';
   ICO.ayuda = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01"/></svg>';
   ICO.cuadros = '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
+  ICO.luna = '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
+  ICO.sol = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/></svg>';
   N.ICO = ICO;
+  /** Modo claro u oscuro de todo el CDE (lo recuerda cada navegador). Se aplica al <html>: las hojas oscuro.css hacen el resto. */
+  N.tema = () => { try { const t = localStorage.getItem('cde.tema'); if (t) return t === 'oscuro' ? 'oscuro' : 'claro'; if (localStorage.getItem('cde.usuTema') === 'oscuro') return 'oscuro'; } catch (e) {} return N._tema || 'claro'; };
+  N.ponTema = (t) => { N._tema = t === 'oscuro' ? 'oscuro' : 'claro'; try { localStorage.setItem('cde.tema', N._tema); } catch (e) {} document.documentElement.classList.toggle('tema-oscuro', N._tema === 'oscuro'); document.querySelectorAll('[data-btema]').forEach(b => { b.innerHTML = N._tema === 'oscuro' ? ICO.sol : ICO.luna; b.title = N._tema === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'; }); };
+  N.botonTema = () => '<button class="redondo" data-btema title="' + (N.tema() === 'oscuro' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro') + '" onclick="CDE.N.ponTema(CDE.N.tema() === \'oscuro\' ? \'claro\' : \'oscuro\')">' + (N.tema() === 'oscuro' ? ICO.sol : ICO.luna) + '</button>';
+  document.documentElement.classList.toggle('tema-oscuro', N.tema() === 'oscuro');
   N.iniciales = (s) => String(s || '?').split('@')[0].split(/[._\- ]+/).map(x => x[0] || '').join('').slice(0, 2).toUpperCase();
   /** Foto de perfil (si la persona la puso) o sus iniciales, en el círculo. La foto vive en la base del CDE, no en el programa. */
   N.fotoUrl = (f) => f && f.clave ? '/api/perfil/foto/' + encodeURIComponent(f.clave) + '?v=' + encodeURIComponent(f.v || '') : '';
@@ -88,7 +95,7 @@
     const yo = N.YO || {};
     const barra = '<header class="barra"><a class="app" href="#/" title="Direcciones ejecutoras"><img class="logoa" src="' + N.MARCA.logo + '" alt="ANIN"><b>CDE</b><span class="sep"></span></a>' +
       (p ? '<button class="selp" id="selProyecto"><span class="mono">' + esc(p.codigo) + '</span> · ' + esc(p.nombre) + ' <i>▾</i></button>' : '<span class="selp pista">Direcciones ejecutoras</span>') +
-      '<div class="crece"></div><a class="redondo" href="docs/README.html" target="_blank" title="Ayuda" onclick="return false">' + ICO.ayuda + '</a><button class="redondo usuario" id="menuUsuario" title="' + esc(yo.email || '') + '">' + N.circulo(yo.email, yo.foto) + ' <i>▾</i></button></header>';
+      '<div class="crece"></div>' + N.botonTema() + '<a class="redondo" href="docs/README.html" target="_blank" title="Ayuda" onclick="return false">' + ICO.ayuda + '</a><button class="redondo usuario" id="menuUsuario" title="' + esc(yo.email || '') + '">' + N.circulo(yo.email, yo.foto) + ' <i>▾</i></button></header>';
     const ub = p && p.ubicacion, donde = p ? '<a class="donde" href="#/p/' + p.id + '/inicio" title="Inicio del proyecto"><small>' + esc(ub ? ub.direccion : 'Sin dirección') + '</small><small class="n2">' + esc(ub ? ub.subNombre : 'Sin subdirección') + '</small><b>' + esc(p.nombre) + '</b></a>' : '';
     const lateral = '<aside class="lateral">' + (p ? donde + '<nav>' + N.MODULOS.filter(x => !x.abajo && !x.oculto).map(x => '<a class="' + (x.r === modulo ? 'activo' : '') + '" href="#/p/' + p.id + x.r + '">' + ICO[x.ico] + '<span>' + x.nombre + '</span></a>').join('') +
       '<a href="visor.html?pid=' + p.id + '" target="_blank">' + ICO.visor + '<span>Visor GIS/BIM</span></a></nav><div class="crece"></div><nav class="abajo">' + N.MODULOS.filter(x => x.abajo).map(x => '<a class="' + (x.r === modulo ? 'activo' : '') + '" href="#/p/' + p.id + x.r + '">' + ICO[x.ico] + '<span>' + x.nombre + '</span></a>').join('') + '</nav>' : '<nav><a class="activo" href="#/">' + ICO.proyectos + '<span>Direcciones ejecutoras</span></a></nav><div class="crece"></div>') +

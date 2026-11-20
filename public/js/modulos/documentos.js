@@ -15,7 +15,7 @@
   const N = CDE.N, { esc, api, fecha, tam, num, ventana, dia, estado, aviso, app } = N;
   const Q0 = () => ({ q: '', contenido: false, historial: false, proyectos: [], filtros: { nombre: '', tipo: [], estatus: [], formato: [], sector: [], originador: [], volumen: [], nivel: [], disciplina: [], etapaRev: [], estatusRev: [], etapa: [], estadoCde: [] }, fechas: [{ tipo: '', desde: '', hasta: '' }], pagina: 1, porPagina: 100, orden: 'numero', dir: 'asc' });
   const LUPA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>';
-  const COLS_DEF = ['archivo', 'numero', 'titulo', 'revision', 'version', 'estatusRev', 'bloqueado', 'estatus', 'modificado'];
+  const COLS_DEF = ['archivo', 'numero', 'titulo', 'carpeta', 'revision', 'version', 'estatusRev', 'bloqueado', 'estatus', 'modificado'];
   const ICO_ARCH = (ext) => { const e = String(ext || '').toLowerCase(); const col = e === 'pdf' ? '#c0392b' : ['rvt', 'rfa'].includes(e) ? '#1f6fb2' : ['ifc', 'nwd', 'nwc'].includes(e) ? '#2f9e44' : ['docx', 'doc'].includes(e) ? '#2b579a' : ['xlsx', 'xls'].includes(e) ? '#217346' : ['dwg', 'dxf'].includes(e) ? '#b03a8e' : '#7b8794'; return '<span class="icoarch" style="background:' + col + '" title="' + esc(e) + '">' + esc((e || '?').slice(0, 4)) + '</span>'; };
   const ESTADO = { D: {}, CAT: null, Q: null, resultado: null, sel: new Set(), cols: null, busquedas: [] };
   /** Filtro «Carpeta»: la zona ISO 19650 donde está el documento (PUB incluye los que tienen copia publicada). */
@@ -23,7 +23,10 @@
   /** Una búsqueda guardada con los campos de antes (No. de documento / Título / Revisión / Carpeta empieza por) se pasa a los de ahora. */
   const migraConsulta = (c) => { const Q = Object.assign(Q0(), c || {}); const f = Object.assign(Q0().filtros, (c && c.filtros) || {}); if (!f.nombre) f.nombre = [f.numero, f.titulo].filter(Boolean).join(' '); delete f.numero; delete f.titulo; delete f.revision; delete f.carpeta; Q.filtros = f; return Q; };
   const claveCols = () => 'cde.doc.cols.' + ((N.YO && N.YO.email) || '');
-  const colsActivas = () => { if (ESTADO.cols) return ESTADO.cols; try { const g = JSON.parse(localStorage.getItem(claveCols()) || 'null'); if (Array.isArray(g) && g.length) ESTADO.cols = g; } catch (e) {} return ESTADO.cols || (ESTADO.cols = COLS_DEF.slice()); };
+  const colsActivas = () => { if (ESTADO.cols) return ESTADO.cols; try { const g = JSON.parse(localStorage.getItem(claveCols()) || 'null'); if (Array.isArray(g) && g.length) {
+      // v0.21: la columna «Carpeta» (carpeta y subcarpetas de cada archivo) se suma una vez a las columnas ya guardadas; si después se quita, no vuelve
+      if (!g.includes('carpeta') && !localStorage.getItem(claveCols() + '.carpeta')) { const i = g.indexOf('titulo'); g.splice(i >= 0 ? i + 1 : Math.min(3, g.length), 0, 'carpeta'); localStorage.setItem(claveCols(), JSON.stringify(g)); }
+      localStorage.setItem(claveCols() + '.carpeta', '1'); ESTADO.cols = g; } } catch (e) {} return ESTADO.cols || (ESTADO.cols = COLS_DEF.slice()); };
   const guardaCols = () => { try { localStorage.setItem(claveCols(), JSON.stringify(ESTADO.cols)); } catch (e) {} };
 
   /** «Seleccionar valores…»: casillas con buscador, como el desplegable multivalor de Aconex. */
@@ -131,6 +134,7 @@
         case 'modificado': case 'creado': case 'carga': return '<td>' + (f[k] ? dia(f[k]) : '') + '</td>';
         case 'tamano': return '<td class="num">' + tam(f.tamano) + '</td>';
         case 'estadoCde': return '<td>' + estado(f.estadoCde) + '</td>';
+        case 'carpeta': { const tr = String(f.carpeta || '').split('/').filter(Boolean); return '<td class="dcarp" title="' + esc(f.carpeta ? f.carpeta.split('/').join(' › ') : 'Archivos de proyecto') + '">' + (tr.length ? tr.map((s, i) => '<a href="#" data-irc="' + esc(tr.slice(0, i + 1).join('/')) + '" data-p="' + esc(f.proyecto_id) + '" data-z="' + esc(f.estadoCde || '') + '" title="Abrir la carpeta ' + esc(tr.slice(0, i + 1).join(' › ')) + '">' + esc(s) + '</a>').join('<span class="dsep">›</span>') : '<span class="pista">Archivos de proyecto</span>') + '</td>'; }
         case 'por': return '<td>' + (f.por ? N.avatarMini(f.por) + ' ' + esc(f.por.split('@')[0]) : '') + '</td>';
         default: return '<td>' + esc(f[k] == null ? '' : String(f[k])) + '</td>'; } };
       const th = (k) => k === 'archivo' ? '<th class="chk"><input type="checkbox" id="dTodos"' + (Rr.filas.length && Rr.filas.every(f => ESTADO.sel.has(f.vid)) ? ' checked' : '') + '></th><th>Archivo</th>' : '<th data-o="' + k + '" class="ord' + (Q.orden === k ? ' on' : '') + '">' + esc(nombres[k] || k) + (Q.orden === k ? (Q.dir === 'desc' ? ' ↓' : ' ↑') : '') + '</th>';
@@ -142,6 +146,7 @@
       const st = cont.querySelector('#dSelTodo'); if (st) st.onclick = (e) => { e.preventDefault(); Rr.filas.forEach(f => ESTADO.sel.add(f.vid)); pintaResultados(); };
       cont.querySelectorAll('th[data-o]').forEach(h => h.onclick = () => { if (Q.orden === h.dataset.o) Q.dir = Q.dir === 'desc' ? 'asc' : 'desc'; else { Q.orden = h.dataset.o; Q.dir = 'asc'; } pagina(Rr.pagina); });
       cont.querySelectorAll('tr.clic').forEach(tr => tr.onclick = (e) => { if (e.target.closest('a,input')) return; location.hash = '#/p/' + tr.dataset.p + '/documentos/' + tr.dataset.cid; });
+      cont.querySelectorAll('a[data-irc]').forEach(a => a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); N.irACarpeta(a.dataset.p, a.dataset.irc, a.dataset.z); });
       const pg = cont.querySelector('#dPag'); if (pg) pg.onchange = () => pagina(Math.max(1, Math.min(Rr.paginas, +pg.value || 1)));
       const pv = cont.querySelector('#dPrev'); if (pv) pv.onclick = () => pagina(Rr.pagina - 1); const nx = cont.querySelector('#dNext'); if (nx) nx.onclick = () => pagina(Rr.pagina + 1);
     }

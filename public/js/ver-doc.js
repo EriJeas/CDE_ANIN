@@ -9,8 +9,12 @@ const docHijos = (el, local) => [...el.children].filter(c => c.localName === loc
 const docHijo = (el, local) => docHijos(el, local)[0] || null;
 const docAttr = (el, local) => { if (!el) return ''; for (const a of el.attributes) if (a.localName === local) return a.value; return ''; };
 
-/** Word: document.xml -> HTML (parrafos con su estilo, tablas, imagenes incrustadas). */
+/** Word: document.xml -> HTML (parrafos con su estilo, tablas, imagenes incrustadas). Lo usan este visualizador y la ventana de marcas e incidencias. */
 async function docAbreWord(buf, nombre) {
+  const w = docWordHtml(buf);
+  docPinta('<div class="docpapel">' + w.html + '</div>', nombre + ' · ' + w.palabras.toLocaleString('es-PE') + ' palabras');
+}
+function docWordHtml(buf) {
   const zip = fichaZip(buf), de = (ruta) => zip.find(a => a.ruta === ruta);
   const doc = de('word/document.xml'); if (!doc) throw new Error('no parece un .docx valido');
   const xml = new DOMParser().parseFromString(fichaDecodifica(doc.datos), 'application/xml');
@@ -46,7 +50,7 @@ async function docAbreWord(buf, nombre) {
   const cuerpo = (n) => [...n.children].map(c => c.localName === 'p' ? parrafo(c) : c.localName === 'tbl' ? tabla(c) : c.localName === 'sdt' ? cuerpo(docHijo(c, 'sdtContent') || c) : '').join('');
   const body = xml.getElementsByTagNameNS(W_NS, 'body')[0]; if (!body) throw new Error('el documento no trae cuerpo');
   const html = cuerpo(body), palabras = (body.textContent || '').split(/\s+/).filter(Boolean).length;
-  docPinta('<div class="docpapel">' + html + '</div>', nombre + ' · ' + palabras.toLocaleString('es-PE') + ' palabras');
+  return { html, palabras };
 }
 /** PowerPoint (o cualquier lista de { rotulo, texto } de los lectores del visor): una tarjeta por diapositiva. */
 function docAbrePartes(partes, nombre, que) {

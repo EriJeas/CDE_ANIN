@@ -19,7 +19,7 @@
   // ---------- PDF: una sola carga por version y miniaturas en memoria ----------
   const DOCS = new Map(), MINI = new Map();
   async function pdfDe(pid, vid) {
-    if (!DOCS.has(vid)) DOCS.set(vid, (async () => { await N.carga('vendor/pdf.min.js', 'pdfjsLib'); pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js'; const r = await fetch('/api/proyectos/' + pid + '/versiones/' + vid + '/descargar'); if (!r.ok) throw new Error('No se pudo abrir el PDF (' + r.status + ')'); return pdfjsLib.getDocument({ data: await r.arrayBuffer() }).promise; })().catch(e => { DOCS.delete(vid); throw e; }));
+    if (!DOCS.has(vid)) DOCS.set(vid, (async () => { await N.carga('vendor/pdf.min.js', 'pdfjsLib'); pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js'; const r = await fetch(O(pid) + '/pdf/' + vid); if (!r.ok) throw new Error('No se pudo abrir el PDF (' + r.status + ')'); return pdfjsLib.getDocument({ data: await r.arrayBuffer() }).promise; })().catch(e => { DOCS.delete(vid); throw e; }));
     return DOCS.get(vid);
   }
   async function miniatura(pid, vid, ancho) {

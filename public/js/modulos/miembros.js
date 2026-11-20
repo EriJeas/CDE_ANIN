@@ -58,7 +58,7 @@
       panel('udonas', 'Empresas', sub('empresa') + dona('empresa') + sub('grupo') + dona('grupo')) +
       panel('udonas', 'Acceso y disciplina', sub('rol') + dona('rol') + sub('disciplina') + dona('disciplina')) + '</div>';
     const chips = Object.keys(F.f).map(k => '<button class="dact" data-quita="' + k + '" title="Quitar este filtro"><span>' + esc(DIM[k].t) + ':</span> ' + esc(rotulo(k, F.f[k])) + ' ✕</button>').join('');
-    let tema = N.USU_TEMA || 'claro'; try { const t = localStorage.getItem('cde.usuTema'); if (t) tema = t === 'oscuro' ? 'oscuro' : 'claro'; } catch (e) {}
+    const tema = N.tema ? N.tema() : 'claro';   // el mismo modo de todo el CDE (botón de la luna en la barra superior)
     const selTema = '<div class="usutema" role="group" aria-label="Colores de la pantalla"><button data-tema="claro" class="' + (tema === 'claro' ? 'activa' : '') + '">Claro</button><button data-tema="oscuro" class="' + (tema === 'oscuro' ? 'activa' : '') + '">Oscuro</button></div>';
     const fila = (m) => '<tr class="item"><td>' + (m.nombre ? '<span class="unom">' + (fotoDe(m) ? N.circulo(m.email, fotoDe(m)) : '') + '<b>' + esc(m.nombre) + '</b></span>' : N.avatar(m.email, '')) + '</td><td>' + esc(m.email) + '</td><td>' + esc(m.empresa || m.organizacion || '—') + (m.empresa && m.organizacion && llano(m.empresa) !== llano(m.organizacion) ? ' <span class="pista mono">' + esc(m.organizacion) + '</span>' : '') + '</td><td>' + (m.puesto ? esc(m.puesto) : vac) + '</td><td>' + (m.disciplina ? esc(m.disciplina) : vac) + '</td><td>' + (m.funcion ? '<span class="etq mono">' + esc(m.funcion) + '</span>' : vac) + '</td><td>' + esc(acTxt(m.rol)) + '</td><td>' + fecha(m.agregado) + '</td>' + (gestor ? '<td class="accion"><button class="mini puntos" data-q="' + esc(m.email) + '">⋮</button></td>' : '<td></td>') + '</tr>';
     const filtrado = q || Object.keys(F.f).length;
@@ -77,7 +77,7 @@
     app.querySelectorAll('[data-tile]').forEach(b => b.onclick = () => { const [g, r] = b.dataset.tile.split('|'); if (F.f.grupo === g && F.f.rol === r) { delete F.f.grupo; delete F.f.rol; } else { F.f.grupo = g; F.f.rol = r; } pinta(); });
     app.querySelectorAll('[data-quita]').forEach(b => b.onclick = () => { delete F.f[b.dataset.quita]; pinta(); });
     const ul = document.getElementById('uLimpia'); if (ul) ul.onclick = () => { F.f = {}; pinta(); };
-    app.querySelectorAll('[data-tema]').forEach(b => b.onclick = () => { N.USU_TEMA = b.dataset.tema; try { localStorage.setItem('cde.usuTema', b.dataset.tema); } catch (e) {} pinta(); });
+    app.querySelectorAll('[data-tema]').forEach(b => b.onclick = () => { if (N.ponTema) N.ponTema(b.dataset.tema); pinta(); });
     const uf = document.getElementById('uFoto'); if (uf) uf.onclick = () => N.miFoto();
     // un gráfico en grande (ventana que se mueve y se agranda): la misma cuenta con todos sus valores, y sigue filtrando
     app.querySelectorAll('[data-grande]').forEach(b => b.onclick = () => { const k = b.dataset.grande, v = N.ventana(TIT[k], '<div class="usu ' + tema + ' uven" data-ug="' + k + '"></div>', { ancho: 860, alto: 560 });

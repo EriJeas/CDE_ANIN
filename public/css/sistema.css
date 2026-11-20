@@ -373,3 +373,27 @@ main.principal.usu-oscuro .usutema button.activa { background: #1f7f97; color: #
 .udona svg { width: 108px; height: 108px; } .udona.grande svg { width: 300px; height: 300px; }
 .udley span { white-space: normal; line-height: 1.2; overflow-wrap: anywhere; } .udleys { max-height: 150px; }
 .ucgt span { white-space: nowrap; } .uctile span { font-size: 10px; overflow-wrap: anywhere; }
+/* v0.21 · Búsqueda: carpeta y subcarpetas de cada archivo */
+.doctabla td.dcarp { white-space: normal; min-width: 180px; max-width: 360px; font-size: 12px; line-height: 1.45; }
+.doctabla td.dcarp a { color: var(--azul); text-decoration: none; } .doctabla td.dcarp a:hover { text-decoration: underline; }
+.doctabla td.dcarp .dsep { color: var(--gris); margin: 0 4px; }
+/* v0.21 · Word, Excel, PowerPoint y texto por páginas en la ventana de marcas e incidencias */
+.marcas .mhoja .ofhoja { position: relative; overflow: hidden; background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, .15); }
+.ofpag { position: absolute; left: 0; top: 0; transform-origin: 0 0; background: #fff; color: #1d2733; overflow: hidden; text-align: left; }
+.ofword { font: 14.5px/1.5 Calibri, Carlito, "Segoe UI", Arial, sans-serif; overflow-wrap: break-word; box-sizing: border-box; height: 100%; }
+.ofword p { margin: 0 0 8px; } .ofword h1 { font-size: 22px; margin: 16px 0 10px; } .ofword h2 { font-size: 18px; margin: 14px 0 8px; } .ofword h3 { font-size: 16px; margin: 12px 0 6px; } .ofword h4, .ofword h5, .ofword h6 { font-size: 14.5px; margin: 10px 0 6px; }
+.ofword img { max-width: 100%; height: auto; } .ofword .doclista { position: relative; } .ofword .doclista::before { content: '•'; position: absolute; left: -16px; top: 0; }
+.ofword .doctbl { border-collapse: collapse; margin: 6px 0 10px; max-width: 100%; } .ofword .doctbl td { border: 1px solid #9aa3ad; padding: 4px 7px; vertical-align: top; } .ofword .doctbl td p { margin: 0 0 3px; } .ofword .doctbl td.docvm { border-top-color: transparent; }
+.ofword .docsalto { display: none; } .ofword .docsinimg { color: #8a939d; font-size: 12px; }
+.ofxl { font: 12px/1.2 Calibri, Carlito, Arial, sans-serif; }
+.ofxl .ofxtit { height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: #217346; color: #fff; font-weight: 600; } .ofxl .ofxtit span { font-weight: 400; opacity: .85; }
+.ofxl table { border-collapse: collapse; table-layout: fixed; }
+.ofxl th, .ofxl td { height: 22px; padding: 0 5px; border: 1px solid #d4d9df; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
+.ofxl th { background: #f1f3f5; color: #59636e; font-weight: 400; text-align: center; } .ofxl tr.ofxc th { height: 24px; } .ofxl td.n { text-align: right; }
+.ofppt { position: relative; overflow: hidden; font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; color: #1d2733; }
+.ofppt .ofsh { position: absolute; box-sizing: border-box; overflow: hidden; }
+.ofppt .oftx { display: flex; flex-direction: column; height: 100%; padding: 4px 8px; box-sizing: border-box; } .ofppt .oftx p { margin: 0 0 2px; line-height: 1.15; } .ofppt .ofbu { margin-right: 6px; }
+.ofppt .ofvacio { display: grid; place-items: center; border: 1px dashed #b8c0ca; color: #8490a1; font-size: 13px; background: rgba(240, 243, 246, .6); }
+.ofppt .oftbl { border-collapse: collapse; width: 100%; } .ofppt .oftbl td { border: 1px solid #9aa3ad; vertical-align: top; } .ofppt .oftbl .oftx { padding: 3px 6px; }
+.oftxt { margin: 0; font: 12.5px/1.6 "DejaVu Sans Mono", Consolas, monospace; white-space: pre-wrap; box-sizing: border-box; height: 100%; }
+.paginas-lista .pthv.ofeti { display: grid; place-items: center; padding: 6px; font-size: 11px; color: var(--tenue); text-align: center; background: #fff; border: 1px solid var(--linea); min-height: 70px; }

@@ -1,0 +1,333 @@
+/* CDE ANIN · MODO OSCURO de todo el CDE (botón de la luna en la barra superior; cada navegador lo recuerda).
+ * Primero la paleta (las mismas variables que usan todas las pantallas) y luego, regla por regla, el equivalente oscuro de cada color
+ * claro que estaba fijo en cde.css, portal.css y sistema.css. Lo que es papel (páginas de PDF, Word, Excel, PowerPoint, fotos) sigue blanco. */
+html.tema-oscuro {
+  color-scheme: dark;
+  --tinta: #eef7fa; --anin: #1f7f97; --anin2: #2a95ae;
+  --lienzo: #0a1922; --suelo: #0d212c; --linea: #24495a; --linea2: #1b3a48; --texto: #dbe9ee; --tenue: #8fb0ba; --gris: #6f8e98;
+  --fondo: #0f2430; --panel: #0f2430; --borde: var(--linea); --borde2: var(--linea2); --suave: var(--tenue);
+  --azul: #5cc0e2; --azul2: #12384a; --azul3: #1e5468; --azulh: #8fd3e6;
+  --verde: #4cc38a; --verde2: #10372a; --ambar: #f0b45a; --ambar2: #3a2a10; --rojo: #f0716a; --rojo2: #3b1717;
+  --sombra: none; --flota: 0 0 0 1px rgba(143, 211, 230, .10), 0 16px 40px -8px rgba(0, 0, 0, .7);
+}
+html.tema-oscuro body { background: var(--lienzo); color: var(--texto); }
+
+/* desde cde.css (18 reglas) */
+html.tema-oscuro input, html.tema-oscuro select, html.tema-oscuro textarea { background-color: var(--fondo) }
+html.tema-oscuro .estado.WIP { background-color: var(--suelo) }
+html.tema-oscuro .estado.ARCHIVADO { background-color: var(--suelo); color: var(--tenue) }
+html.tema-oscuro .aviso.ambar { border-color: var(--linea) }
+html.tema-oscuro .barra .b { background-color: var(--suelo) }
+html.tema-oscuro .ventana .vcab { background-color: var(--suelo) }
+html.tema-oscuro .arbol .nodo.wip { background-color: var(--suelo) }
+html.tema-oscuro .paso { background-color: var(--suelo) }
+html.tema-oscuro .estado.rechazada { background-color: var(--suelo); color: var(--tenue) }
+html.tema-oscuro .arbol .nodo.activo button.mini { border-color: var(--linea) }
+html.tema-oscuro .etapa { background-color: var(--suelo) }
+html.tema-oscuro .etapa .paso { background-color: var(--fondo) }
+html.tema-oscuro .etapaEd { background-color: var(--suelo) }
+html.tema-oscuro .pasoEd { background-color: var(--fondo) }
+html.tema-oscuro .decidir { background-color: var(--fondo) }
+html.tema-oscuro .cuerpo { background-color: var(--suelo) }
+html.tema-oscuro .estado.anulada { background-color: var(--suelo); color: var(--tenue) }
+html.tema-oscuro .estado.no-legible { background-color: var(--suelo); color: var(--tenue) }
+/* desde portal.css (239 reglas) */
+html.tema-oscuro .barra { background-color: var(--fondo) }
+html.tema-oscuro .barra .selp:hover { background-color: var(--suelo) }
+html.tema-oscuro .barra .redondo:hover { background-color: var(--suelo) }
+html.tema-oscuro .ini { background-color: var(--azul2) }
+html.tema-oscuro .lateral { background-color: var(--fondo) }
+html.tema-oscuro .lateral nav a:hover { background-color: var(--suelo) }
+html.tema-oscuro .lateral .plegar:hover { background-color: var(--suelo) }
+html.tema-oscuro .kpi { background-color: var(--fondo) }
+html.tema-oscuro button, html.tema-oscuro .boton { border-color: var(--linea); background-color: var(--fondo) }
+html.tema-oscuro button:hover, html.tema-oscuro .boton:hover { background-color: var(--suelo); border-color: var(--linea) }
+html.tema-oscuro button.peligro:hover { border-color: var(--linea) }
+html.tema-oscuro input, html.tema-oscuro select, html.tema-oscuro textarea { border-color: var(--linea); background-color: var(--fondo) }
+html.tema-oscuro tr.clic:hover, html.tema-oscuro tr.item:hover { background-color: var(--suelo) }
+html.tema-oscuro .ventana .vcab { background-color: var(--fondo) }
+html.tema-oscuro .chip { background-color: var(--suelo) }
+html.tema-oscuro .etapa { background-color: var(--suelo) }
+html.tema-oscuro .acctabs .tabs button:hover { background-color: var(--suelo) }
+html.tema-oscuro .arbolacc .nodo:hover { background-color: var(--suelo) }
+html.tema-oscuro .arbolacc .nodo.activo { background-color: var(--suelo) }
+html.tema-oscuro .puntos:hover { background-color: var(--suelo) }
+html.tema-oscuro .acctabla td.accion, html.tema-oscuro .acctabla th.accion { background-color: var(--fondo) }
+html.tema-oscuro .acctabla tr:hover td.accion { background-color: var(--suelo) }
+html.tema-oscuro .menuf { background-color: var(--fondo) }
+html.tema-oscuro .menuf .op:hover { background-color: var(--suelo) }
+html.tema-oscuro .menuf .op .mico { color: var(--tenue) }
+html.tema-oscuro .zonasbtn { background-color: var(--fondo) }
+html.tema-oscuro .zonasbtn button { border-color: var(--linea); background-color: var(--fondo) }
+html.tema-oscuro .cargar .elige button { background-color: var(--fondo); border-color: var(--linea) }
+html.tema-oscuro .cargar .elige button:hover { background-color: var(--suelo) }
+html.tema-oscuro .cargar .barrita { background-color: var(--suelo) }
+html.tema-oscuro .minicarga { background-color: var(--fondo) }
+html.tema-oscuro .destarbol .nodo:hover { background-color: var(--suelo) }
+html.tema-oscuro .destarbol .nodo.sel { background-color: var(--suelo) }
+html.tema-oscuro .selbarra { background-color: var(--suelo); border-color: var(--linea) }
+html.tema-oscuro .etq { background-color: var(--suelo) }
+html.tema-oscuro .aviso.azul { background-color: var(--suelo); border-color: var(--linea) }
+html.tema-oscuro .compartir .opc.on { background-color: var(--suelo) }
+html.tema-oscuro .marcas .mhoja { background-color: var(--suelo) }
+html.tema-oscuro .marcas .mitem.sel { background-color: var(--suelo) }
+html.tema-oscuro .marcas .sinpdf { background-color: var(--fondo) }
+html.tema-oscuro .estch { background-color: var(--suelo) }
+html.tema-oscuro .estch.no { background-color: var(--suelo); color: var(--azulh) }
+html.tema-oscuro .avm { border-color: var(--linea) }
+html.tema-oscuro .avm.mas { background-color: var(--suelo); color: var(--texto) }
+html.tema-oscuro .diag { background-color: var(--suelo) }
+html.tema-oscuro .resumen { background-color: var(--suelo) }
+html.tema-oscuro .filtros { background-color: var(--fondo) }
+html.tema-oscuro .subnav a.activo { background-color: var(--suelo) }
+html.tema-oscuro .conmutador span::before { background-color: var(--fondo) }
+html.tema-oscuro .paso-card { background-color: var(--fondo) }
+html.tema-oscuro .diag-caja { background-color: var(--suelo) }
+html.tema-oscuro .resumen-rev { background-color: var(--suelo) }
+html.tema-oscuro .paso-card .pc-dec { background-color: var(--suelo) }
+html.tema-oscuro .iarchivo { background-color: var(--suelo) }
+html.tema-oscuro .marcas .mlados button { background-color: var(--fondo) }
+html.tema-oscuro .marcas .mtit { background-color: var(--fondo) }
+html.tema-oscuro .marcas .sinpdf { background-color: var(--fondo) }
+html.tema-oscuro .chip { background-color: var(--suelo) }
+html.tema-oscuro .masopc { background-color: var(--suelo) }
+html.tema-oscuro .etq.rojo { background-color: var(--suelo); color: var(--azulh) }
+html.tema-oscuro .docbuscar .buscacaja { background-color: var(--fondo) }
+html.tema-oscuro .chipsel { background-color: var(--fondo) }
+html.tema-oscuro .chipsel .chip { background-color: var(--suelo) }
+html.tema-oscuro .selvals { background-color: var(--fondo) }
+html.tema-oscuro .selvals label:hover { background-color: var(--suelo) }
+html.tema-oscuro .doctabla tr.clic:hover td { background-color: var(--suelo) }
+html.tema-oscuro .colfila { background-color: var(--fondo) }
+html.tema-oscuro .dhitem.on { background-color: var(--suelo); border-color: var(--linea) }
+html.tema-oscuro .dminiat { background-color: var(--suelo) }
+html.tema-oscuro .dminiat .dext { color: var(--tenue); background-color: var(--fondo) }
+html.tema-oscuro .cf-aviso.mal { background-color: var(--suelo); color: var(--azulh) }
+html.tema-oscuro .cf-aviso.ok { background-color: var(--suelo); color: var(--azulh) }
+html.tema-oscuro .cf-tabla th { background-color: var(--fondo) }
+html.tema-oscuro .cf-tabla th.cf-nom, html.tema-oscuro .cf-tabla td.cf-nom { background-color: var(--fondo) }
+html.tema-oscuro .cf-tabla td input, html.tema-oscuro .cf-tabla td select { border-color: var(--linea); background-color: var(--fondo) }
+html.tema-oscuro .cf-int span::after { background-color: var(--fondo) }
+html.tema-oscuro .cf-lado { background-color: var(--fondo) }
+html.tema-oscuro .cest.respondido { background-color: var(--verde2) }
+html.tema-oscuro .cest.pendiente { background-color: var(--ambar2) }
+html.tema-oscuro .cest.vencido { background-color: var(--rojo2); color: var(--azulh) }
+html.tema-oscuro .cest.cerrado { background-color: var(--suelo); color: var(--tenue) }
+html.tema-oscuro .vcorreo { background-color: var(--suelo) }
+html.tema-oscuro .vhilo { background-color: var(--fondo) }
+html.tema-oscuro .vhtit { background-color: var(--suelo) }
+html.tema-oscuro .hn { border-bottom-color: var(--linea); background-color: var(--fondo) }
+html.tema-oscuro .hn:hover { background-color: var(--suelo) }
+html.tema-oscuro .hn.on { background-color: var(--verde2) }
+html.tema-oscuro .hn.raiz { background-color: var(--suelo) }
+html.tema-oscuro .hn.raiz.on { background-color: var(--verde2) }
+html.tema-oscuro .hn .hl { border-left-color: var(--linea) }
+html.tema-oscuro .hn .hp { background-color: var(--fondo); color: var(--tenue) }
+html.tema-oscuro .hn .h2 .mono { color: var(--texto) }
+html.tema-oscuro .hn .h3 { color: var(--tenue) }
+html.tema-oscuro .vhnav { background-color: var(--fondo) }
+html.tema-oscuro .vpapel { background-color: var(--fondo) }
+html.tema-oscuro .vorgs b { color: var(--texto) }
+html.tema-oscuro .vtres { border-bottom-color: var(--linea) }
+html.tema-oscuro .vasunto { color: var(--tenue); border-bottom-color: var(--linea) }
+html.tema-oscuro .vsec { background-color: var(--suelo); color: var(--texto) }
+html.tema-oscuro .vadj > div { border-bottom-color: var(--linea) }
+html.tema-oscuro .veriframe { background-color: var(--fondo) }
+html.tema-oscuro .rvaviso { background-color: var(--suelo) }
+html.tema-oscuro .rvaviso.alerta { background-color: var(--ambar2) }
+html.tema-oscuro .rvpasos { border-color: var(--linea); background-color: var(--fondo) }
+html.tema-oscuro .rvp { border-right-color: var(--linea) }
+html.tema-oscuro .rvp.pend { background-color: var(--suelo); color: var(--tenue) }
+html.tema-oscuro .rvronda { background-color: var(--ambar2); border-color: var(--linea) }
+html.tema-oscuro .estado.rechazado { background-color: var(--suelo); color: var(--azulh) }
+html.tema-oscuro .rvcorr { border-color: var(--linea); background-color: var(--suelo) }
+html.tema-oscuro .portada { background-color: var(--suelo) }
+html.tema-oscuro .pcab { background-color: var(--fondo) }
+html.tema-oscuro .pcentro { background: var(--fondo) }
+html.tema-oscuro .ppie { color: var(--tenue) }
+html.tema-oscuro .et:hover { background-color: var(--suelo) }
+html.tema-oscuro .eh { background-color: var(--fondo) }
+html.tema-oscuro .eh.sin { background-color: var(--suelo); color: var(--tenue) }
+html.tema-oscuro .eh.sin .en { color: var(--tenue) }
+html.tema-oscuro .lateral .donde { background-color: var(--suelo) }
+html.tema-oscuro .pmod { background-color: var(--fondo) }
+html.tema-oscuro .modb { color: var(--azulh); background-color: var(--fondo) }
+html.tema-oscuro .modb:hover { background-color: var(--suelo) }
+html.tema-oscuro .barra { background-color: var(--fondo) }
+html.tema-oscuro .lateral { background-color: var(--fondo) }
+html.tema-oscuro .lateral nav a:hover { background-color: var(--suelo) }
+html.tema-oscuro .tarjeta { background-color: var(--fondo) }
+html.tema-oscuro .acctabla, html.tema-oscuro .accarbol { background-color: var(--fondo) }
+html.tema-oscuro button, html.tema-oscuro .boton { border-color: var(--linea) }
+html.tema-oscuro button:hover, html.tema-oscuro .boton:hover { background-color: var(--suelo); border-color: var(--linea) }
+html.tema-oscuro button.peligro { color: var(--azulh); border-color: var(--linea) }
+html.tema-oscuro button.peligro:hover { background-color: var(--suelo) }
+html.tema-oscuro input, html.tema-oscuro select, html.tema-oscuro textarea { border-color: var(--linea) }
+html.tema-oscuro input:hover, html.tema-oscuro select:hover, html.tema-oscuro textarea:hover { border-color: var(--linea) }
+html.tema-oscuro .acctabla tr.item:hover > td { background-color: var(--suelo) }
+html.tema-oscuro .acctabla tr:hover td.accion { background-color: var(--suelo) }
+html.tema-oscuro .acctabla .puntos:hover { background-color: var(--suelo) }
+html.tema-oscuro .modb { border-color: var(--linea) }
+html.tema-oscuro .menuf .op:hover { background-color: var(--suelo) }
+html.tema-oscuro .ventana .vcab { background-color: var(--fondo) }
+html.tema-oscuro .ventana .vcab button:hover { background-color: var(--suelo) }
+html.tema-oscuro .pcentro { background: var(--fondo) }
+html.tema-oscuro .rvlista th.rvpaso, html.tema-oscuro .rvlista td.rvpaso { background-color: var(--fondo) }
+html.tema-oscuro .rvlista tr.clic:hover td.rvpaso { background-color: var(--suelo) }
+html.tema-oscuro .rvprog { background-color: var(--fondo) }
+html.tema-oscuro .rvpg { background-color: var(--suelo); color: var(--tenue) }
+html.tema-oscuro .rvpg.hecho { background-color: var(--suelo) }
+html.tema-oscuro .rvcerrado { border-color: var(--linea); background-color: var(--suelo) }
+html.tema-oscuro .rvcierre { background-color: var(--fondo) }
+html.tema-oscuro .rvsig { background-color: var(--suelo) }
+html.tema-oscuro .obtabs a:hover { background-color: var(--suelo) }
+html.tema-oscuro .obtabs a span { background-color: var(--suelo) }
+html.tema-oscuro .obchip { background-color: var(--fondo); border-color: var(--linea) }
+html.tema-oscuro .obplano { background-color: var(--fondo) }
+html.tema-oscuro .obmini { background-color: var(--suelo) }
+html.tema-oscuro .obdfila:hover { background-color: var(--suelo) }
+html.tema-oscuro .obhoja { background-color: var(--fondo) }
+html.tema-oscuro .oblienzo { background-color: var(--suelo) }
+html.tema-oscuro .obpapel { background-color: var(--fondo) }
+html.tema-oscuro .obpin { border-color: var(--linea) }
+html.tema-oscuro .oblado { background-color: var(--fondo) }
+html.tema-oscuro .obtfila:hover { background-color: var(--suelo) }
+html.tema-oscuro .obvistas { border-color: var(--linea) }
+html.tema-oscuro .obcolu { background-color: var(--suelo) }
+html.tema-oscuro .obcard { background-color: var(--fondo) }
+html.tema-oscuro .obtinput:hover, html.tema-oscuro .obtinput:focus { border-color: var(--linea) }
+html.tema-oscuro .obrel { background-color: var(--suelo) }
+html.tema-oscuro .obactiv { background-color: var(--suelo) }
+html.tema-oscuro .obthumb { background-color: var(--suelo) }
+html.tema-oscuro .obbar { background-color: var(--suelo) }
+html.tema-oscuro .obfirma { background-color: var(--suelo) }
+html.tema-oscuro .obfirmada img { background-color: var(--suelo) }
+html.tema-oscuro .obenlace { background-color: var(--fondo) }
+html.tema-oscuro .obherr { background-color: var(--suelo) }
+html.tema-oscuro .obhb:hover { background-color: var(--suelo) }
+html.tema-oscuro .obhcol button { border-color: var(--linea) }
+html.tema-oscuro .obindl a:hover { background-color: var(--suelo) }
+html.tema-oscuro .obcal { background-color: var(--fondo) }
+html.tema-oscuro .obcsem { background-color: var(--suelo) }
+html.tema-oscuro .obcdia.fuera { background-color: var(--suelo) }
+html.tema-oscuro .obcev { background-color: var(--fondo); color: var(--texto) }
+html.tema-oscuro .obcev:hover { background-color: var(--fondo) }
+html.tema-oscuro .obgantt { background-color: var(--fondo) }
+html.tema-oscuro .obgcab { background-color: var(--suelo) }
+html.tema-oscuro .obgnom { background-color: var(--fondo) }
+html.tema-oscuro .obgcab .obgnom { background-color: var(--suelo) }
+html.tema-oscuro .obgfila:hover .obgnom, html.tema-oscuro .obgfila:hover { background-color: var(--suelo) }
+html.tema-oscuro .obgfondo i { background-color: var(--suelo) }
+html.tema-oscuro .obgbarra { background-color: var(--fondo) }
+html.tema-oscuro .obrcard { background-color: var(--fondo) }
+html.tema-oscuro .obrcard:hover { background-color: var(--suelo) }
+html.tema-oscuro .obrcard.activa { background-color: var(--fondo) }
+html.tema-oscuro .obrpaso { background-color: var(--suelo) }
+html.tema-oscuro .obrcod { background-color: var(--suelo) }
+html.tema-oscuro .obrlado { background-color: var(--fondo) }
+html.tema-oscuro .obrniv button b { background-color: var(--suelo) }
+html.tema-oscuro .obrniv button:hover { background-color: var(--suelo) }
+html.tema-oscuro .obrvis { background-color: var(--fondo) }
+html.tema-oscuro .obrmini { background-color: var(--fondo) }
+html.tema-oscuro .obrmapa.grande { background-color: var(--suelo) }
+html.tema-oscuro .obrpto { border-color: var(--linea) }
+html.tema-oscuro .obrctit { background-color: var(--fondo) }
+html.tema-oscuro .fcx { background-color: var(--fondo) }
+html.tema-oscuro .fcx.ok { border-color: var(--linea) }
+html.tema-oscuro .fcx.sin { border-color: var(--linea) }
+html.tema-oscuro .fcxi { background-color: var(--fondo) }
+html.tema-oscuro .fcbar { background-color: var(--suelo) }
+html.tema-oscuro .fcmigas { background-color: var(--suelo) }
+html.tema-oscuro .fccopia { background-color: var(--suelo) }
+html.tema-oscuro .opacc { background-color: var(--suelo) }
+html.tema-oscuro .opacc:hover { background-color: var(--suelo) }
+html.tema-oscuro .opchips button { background-color: var(--suelo) }
+html.tema-oscuro .opsw i::after { background-color: var(--fondo) }
+html.tema-oscuro .opcard { background-color: var(--fondo) }
+html.tema-oscuro .oplinea { background-color: var(--suelo) }
+html.tema-oscuro .oplinea i { background-color: var(--azul2) }
+html.tema-oscuro .opvacio { border-color: var(--linea) }
+html.tema-oscuro .opzona { border-color: var(--linea) }
+html.tema-oscuro .opgantt { background-color: var(--fondo) }
+html.tema-oscuro .opgcab { background-color: var(--suelo) }
+html.tema-oscuro .opgn { background-color: var(--fondo) }
+html.tema-oscuro .opgc { background-color: var(--fondo) }
+html.tema-oscuro .opgcab .opgn, html.tema-oscuro .opgcab .opgc { background-color: var(--suelo) }
+html.tema-oscuro .opgf:hover .opgn, html.tema-oscuro .opgf:hover .opgc { background-color: var(--suelo) }
+html.tema-oscuro .opgf.res .opgn, html.tema-oscuro .opgf.res .opgc { background-color: var(--suelo) }
+html.tema-oscuro .opgfondo i { background-color: var(--suelo) }
+html.tema-oscuro .opga { background-color: var(--azul2) }
+html.tema-oscuro .opga.ok { background-color: var(--verde2) }
+html.tema-oscuro .opga.at { background-color: var(--ambar2) }
+html.tema-oscuro .opga.cr { background-color: var(--rojo2) }
+html.tema-oscuro .opvin em { background-color: var(--suelo) }
+html.tema-oscuro .fcret { border-color: var(--linea) }
+html.tema-oscuro .fcret .mono { background-color: var(--fondo) }
+html.tema-oscuro .fcret.ok { border-color: var(--linea) }
+html.tema-oscuro .fcdl.no span { color: var(--azulh) }
+html.tema-oscuro .acsub { background-color: var(--fondo) }
+html.tema-oscuro .acbarra:hover { background-color: var(--fondo) }
+html.tema-oscuro .acbarra.activa { background-color: var(--fondo) }
+html.tema-oscuro .accuerpo { background-color: var(--fondo) }
+html.tema-oscuro .fvlmv { background-color: var(--suelo); border-color: var(--linea) }
+html.tema-oscuro .fvmod { border-color: var(--linea) }
+/* desde sistema.css (39 reglas) */
+html.tema-oscuro .aviso.verde { border-color: var(--linea) }
+html.tema-oscuro .aviso.ambar { border-color: var(--linea) }
+html.tema-oscuro .aviso.rojo { border-color: var(--linea) }
+html.tema-oscuro button, html.tema-oscuro .boton { border-color: var(--linea); background-color: var(--fondo) }
+html.tema-oscuro button:hover, html.tema-oscuro .boton:hover { background-color: var(--suelo) }
+html.tema-oscuro button.peligro { color: var(--azulh); border-color: var(--linea) }
+html.tema-oscuro button.peligro:hover { background-color: var(--suelo) }
+html.tema-oscuro input, html.tema-oscuro select, html.tema-oscuro textarea { border-color: var(--linea); background-color: var(--fondo) }
+html.tema-oscuro th { background-color: var(--suelo) }
+html.tema-oscuro tr.clic:hover, html.tema-oscuro tr.item:hover, html.tema-oscuro .acctabla tr.item:hover > td, html.tema-oscuro .acctabla tr:hover td.accion { background-color: var(--suelo) }
+html.tema-oscuro .acctabla { background-color: var(--fondo) }
+html.tema-oscuro .rvlista th.rvpaso { background-color: var(--suelo) }
+html.tema-oscuro .modb { border-color: var(--linea) }
+html.tema-oscuro .modb:hover { background-color: var(--suelo) }
+html.tema-oscuro .zonasbtn button:hover { background-color: var(--suelo) }
+html.tema-oscuro .arbolacc .nodo:hover { background-color: var(--suelo) }
+html.tema-oscuro .menuf .op:hover { background-color: var(--suelo) }
+html.tema-oscuro .ventana { background-color: var(--fondo) }
+html.tema-oscuro .ventana .vcab { background-color: var(--fondo) }
+html.tema-oscuro .ventana.v-hoja .vcuerpo { background-color: var(--fondo) }
+html.tema-oscuro .et:hover { background-color: var(--suelo) }
+html.tema-oscuro a.eh.con:hover { background-color: var(--suelo) }
+html.tema-oscuro .eh.sin { background-color: var(--suelo) }
+html.tema-oscuro .acctabla th { background-color: var(--suelo) }
+html.tema-oscuro .docbuscar .buscacaja { border-color: var(--linea) }
+html.tema-oscuro .chipsel:hover, html.tema-oscuro .chipsel:focus { background-color: var(--fondo) }
+html.tema-oscuro .tbplista { background-color: var(--fondo) }
+html.tema-oscuro .tbk { background-color: var(--fondo) }
+html.tema-oscuro .tbest.e-cerrada, html.tema-oscuro .tbest.e-verificada { background-color: var(--suelo) }
+html.tema-oscuro .tbest.e-abierta { background-color: var(--ambar2) }
+html.tema-oscuro .tbest.e-vencida, html.tema-oscuro .tbest.e-rechazada { background-color: var(--suelo); color: var(--azulh) }
+html.tema-oscuro .obarbol { background-color: var(--fondo) }
+html.tema-oscuro .obrtipo button { background-color: var(--fondo) }
+html.tema-oscuro .obfcarp { background-color: var(--fondo) }
+html.tema-oscuro .obfmenu { background-color: var(--fondo) }
+html.tema-oscuro .ctp { border-color: var(--linea) }
+html.tema-oscuro .ctp.t-supuesta { background-color: var(--fondo) }
+html.tema-oscuro .ctley .t-supuesta::before { background-color: var(--fondo) }
+html.tema-oscuro .ctcl mark { background-color: var(--ambar2) }
+/* ── retoques a mano ── */
+.pcab .redondo { width: 34px; height: 34px; border-radius: 50%; border: 0; background: transparent; box-shadow: none; display: grid; place-items: center; color: var(--tenue); padding: 0; cursor: pointer; }
+.pcab .redondo svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pcab .redondo:hover { background: var(--lienzo); color: var(--anin); }
+html.tema-oscuro .barra .redondo:hover, html.tema-oscuro .pcab .redondo:hover { background: var(--azul2); color: var(--azulh); }
+html.tema-oscuro img.logoa, html.tema-oscuro .pcab img { filter: brightness(1.08); }
+html.tema-oscuro ::selection { background: #1f6f84; color: #fff; }
+html.tema-oscuro input, html.tema-oscuro select, html.tema-oscuro textarea { background-color: #0b1c26; color: var(--texto); border-color: var(--linea); }
+html.tema-oscuro input::placeholder, html.tema-oscuro textarea::placeholder { color: #5f7f89; }
+html.tema-oscuro button:not(.primario):not(.peligro):not([class*="z-"]) { color: var(--texto); }
+html.tema-oscuro button.primario { background: #1f7f97; border-color: #2a95ae; color: #fff; }
+html.tema-oscuro a { color: var(--azul); }
+html.tema-oscuro .lateral a, html.tema-oscuro .lateral .donde { color: inherit; }
+html.tema-oscuro .marcas .mhoja { background: #091820; border-color: var(--linea); }
+html.tema-oscuro .acctabla tr.item:hover > td, html.tema-oscuro .acctabla tr:hover td.accion { background: #12303d; }
+html.tema-oscuro .acctabla .puntos:hover { background: var(--azul2); }
+html.tema-oscuro hr { border-color: var(--linea); }
+html.tema-oscuro .ini:not(.foto) { background: #1f6f84; color: #e9f7fb; }
+/* Usuarios de proyecto sigue al modo de todo el CDE */
+html.tema-oscuro main.principal:has(.usu) { background: radial-gradient(1100px 520px at 72% -8%, #163a4c 0%, rgba(7, 20, 28, 0) 62%), linear-gradient(180deg, #0a1c26 0%, #06121a 100%); }

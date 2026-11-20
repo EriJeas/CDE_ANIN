@@ -93,7 +93,7 @@
     try {
       const [p, c] = await Promise.all([api('/api/proyectos/' + pid), api('/api/proyectos/' + pid + '/contenedores/' + cid)]);
       const v = (c.versiones || []).find(x => x.id === vid) || (c.versiones || [])[0]; if (!v) throw new Error('El archivo no tiene versiones.');
-      if (/\.pdf$/i.test(v.archivo || '')) return N.marcasVentana(p, c, v.id, 'marcas');
+      if (/\.pdf$/i.test(v.archivo || '') || (N.esOficina && N.esOficina(v.archivo || ''))) return N.marcasVentana(p, c, v.id, 'marcas');
       if (N.seVe && N.seVe(v.archivo || '')) return N.verArchivo(p, c, v.id);
       location.hash = '#/p/' + pid + '/c/' + cid;
     } catch (e) { N.toast(esc(e.message), 'mal'); }

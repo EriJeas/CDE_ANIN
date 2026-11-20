@@ -3,7 +3,7 @@
   const N = CDE.N, { esc, api, fecha, tam, num, ventana, barras, R, NIVEL_TXT, ZONA_TXT, dia, estado, aviso, app } = N;
   // ---------- acceso ----------
   const M = N.MARCA;
-  const cabPortada = (extra) => '<div class="pcab"><img src="' + M.logo + '" alt="ANIN"><div class="plema"><b>' + esc(M.entidad) + '</b>' + (M.lema ? '<span>' + esc(M.lema) + '</span>' : '') + '</div><div class="crece"></div>' + (extra || '') + '</div><div class="pfranja"></div>';
+  const cabPortada = (extra) => '<div class="pcab"><img src="' + M.logo + '" alt="ANIN"><div class="plema"><b>' + esc(M.entidad) + '</b>' + (M.lema ? '<span>' + esc(M.lema) + '</span>' : '') + '</div><div class="crece"></div>' + (N.botonTema ? N.botonTema() : '') + (extra || '') + '</div><div class="pfranja"></div>';
   // ---------- PORTADA 1 · acceso ----------
   async function vistaAcceso() {
     const m = await api('/api/acceso/modo');
