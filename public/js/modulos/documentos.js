@@ -48,6 +48,26 @@
 
   async function vistaDocumentos(pid, cid) {
     if (cid) return vistaDocumento(pid, cid);
+    // v0.25.2: la búsqueda ya no es una página aparte: se abre como panel lateral sobre «Carpetas» (los enlaces de antes y «Volver» llegan aquí)
+    N._busqPend = { pid, buscar: !!ESTADO.buscarAlAbrir }; ESTADO.buscarAlAbrir = false;
+    location.replace('#/p/' + pid);
+  }
+  /** Panel lateral «Búsqueda de documentos», como «Agregar permisos»: se abre con el botón «Búsqueda» de la caja «Buscar y filtrar» de Carpetas.
+   *  Se ensancha por su borde izquierdo, se amplía al área de trabajo o se separa en ventana flotante (botones de su cabecera). */
+  async function busquedaPanel(p, texto, buscar) {
+    const pid = p.id || p;
+    const v = document.querySelector('.ventana.vbusq-v'); let R;
+    if (v) { R = v.querySelector('.vcuerpo'); if (CDE.sube) v.style.zIndex = CDE.sube(); }
+    else { R = ventana('Búsqueda de documentos', '<div class="pista">Cargando…</div>', { modo: 'panel', ancho: 800, alto: 900 }); R.classList.add('vbusq'); R.closest('.ventana').classList.add('vbusq-v'); }
+    if (!ESTADO.Q) { ESTADO.Q = Q0(); ESTADO.Q.proyectos = [pid]; }
+    if (ESTADO.Q.proyectos.length === 1 && ESTADO.Q.proyectos[0] !== pid) { ESTADO.Q.proyectos = [pid]; ESTADO.resultado = null; }   // se abrió desde otro proyecto
+    if (texto) { ESTADO.Q.q = texto; buscar = true; }
+    await pintaBusqueda(pid, R);
+    if (buscar) { const b = R.querySelector('#dBuscar'); if (b) b.click(); } else { const i = R.querySelector('#dQ'); if (i) i.focus(); }
+  }
+  async function pintaBusqueda(pid, R) {
+    const $ = (id) => R.querySelector('#' + id);
+    const abreCarpeta = (pp, ruta, z) => { const ya = location.hash === '#/p/' + pp; N.irACarpeta(pp, ruta, z); if (ya && N.vistas.proyecto) N.vistas.proyecto(pp); };   // misma página: el hash no cambia, se repinta a mano
     const p = await api('/api/proyectos/' + pid);
     if (!ESTADO.CAT) ESTADO.CAT = await api('/api/documentos/catalogos');
     if (!ESTADO.Q) { ESTADO.Q = Q0(); ESTADO.Q.proyectos = [pid]; } else ESTADO.Q = migraConsulta(ESTADO.Q);
@@ -70,10 +90,9 @@
     for (const k of Object.keys(ETQ)) for (const v of (F[k] || [])) activos.push('<span class="dact"><i>' + ETQ[k] + '</i>' + esc(corto(k, v)) + '<a href="#" data-rq="' + k + '" data-rv="' + esc(v) + '" title="Quitar este filtro" aria-label="Quitar">×</a></span>');
     Q.fechas.forEach((fe, n) => { if (fe.tipo && (fe.desde || fe.hasta)) activos.push('<span class="dact"><i>' + esc((C.tiposFecha.find(t => t.valor === fe.tipo) || { texto: 'Fecha' }).texto) + '</i>' + esc((fe.desde || '…') + ' a ' + (fe.hasta || '…')) + '<a href="#" data-rf="' + n + '" title="Quitar este filtro" aria-label="Quitar">×</a></span>'); });
     const proyAct = Q.proyectos.map(id => { const x = C.proyectos.find(y => y.id === id); return '<span class="dact"><i>Proyecto</i>' + esc(x ? x.codigo + ' ' + x.nombre : id) + '<a href="#" data-rp="' + esc(id) + '" title="Buscar en todos mis proyectos" aria-label="Quitar">×</a></span>'; }).join('') || '<span class="dact todo"><i>Proyecto</i>Todos mis proyectos</span>';
-    let abierto = ESTADO.filtros; if (abierto === undefined) { try { abierto = localStorage.getItem('cde-doc-filtros') !== '0'; } catch (e) { abierto = true; } ESTADO.filtros = abierto; }
-    // la búsqueda vive dentro de Documentos de proyecto, como una pestaña más
-    app.innerHTML = N.marco(p, '', '', '<button class="mini" id="dActualizaciones" title="Últimas cargas y cambios en los documentos">Actualizaciones del documento</button>') +
-      '<div class="acctabs" style="margin-bottom:12px"><div class="tabs"><button data-ir="">Carpetas</button><button data-ir="/archivos/conjuntos">Conjuntos</button><button data-ret="1">Área de retención</button><button data-ir="/archivos/suprimidos">Elementos suprimidos</button><button class="activa">Búsqueda</button></div><a href="#/p/' + pid + '/archivos/configuracion" class="enlace">⚙ Configuración</a></div>' +
+    let abierto = ESTADO.filtros; if (abierto === undefined) { try { abierto = localStorage.getItem('cde-doc-filtros') === '1'; } catch (e) { abierto = true; } ESTADO.filtros = abierto; }
+    // v0.25.2: dentro del panel lateral, sin marco de página ni pestañas
+    R.innerHTML = '<div class="dpbarra"><span class="pista">Busca en todo el proyecto (o en varios) por número, descripción, atributos, estado, fechas o contenido.</span><span class="crece"></span><button class="mini" id="dActualizaciones" title="Últimas cargas y cambios en los documentos">Actualizaciones del documento</button></div>' +
       '<div class="tarjeta docbuscar' + (abierto ? ' abierto' : '') + '"><div class="dbarra"><div class="buscacaja crece">' + LUPA + '<input id="dQ" placeholder="Buscar por número de documento, descripción o cualquier otro campo" value="' + esc(Q.q) + '"><button class="primario" id="dBuscar">Buscar</button></div>' +
       '<button id="dFiltros" aria-expanded="' + (abierto ? 'true' : 'false') + '" title="Mostrar u ocultar los filtros"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg> Filtros' + (activos.length ? ' <b class="dcuenta">' + activos.length + '</b>' : '') + '</button>' +
       (ESTADO.busquedas.length ? '<select id="dGuardadas" style="width:auto;max-width:260px"><option value="">Búsquedas guardadas (' + ESTADO.busquedas.length + ')</option>' + ESTADO.busquedas.map(b => '<option value="' + esc(b.id) + '">' + esc(b.nombre) + '</option>').join('') + '</select>' : '') + '</div>' +
@@ -84,28 +103,26 @@
       '<div class="dcol">' + grupo('Estado y revisión', prop('Estatus', chips('estatus', C.estatus)) + prop('Estatus de revisión', chips('estatusRev', C.estatusRev)) + prop('Etapa de revisión', chips('etapaRev', C.etapaRev.map(v => ({ valor: v, texto: v, enUso: true }))))) +
       grupo('Fechas', '<div id="dFechas">' + Q.fechas.map(fechaFila).join('') + '</div><a href="#" id="dFechaMas" class="enlace">＋ Añadir otra fecha</a>') + '</div>' +
       '</div><div class="dpie"><label class="chk"><input type="checkbox" id="dContenido"' + (Q.contenido ? ' checked' : '') + '> Buscar también dentro del contenido de los archivos</label><label class="chk"><input type="checkbox" id="dHistorial"' + (Q.historial ? ' checked' : '') + '> Incluir las versiones anteriores</label><span class="crece"></span><a href="#" id="dLimpiar" class="enlace">Empezar de nuevo</a><button id="dGuardar">Guardar esta búsqueda…</button></div></div></div>' +
-      '<div class="tarjeta" style="margin-top:12px"><div class="fila" style="align-items:center;gap:8px;flex-wrap:wrap"><div class="fila" style="gap:0"><button id="dAnadir">Añadir o actualizar documentos</button><button id="dAnadirMas" class="desple" title="Más">⌄</button></div><button id="dTransmitir">Transmitir ⌄</button><button id="dHerr">Herramientas ⌄</button><button id="dInformes">Informes ⌄</button><span class="crece"></span><button id="dColumnas">Añadir/Eliminar Columnas</button></div><div id="dResultados" style="margin-top:8px"><div class="pista">Pulsa <b>Buscar</b>.</div></div></div>' + N.cierra();
-    app.querySelectorAll('.acctabs [data-ir]').forEach(b => b.onclick = () => { location.hash = '#/p/' + pid + b.dataset.ir; });
-    const bret = app.querySelector('.acctabs [data-ret]'); if (bret) bret.onclick = () => { if (!N.abreRetencion) { location.hash = '#/p/' + pid; return; } history.replaceState(null, '', '#/p/' + pid); N.abreRetencion(p); };
-    const on = (id, fn) => { const e = document.getElementById(id); if (e) e.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); fn(ev); }; };
-    const lee = () => { Q.q = document.getElementById('dQ').value; Q.contenido = document.getElementById('dContenido').checked; Q.historial = document.getElementById('dHistorial').checked; app.querySelectorAll('[data-t]').forEach(i => { F[i.dataset.t] = i.value; }); app.querySelectorAll('[data-ft]').forEach(s => { Q.fechas[+s.dataset.ft].tipo = s.value; }); app.querySelectorAll('[data-fd]').forEach(s => { Q.fechas[+s.dataset.fd].desde = s.value; }); app.querySelectorAll('[data-fh]').forEach(s => { Q.fechas[+s.dataset.fh].hasta = s.value; }); };
-    const repinta = () => { lee(); vistaDocumentos(pid); };
-    app.querySelectorAll('.chipsel[data-k]').forEach(d => { d.onclick = (e) => { if (e.target.closest('a')) return; lee(); const k = d.dataset.k; if (k === 'proyectos') selectorValores(d, C.proyectos.map(x => ({ valor: x.id, texto: x.codigo + ' ' + x.nombre, enUso: true })), Q.proyectos, (v) => { Q.proyectos = v; pintaChips(d, k); }); else { const lista = k === 'etapaRev' ? C.etapaRev.map(v => ({ valor: v, texto: v, enUso: true })) : k === 'estadoCde' ? CARPETAS : (C[k] || []); selectorValores(d, lista, F[k] || [], (v) => { F[k] = v; pintaChips(d, k); }); } }; });
-    const pintaChips = (d, k) => { lee(); const i = app.querySelector('#dQ'); const pos = i.selectionStart; vistaDocumentos(pid); };
-    app.querySelectorAll('.chip a[data-q]').forEach(a => a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); const k = a.closest('.chipsel').dataset.k; F[k] = (F[k] || []).filter(v => v !== a.dataset.q); repinta(); });
-    app.querySelectorAll('.chip a[data-qp]').forEach(a => a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); Q.proyectos = Q.proyectos.filter(v => v !== a.dataset.qp); repinta(); });
-    app.querySelectorAll('[data-ft]').forEach(s => s.onchange = repinta);
-    on('dFiltros', () => { lee(); ESTADO.filtros = !ESTADO.filtros; try { localStorage.setItem('cde-doc-filtros', ESTADO.filtros ? '1' : '0'); } catch (e) {} vistaDocumentos(pid); });
-    app.querySelectorAll('.dact a').forEach(a => a.onclick = (e) => { e.preventDefault(); lee(); const d = a.dataset; if (d.rq) F[d.rq] = (F[d.rq] || []).filter(v => v !== d.rv); else if (d.rp) Q.proyectos = Q.proyectos.filter(v => v !== d.rp); else if (d.rf !== undefined) { if (Q.fechas.length > 1) Q.fechas.splice(+d.rf, 1); else Q.fechas[0] = { tipo: '', desde: '', hasta: '' }; } vistaDocumentos(pid).then(() => { if (ESTADO.resultado) document.getElementById('dBuscar').click(); }); });
-    app.querySelectorAll('[data-fx]').forEach(b => b.onclick = () => { lee(); Q.fechas.splice(+b.dataset.fx, 1); vistaDocumentos(pid); });
-    on('dFechaMas', () => { lee(); Q.fechas.push({ tipo: '', desde: '', hasta: '' }); vistaDocumentos(pid); });
-    on('dLimpiar', () => { ESTADO.Q = Q0(); ESTADO.Q.proyectos = [pid]; ESTADO.resultado = null; vistaDocumentos(pid); });
-    on('dRestablece', () => { lee(); const q = Q.q, c = Q.contenido, h = Q.historial; ESTADO.Q = Object.assign(Q0(), { q, contenido: c, historial: h, proyectos: [pid] }); vistaDocumentos(pid); });
-    document.getElementById('dQ').onkeydown = (e) => { if (e.key === 'Enter') busca(); };
+      '<div class="tarjeta" style="margin-top:12px"><div class="fila" style="align-items:center;gap:8px;flex-wrap:wrap"><div class="fila" style="gap:0"><button id="dAnadir">Añadir o actualizar documentos</button><button id="dAnadirMas" class="desple" title="Más">⌄</button></div><button id="dTransmitir">Transmitir ⌄</button><button id="dHerr">Herramientas ⌄</button><button id="dInformes">Informes ⌄</button><span class="crece"></span><button id="dColumnas">Añadir/Eliminar Columnas</button></div><div id="dResultados" style="margin-top:8px"><div class="pista">Pulsa <b>Buscar</b>.</div></div></div>' ;
+    const on = (id, fn) => { const e = $(id); if (e) e.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); fn(ev); }; };
+    const lee = () => { Q.q = $('dQ').value; Q.contenido = $('dContenido').checked; Q.historial = $('dHistorial').checked; R.querySelectorAll('[data-t]').forEach(i => { F[i.dataset.t] = i.value; }); R.querySelectorAll('[data-ft]').forEach(s => { Q.fechas[+s.dataset.ft].tipo = s.value; }); R.querySelectorAll('[data-fd]').forEach(s => { Q.fechas[+s.dataset.fd].desde = s.value; }); R.querySelectorAll('[data-fh]').forEach(s => { Q.fechas[+s.dataset.fh].hasta = s.value; }); };
+    const repinta = () => { lee(); pintaBusqueda(pid, R); };
+    R.querySelectorAll('.chipsel[data-k]').forEach(d => { d.onclick = (e) => { if (e.target.closest('a')) return; lee(); const k = d.dataset.k; if (k === 'proyectos') selectorValores(d, C.proyectos.map(x => ({ valor: x.id, texto: x.codigo + ' ' + x.nombre, enUso: true })), Q.proyectos, (v) => { Q.proyectos = v; pintaChips(d, k); }); else { const lista = k === 'etapaRev' ? C.etapaRev.map(v => ({ valor: v, texto: v, enUso: true })) : k === 'estadoCde' ? CARPETAS : (C[k] || []); selectorValores(d, lista, F[k] || [], (v) => { F[k] = v; pintaChips(d, k); }); } }; });
+    const pintaChips = (d, k) => { lee(); const i = R.querySelector('#dQ'); const pos = i.selectionStart; pintaBusqueda(pid, R); };
+    R.querySelectorAll('.chip a[data-q]').forEach(a => a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); const k = a.closest('.chipsel').dataset.k; F[k] = (F[k] || []).filter(v => v !== a.dataset.q); repinta(); });
+    R.querySelectorAll('.chip a[data-qp]').forEach(a => a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); Q.proyectos = Q.proyectos.filter(v => v !== a.dataset.qp); repinta(); });
+    R.querySelectorAll('[data-ft]').forEach(s => s.onchange = repinta);
+    on('dFiltros', () => { lee(); ESTADO.filtros = !ESTADO.filtros; try { localStorage.setItem('cde-doc-filtros', ESTADO.filtros ? '1' : '0'); } catch (e) {} pintaBusqueda(pid, R); });
+    R.querySelectorAll('.dact a').forEach(a => a.onclick = (e) => { e.preventDefault(); lee(); const d = a.dataset; if (d.rq) F[d.rq] = (F[d.rq] || []).filter(v => v !== d.rv); else if (d.rp) Q.proyectos = Q.proyectos.filter(v => v !== d.rp); else if (d.rf !== undefined) { if (Q.fechas.length > 1) Q.fechas.splice(+d.rf, 1); else Q.fechas[0] = { tipo: '', desde: '', hasta: '' }; } pintaBusqueda(pid, R).then(() => { if (ESTADO.resultado) $('dBuscar').click(); }); });
+    R.querySelectorAll('[data-fx]').forEach(b => b.onclick = () => { lee(); Q.fechas.splice(+b.dataset.fx, 1); pintaBusqueda(pid, R); });
+    on('dFechaMas', () => { lee(); Q.fechas.push({ tipo: '', desde: '', hasta: '' }); pintaBusqueda(pid, R); });
+    on('dLimpiar', () => { ESTADO.Q = Q0(); ESTADO.Q.proyectos = [pid]; ESTADO.resultado = null; pintaBusqueda(pid, R); });
+    on('dRestablece', () => { lee(); const q = Q.q, c = Q.contenido, h = Q.historial; ESTADO.Q = Object.assign(Q0(), { q, contenido: c, historial: h, proyectos: [pid] }); pintaBusqueda(pid, R); });
+    $('dQ').onkeydown = (e) => { if (e.key === 'Enter') busca(); };
     on('dBuscar', () => busca());
-    on('dGuardar', async () => { lee(); const n = await N.pide('Guardar búsqueda como…', 'Nombre de la búsqueda', '', 'Guardar'); if (!n) return; try { await api('/api/documentos/busquedas', { json: { nombre: n, consulta: Q } }); N.toast('Búsqueda guardada'); vistaDocumentos(pid); } catch (e) { N.toast(esc(e.message), 'mal'); } });
-    const sg = document.getElementById('dGuardadas'); if (sg) sg.onchange = () => { const b = ESTADO.busquedas.find(x => x.id === sg.value); if (!b) return; N.menuFlotante(sg, [{ ico: 'abrir', texto: 'Aplicar «' + b.nombre + '»', accion: () => { ESTADO.Q = migraConsulta(b.consulta); vistaDocumentos(pid).then(busca); } }, { ico: 'papelera', texto: 'Borrar esta búsqueda guardada', accion: async () => { await api('/api/documentos/busquedas/' + b.id, { method: 'DELETE' }); vistaDocumentos(pid); } }]); sg.value = ''; };
-    on('dActualizaciones', () => { ESTADO.Q = Object.assign(Q0(), { proyectos: [pid], orden: 'modificado', dir: 'desc' }); vistaDocumentos(pid).then(busca); });
+    on('dGuardar', async () => { lee(); const n = await N.pide('Guardar búsqueda como…', 'Nombre de la búsqueda', '', 'Guardar'); if (!n) return; try { await api('/api/documentos/busquedas', { json: { nombre: n, consulta: Q } }); N.toast('Búsqueda guardada'); pintaBusqueda(pid, R); } catch (e) { N.toast(esc(e.message), 'mal'); } });
+    const sg = $('dGuardadas'); if (sg) sg.onchange = () => { const b = ESTADO.busquedas.find(x => x.id === sg.value); if (!b) return; N.menuFlotante(sg, [{ ico: 'abrir', texto: 'Aplicar «' + b.nombre + '»', accion: () => { ESTADO.Q = migraConsulta(b.consulta); pintaBusqueda(pid, R).then(() => { const b = $('dBuscar'); if (b) b.click(); }); } }, { ico: 'papelera', texto: 'Borrar esta búsqueda guardada', accion: async () => { await api('/api/documentos/busquedas/' + b.id, { method: 'DELETE' }); pintaBusqueda(pid, R); } }]); sg.value = ''; };
+    on('dActualizaciones', () => { ESTADO.Q = Object.assign(Q0(), { proyectos: [pid], orden: 'modificado', dir: 'desc' }); pintaBusqueda(pid, R).then(() => { const b = $('dBuscar'); if (b) b.click(); }); });
     on('dAnadir', () => N.ventanaCargar(p, p.carpetaWip || '', 'archivos'));
     on('dAnadirMas', (e) => N.menuFlotante(e.currentTarget, [{ ico: 'archivo', texto: 'Cargar archivos', accion: () => N.ventanaCargar(p, p.carpetaWip || '', 'archivos') }, { ico: 'abrir', texto: 'Cargar carpeta', accion: () => N.ventanaCargar(p, p.carpetaWip || '', 'carpeta') }, { ico: 'enlace', texto: 'Cargar archivos vinculados', accion: () => N.ventanaCargar(p, p.carpetaWip || '', 'vinculados') }, { sep: true }, { ico: 'lapiz', texto: 'Actualizar documento seleccionado (nueva versión)', off: ESTADO.sel.size === 1 ? false : 'Selecciona un documento', accion: () => { const f = filaSel()[0]; location.hash = '#/p/' + f.proyecto_id + '/c/' + f.cid; } }]));
     const filaSel = () => (ESTADO.resultado ? ESTADO.resultado.filas.filter(f => ESTADO.sel.has(f.vid)) : []);
@@ -117,12 +134,12 @@
     on('dColumnas', () => columnasDlg(pid));
     if (ESTADO.resultado) pintaResultados();
     async function busca() {
-      lee(); Q.pagina = 1; ESTADO.sel.clear(); document.getElementById('dResultados').innerHTML = '<div class="pista">Buscando…</div>';
-      try { ESTADO.resultado = await api('/api/documentos/buscar', { json: Q }); pintaResultados(); } catch (e) { document.getElementById('dResultados').innerHTML = '<div class="aviso rojo">' + esc(e.message) + '</div>'; }
+      lee(); Q.pagina = 1; ESTADO.sel.clear(); $('dResultados').innerHTML = '<div class="pista">Buscando…</div>';
+      try { ESTADO.resultado = await api('/api/documentos/buscar', { json: Q }); pintaResultados(); } catch (e) { $('dResultados').innerHTML = '<div class="aviso rojo">' + esc(e.message) + '</div>'; }
     }
     async function pagina(n) { lee(); Q.pagina = n; try { ESTADO.resultado = await api('/api/documentos/buscar', { json: Q }); pintaResultados(); } catch (e) { N.toast(esc(e.message), 'mal'); } }
     function pintaResultados() {
-      const Rr = ESTADO.resultado, cont = document.getElementById('dResultados'); if (!Rr || !cont) return;
+      const Rr = ESTADO.resultado, cont = $('dResultados'); if (!Rr || !cont) return;
       const cols = colsActivas(), nombres = Object.fromEntries(C.columnas);
       const celda = (f, k) => { switch (k) {
         case 'archivo': return '<td class="chk"><input type="checkbox" data-sv="' + esc(f.vid) + '"' + (ESTADO.sel.has(f.vid) ? ' checked' : '') + '></td><td>' + ICO_ARCH(f.extension) + '</td>';
@@ -146,7 +163,7 @@
       const st = cont.querySelector('#dSelTodo'); if (st) st.onclick = (e) => { e.preventDefault(); Rr.filas.forEach(f => ESTADO.sel.add(f.vid)); pintaResultados(); };
       cont.querySelectorAll('th[data-o]').forEach(h => h.onclick = () => { if (Q.orden === h.dataset.o) Q.dir = Q.dir === 'desc' ? 'asc' : 'desc'; else { Q.orden = h.dataset.o; Q.dir = 'asc'; } pagina(Rr.pagina); });
       cont.querySelectorAll('tr.clic').forEach(tr => tr.onclick = (e) => { if (e.target.closest('a,input')) return; location.hash = '#/p/' + tr.dataset.p + '/documentos/' + tr.dataset.cid; });
-      cont.querySelectorAll('a[data-irc]').forEach(a => a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); N.irACarpeta(a.dataset.p, a.dataset.irc, a.dataset.z); });
+      cont.querySelectorAll('a[data-irc]').forEach(a => a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); abreCarpeta(a.dataset.p, a.dataset.irc, a.dataset.z); });
       const pg = cont.querySelector('#dPag'); if (pg) pg.onchange = () => pagina(Math.max(1, Math.min(Rr.paginas, +pg.value || 1)));
       const pv = cont.querySelector('#dPrev'); if (pv) pv.onclick = () => pagina(Rr.pagina - 1); const nx = cont.querySelector('#dNext'); if (nx) nx.onclick = () => pagina(Rr.pagina + 1);
     }
@@ -158,7 +175,7 @@
       const XL = await N.carga('vendor/xlsx.full.min.js', 'XLSX'); const wb = XL.utils.book_new(); const ws = XL.utils.aoa_to_sheet([['Registro de documentos'], ['Exportado', new Date().toLocaleString('es-PE') + ' por ' + (N.YO.email || ''), 'Búsqueda', Q.q || '(todo)'], [], cab].concat(datos)); ws['!cols'] = cab.map((c, i) => ({ wch: i <= 2 ? 36 : 18 })); XL.utils.book_append_sheet(wb, ws, 'Documentos'); XL.writeFile(wb, nombre + '.xlsx'); N.toast(datos.length + ' documento(s) exportados');
     }
     function columnasDlg() {
-      const cols = colsActivas(), v = ventana('Añadir/Eliminar Columnas', '<p class="pista">Marca las columnas que quieres ver; arrastra para ordenarlas.</p><div id="colLista">' + C.columnas.map(([k, t]) => '<label class="colfila" draggable="true" data-k="' + k + '"><input type="checkbox" value="' + k + '"' + (cols.includes(k) ? ' checked' : '') + (k === 'archivo' || k === 'numero' ? ' disabled' : '') + '> ' + esc(t) + '</label>').join('') + '</div><div class="fila" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="enlace" id="colDef">Columnas de Aconex</button><button class="enlace" id="colNo">Cancelar</button><button class="primario" id="colOk">Aplicar</button></div>', { ancho: 420, alto: 620, x: Math.max(20, innerWidth / 2 - 210), y: 40 });
+      const cols = colsActivas(), v = ventana('Añadir/Eliminar Columnas', '<p class="pista">Marca las columnas que quieres ver; arrastra para ordenarlas.</p><div id="colLista">' + C.columnas.map(([k, t]) => '<label class="colfila" draggable="true" data-k="' + k + '"><input type="checkbox" value="' + k + '"' + (cols.includes(k) ? ' checked' : '') + (k === 'archivo' || k === 'numero' ? ' disabled' : '') + '> ' + esc(t) + '</label>').join('') + '</div><div class="fila" style="justify-content:flex-end;gap:8px;margin-top:12px"><button class="enlace" id="colDef">Columnas de Aconex</button><button class="enlace" id="colNo">Cancelar</button><button class="primario" id="colOk">Aplicar</button></div>', { ancho: 420, alto: 620, modo: 'dialogo', x: Math.max(20, innerWidth / 2 - 210), y: 40 });
       const L = v.querySelector('#colLista'); const ordenados = () => cols.slice().concat(C.columnas.map(c => c[0]).filter(k => !cols.includes(k))); const orden = ordenados(); L.innerHTML = orden.map(k => L.querySelector('[data-k="' + k + '"]').outerHTML).join('');
       let arr = null; L.querySelectorAll('.colfila').forEach(f => { f.ondragstart = () => { arr = f; }; f.ondragover = (e) => { e.preventDefault(); if (arr && arr !== f) { const r = f.getBoundingClientRect(); L.insertBefore(arr, e.clientY < r.top + r.height / 2 ? f : f.nextSibling); } }; });
       v.querySelector('#colNo').onclick = () => v.closest('.ventana').remove();
@@ -194,7 +211,8 @@
     app.querySelectorAll('.dhitem').forEach(x => x.onclick = (e) => { if (e.target.closest('a')) return; ESTADO.D.vid = x.dataset.v; vistaDocumento(pid, cid); });
     document.getElementById('dEventos').onclick = () => { ESTADO.D.pest = 'eventos'; vistaDocumento(pid, cid); };
     document.getElementById('dActualizar').onclick = () => N.ventanaCargar(p, P.carpeta, 'archivos');
-    const rr = document.getElementById('dRelReg'); if (rr) rr.onclick = () => { ESTADO.Q = Object.assign(Q0(), { proyectos: [pid], q: d.relacionados.filter(r => r.cid).map(r => r.numero)[0] || '' }); location.hash = '#/p/' + pid + '/documentos'; };
+    const rr = document.getElementById('dRelReg'); if (rr) rr.onclick = () => { ESTADO.Q = Object.assign(Q0(), { proyectos: [pid], q: d.relacionados.filter(r => r.cid).map(r => r.numero)[0] || '' }); ESTADO.buscarAlAbrir = true; location.hash = '#/p/' + pid + '/documentos'; };
+    if (pest === 'propiedades' && N.fichaImagenes) N.fichaImagenes(document.getElementById('dCuerpo'), { pid, vid: cur.vid, resumen: cur.resumen || {} });   // v0.25.2: imágenes de los hallazgos
     const rq = document.getElementById('dRelQ'); if (rq) rq.oninput = () => { const q = rq.value.toLowerCase(); app.querySelectorAll('#dCuerpo tbody tr').forEach(tr => { tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none'; }); };
     if (pest === 'visualizador' && /\.pdf$/i.test(cur.archivo)) {
       let doc = null, pag = 1; const cv = document.getElementById('dPdf');
@@ -203,5 +221,5 @@
     }
   }
   N.vistas.documentos = vistaDocumentos;
-  Object.assign(N, { vistaDocumentos, vistaDocumento, selectorValores });
+  Object.assign(N, { vistaDocumentos, vistaDocumento, selectorValores, busquedaPanel });
 })();

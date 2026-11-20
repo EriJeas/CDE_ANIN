@@ -678,3 +678,17 @@ a.fmabre { padding: 2px 8px; font-size: 12px; }
 .fa-h.ok i { color: #1f8a4c; } .fa-h.aviso { border-color: rgba(198, 132, 0, .5); } .fa-h.aviso i { color: #c68400; } .fa-h.mal { border-color: rgba(211, 47, 47, .5); background: rgba(211, 47, 47, .05); } .fa-h.mal i, .fa-h.mal b { color: #c62828; }
 li.fa-mal { color: #a11d1d; } .fa-okt { color: #17663a; } .fa-avt { color: #8a5d00; } .fa-ref { margin-top: 6px; } .fa-ref summary { cursor: pointer; font-weight: 600; font-size: 12.5px; }
 .resumen .fa-ch.avi { display: inline-block; margin: 0; border: 0; background: rgba(198, 132, 0, .14); color: #8a5d00; }
+
+/* v0.25.2 · imágenes de los hallazgos de la ficha */
+.fa-imgs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: flex-start; }
+.fi-min { display: flex; flex-direction: column; gap: 2px; padding: 3px; border: 1px solid var(--borde); border-radius: 6px; background: #fff; cursor: zoom-in; max-width: 100%; }
+.fi-min:hover { border-color: var(--azul); box-shadow: 0 0 0 2px var(--azul2); } .fi-cv { display: block; min-width: 120px; min-height: 40px; } .fi-cv canvas { display: block; max-width: 100%; height: auto; }
+.fi-pg { font-size: 11px; color: #556274; text-align: left; } .fi-mas { align-self: center; font-size: 12px; }
+.fi-vent { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 8px; } .fi-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .fi-pos { font-weight: 600; font-size: 13px; }
+.fi-hoja { flex: 1; min-height: 0; overflow: auto; background: var(--lienzo); border-radius: 6px; padding: 12px; text-align: center; } .fi-hoja canvas { box-shadow: 0 2px 10px rgba(0, 0, 0, .2); background: #fff; }
+/* v0.25.2 · Búsqueda de documentos como panel lateral (botón «Búsqueda» dentro de la caja «Buscar y filtrar») */
+.accbarra .buscar .fbusca { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; } .accbarra .buscar .fbusca svg { width: 14px; height: 14px; }
+.vbusq { white-space: normal; background: var(--lienzo); } .vbusq .tarjeta { box-shadow: none; } .vbusq .docbuscar { padding: 14px 16px; }
+.vbusq .dpbarra { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; } .vbusq .dpbarra .pista { max-width: 60ch; }
+.vbusq .dgrupos { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 24px; }
+.vbusq .docbuscar .buscacaja { flex: 1 1 300px; }
