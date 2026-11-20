@@ -457,3 +457,20 @@ a.p2op, a.p2op:hover, a.p2op * { text-decoration: none; }
 body.plegado .lateral .lopcion { display: none; }
 @media (max-width: 900px) { .lateral .lopcion { display: none; } }
 
+
+/* v0.24.0 · Validación QA de portadas */
+.cargar .zona { position: relative; }
+.cargar .zona .qabtn { position: absolute; right: 14px; bottom: 12px; }
+.cargar .zona.conlista .qabtn { position: static; margin-left: auto; }
+.qabtn.oculto { display: none; }
+.cargar #cgQaAviso { margin: 0; font-size: 12.5px; }
+.dsqa { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; } .dsqa .pista { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#dsQaRes .aviso { margin: 0 0 8px; font-size: 12.5px; }
+.qalista { max-height: 150px; overflow: auto; margin-bottom: 8px; border: 1px solid var(--linea); border-radius: var(--radio); }
+.qafila { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 12.5px; border-bottom: 1px solid var(--linea2); } .qafila:last-child { border-bottom: 0; }
+.qafila .mono { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .qafila .pista { white-space: nowrap; }
+.qaico { width: 18px; flex: none; text-align: center; font-weight: 700; }
+.qafila.ok .qaico, .qachecks tr.ok .qaico { color: var(--verde, #1f8a4c); } .qafila.mal .qaico, .qachecks tr.mal .qaico { color: var(--rojo, #c62828); } .qafila.na .qaico { color: var(--gris); }
+.qadet .qachecks td { vertical-align: top; padding: 7px 8px; } .qadet .qachecks tr.mal td { background: rgba(198, 40, 40, .05); }
+.qadet h3 { font-size: 13px; margin: 16px 0 6px; } .qadet .qadatos td:first-child { width: 190px; }
+.cargar td.est a { white-space: nowrap; }

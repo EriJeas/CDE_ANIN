@@ -57,12 +57,27 @@
     v.querySelector('#cmU').onclick = (e) => e.target.select();
     v.querySelector('#cmC').onclick = async () => { const ok = await copia(url); v.querySelector('#cmM').innerHTML = ok ? '<div class="aviso verde">Enlace copiado.</div>' : '<div class="aviso ambar">Selecciona el enlace y cópialo (Ctrl+C).</div>'; };
   }
+  /** Detalle de la Validación QA de una portada: cada comprobación con su resultado y los datos que se leyeron. */
+  N.qaDetalle = (qa, nombre) => {
+    qa = qa || {}; const d = qa.datos || {}, malas = (qa.checks || []).filter(x => !x.ok).length;
+    const dato = (k, v) => v ? '<tr><td class="pista">' + k + '</td><td>' + esc(v) + '</td></tr>' : '';
+    ventana('Validación QA · ' + esc(nombre || qa.archivo || ''), '<div class="qadet">' +
+      '<div class="aviso ' + (qa.ok ? 'verde' : 'rojo') + '">' + (qa.ok ? '✓ La portada cumple la plantilla ANIN: el documento puede entrar al compartido.' : '✗ La portada tiene ' + malas + ' observación(es): corrige el documento y vuelve a cargarlo.') + '</div>' +
+      '<table class="chica qachecks"><tbody>' + (qa.checks || []).map(c => '<tr class="' + (c.ok ? 'ok' : 'mal') + '"><td class="qaico">' + (c.ok ? '✓' : '✗') + '</td><td><b>' + esc(c.titulo) + '</b><div class="pista">' + esc(c.detalle) + '</div></td></tr>').join('') + '</tbody></table>' +
+      '<h3>Lo que se leyó en la portada</h3><table class="chica qadatos"><tbody>' + dato('Revisión (cajetín)', d.revision) + dato('Emisión (cajetín)', d.emision) + dato('Última fila del cuadro', d.ultimaFila ? d.ultimaFila.rev + ' · ' + d.ultimaFila.fecha : '') + dato('Revisión que corresponde', d.esperada) +
+      dato('Código del documento', d.codigo) + dato('Código en la portada', d.codigoPortada) + dato('Nombre (descripción)', d.titulo) + dato('Contrato', d.contrato) + dato('Región', d.region) + '</tbody></table>' +
+      '<p class="pista">Plantilla: «Plantilla contratistas 2026 ANIN» (cajetín, código y nombre, dirección y cuadro de revisiones) y el sello «Revisión de documentos técnicos». La revisión empieza en R00 la primera vez que el documento entra al compartido y sigue R01, R02… en cada entrega.</p></div>', { ancho: 640, alto: 620 });
+  };
+  /** Resultados de una validación previa (desplazar / copiar al compartido) en una lista corta con «Ver detalle». */
+  const qaLista = (rs) => rs.map((r, i) => '<div class="qafila ' + (!r.aplica ? 'na' : r.ok ? 'ok' : 'mal') + '"><span class="qaico">' + (!r.aplica ? '—' : r.ok ? '✓' : '✗') + '</span><span class="mono">' + esc(r.nombre) + '</span><span class="pista">' + (!r.aplica ? esc(r.motivo || 'No aplica') : r.ok ? 'QA aprobada' + (r.qa && r.qa.datos && r.qa.datos.revision ? ' · ' + esc(r.qa.datos.revision) : '') + (r.renombrar ? ' · nombre: ' + esc(r.renombrar) : '') : (r.qa.checks || []).filter(x => !x.ok).length + ' observación(es)') + '</span>' + (r.aplica ? '<a href="#" data-qad="' + i + '">Ver detalle</a>' : '') + '</div>').join('');
+
   /** "Seleccionar carpeta de destino" (el de Autodesk Docs): arbol con las carpetas donde no se puede en gris. Devuelve la ruta ('' = raiz) o null. */
   function eligeDestino(p, o) {
     return new Promise((ok) => {
       let sel = null, hecho = false; const fin = (x) => { if (!hecho) { hecho = true; ok(x); } };
       const A = new Set(), ini = o.inicial || ''; if (ini) { const ps = ini.split('/'); for (let i = 1; i <= ps.length; i++) A.add(ps.slice(0, i).join('/')); }
-      const v = ventana(o.titulo || 'Seleccionar carpeta de destino', '<div class="destino-dlg">' + (o.texto ? '<div class="pista" style="margin-bottom:8px">' + o.texto + '</div>' : '') + '<div class="destarbol"></div><div class="pie"><span class="pista crece" id="dsSel"></span><button class="enlace" id="dsNo">Cancelar</button><button class="primario" id="dsOk" disabled>' + esc(o.boton || 'Desplazar') + '</button></div></div>', { ancho: 640, alto: 580, x: Math.max(20, innerWidth / 2 - 320), y: 70, alCerrar: () => fin(null) });
+      let qaOk = false, qaSel = null;   // o.qa = { ids } | { rutas } [, copia]: al elegir una carpeta del compartido, la Validación QA es obligatoria antes de confirmar
+      const v = ventana(o.titulo || 'Seleccionar carpeta de destino', '<div class="destino-dlg"><div class="dsqa"><div class="pista crece">' + (o.texto || '') + '</div><button id="dsQa" class="qabtn oculto" title="Valida la portada de cada documento PDF o Word antes de pasarlo al compartido">Validación QA</button></div><div id="dsQaRes"></div><div class="destarbol"></div><div class="pie"><span class="pista crece" id="dsSel"></span><button class="enlace" id="dsNo">Cancelar</button><button class="primario" id="dsOk" disabled>' + esc(o.boton || 'Desplazar') + '</button></div></div>', { ancho: 640, alto: 580, x: Math.max(20, innerWidth / 2 - 320), y: 70, alCerrar: () => fin(null) });
       const win = v.closest('.ventana'), lista = p.arbol, conHijos = new Set(lista.map(c => c.ruta.split('/').slice(0, -1).join('/')));
       const motivo = (ruta, c) => { const ap = o.apagada ? o.apagada(ruta, c) : ''; if (ap) return ap; if (ruta === '') return o.raiz ? '' : 'Aquí no'; if (c && c.paso) return 'Sin acceso a esta carpeta'; return o.permitida && !o.permitida(c) ? (o.motivo ? o.motivo(c) : 'Sin permiso') : ''; };
       const pinta = () => {
@@ -75,11 +90,27 @@
           if (n.classList.contains('off')) return;
           sel = r; if (r && conHijos.has(r)) A.add(r); pinta();
         });
-        v.querySelector('#dsOk').disabled = sel === null;
+        const necesita = !!o.qa && sel !== null && zonaDeCarpeta(p, sel) === 'compartido';
+        if (qaSel !== sel) { qaOk = false; qaSel = sel; o.qaResultados = null; v.querySelector('#dsQaRes').innerHTML = necesita ? '<div class="aviso azul">Carpeta compartida: los documentos PDF y Word deben pasar la <b>Validación QA</b> de su portada antes de ' + (o.qa && o.qa.copia ? 'copiarse' : 'desplazarse') + '.</div>' : ''; }
+        v.querySelector('#dsQa').classList.toggle('oculto', !necesita);
+        v.querySelector('#dsOk').disabled = sel === null || (necesita && !qaOk);
+        v.querySelector('#dsOk').title = necesita && !qaOk ? 'Primero la Validación QA' : '';
         v.querySelector('#dsSel').textContent = sel === null ? '' : 'Destino: ' + (sel || 'Archivos de proyecto');
       };
       v.querySelector('#dsNo').onclick = () => { win.remove(); fin(null); };
       v.querySelector('#dsOk').onclick = () => { win.remove(); fin(sel); };
+      v.querySelector('#dsQa').onclick = async () => {
+        const b = v.querySelector('#dsQa'), caja = v.querySelector('#dsQaRes'), destinoQa = sel; b.disabled = true; caja.innerHTML = '<div class="pista">Validando las portadas…</div>';
+        try {
+          const r = await api('/api/proyectos/' + p.id + '/qa/contenedores', { json: Object.assign({ carpeta: destinoQa }, o.qa) });
+          if (destinoQa !== sel) return;
+          const rs = r.resultados || [], n = rs.filter(x => x.aplica).length, malos = rs.filter(x => x.aplica && !x.ok).length;
+          qaOk = !!r.ok; o.qaResultados = rs;
+          caja.innerHTML = '<div class="aviso ' + (qaOk ? 'verde' : 'rojo') + '">' + (qaOk ? '✓ Validación QA aprobada' + (n ? ': ' + n + ' documento(s)' : ' (ningún documento PDF o Word la requiere)') + '.' : '✗ ' + malos + ' de ' + n + ' documento(s) no pasan la Validación QA: corrígelos antes de ' + (o.qa.copia ? 'copiarlos' : 'desplazarlos') + ' al compartido.') + '</div><div class="qalista">' + qaLista(rs) + '</div>';
+          caja.querySelectorAll('[data-qad]').forEach(a => a.onclick = (e) => { e.preventDefault(); const x = rs[+a.dataset.qad]; N.qaDetalle(x.qa, x.nombre); });
+        } catch (e) { caja.innerHTML = '<div class="aviso rojo">' + esc(e.message) + '</div>'; }
+        b.disabled = false; v.querySelector('#dsOk').disabled = sel === null || !qaOk; v.querySelector('#dsOk').title = qaOk ? '' : 'Primero la Validación QA';
+      };
       pinta();
     });
   }
@@ -105,15 +136,17 @@
     if (!lista.length) return;
     // Como en Autodesk Docs: a CUALQUIER carpeta en la que se pueda cargar (sin importar la zona ni si el archivo pasó o está en revisión).
     const aqui = new Set(lista.map(c => c.copia ? c.carpeta_publicada : (c.retencion || c.carpeta)));
-    const dest = await eligeDestino(p, { titulo: 'Seleccionar carpeta de destino', boton: 'Desplazar', inicial: [...aqui][0], texto: (lista.length > 1 ? lista.length + ' elementos' : esc(lista[0].nombre)) + (lista.some(c => c.copia) ? ' <span class="etq">copia publicada</span>' : ''),
-      apagada: (r) => aqui.size === 1 && aqui.has(r) ? 'Ya está aquí' : '', permitida: (c) => !!c.subir, motivo: () => 'Sin permiso de carga en esta carpeta' });
+    const oD = { titulo: 'Seleccionar carpeta de destino', boton: 'Desplazar', inicial: [...aqui][0], texto: (lista.length > 1 ? lista.length + ' elementos' : esc(lista[0].nombre)) + (lista.some(c => c.copia) ? ' <span class="etq">copia publicada</span>' : ''),
+      apagada: (r) => aqui.size === 1 && aqui.has(r) ? 'Ya está aquí' : '', permitida: (c) => !!c.subir, motivo: () => 'Sin permiso de carga en esta carpeta', qa: { ids: lista.filter(c => !c.copia).map(c => c.id) } };
+    const dest = await eligeDestino(p, oD);
     if (dest === null) return;
+    const qaDe = new Map((oD.qaResultados || []).filter(r => r.aplica && r.ok).map(r => [r.id, r]));   // la portada propone el nombre y la descripción
     // De una carpeta libre (WIP o área de retención) a una con norma (compartido / publicado): la misma rejilla de Forma que al cargar,
     // para dejar el nombre conforme y los atributos puestos ANTES de desplazar. Entre carpetas con norma se desplaza sin más (como hasta ahora).
     const errores = [], normaDe = (r) => ((p.arbol || []).find(x => x.ruta === r) || {}).normaEfectiva || '';
     let conRejilla = normaDe(dest) ? lista.filter(c => !c.copia && c.ultima && (c.retencion || !normaDe(c.carpeta))) : [], arreglos = new Map();
     if (conRejilla.length) {
-      const res = await N.rejillaConformidad(p, dest, conRejilla.map(c => ({ nombre: c.ultima.archivo, tam: c.ultima.tamano, ref: c })), { modo: 'desplazar' });
+      const res = await N.rejillaConformidad(p, dest, conRejilla.map(c => { const q = qaDe.get(c.id); return { nombre: (q && q.renombrar) || c.ultima.archivo, tam: c.ultima.tamano, ref: c, inicial: q && q.qa.datos.titulo ? { atributos: { descripcion: q.qa.datos.titulo } } : undefined }; }), { modo: 'desplazar', qa: zonaDeCarpeta(p, dest) === 'compartido' });
       if (!res) return;
       for (const r of res) arreglos.set(r.ref.id, r);
       lista = lista.filter(c => !conRejilla.includes(c) || arreglos.has(c.id));   // lo que se quitó de la rejilla no se desplaza
@@ -122,7 +155,7 @@
       try {
         const a = arreglos.get(c.id);
         if (a) {
-          if (a.nombre !== a.original) await api('/api/proyectos/' + p.id + '/contenedores/' + c.id + '/renombrar', { json: { nombre: a.nombre, carpeta: dest } });
+          if (a.nombre !== c.ultima.archivo) await api('/api/proyectos/' + p.id + '/contenedores/' + c.id + '/renombrar', { json: { nombre: a.nombre, carpeta: dest } });
           await api('/api/proyectos/' + p.id + '/contenedores/' + c.id + '/atributos', { method: 'PUT', json: { atributos: a.atributos, revision: a.revision || undefined, idoneidad: a.idoneidad || undefined } });
         }
         await api('/api/proyectos/' + p.id + '/contenedores/' + c.id + '/mover', { json: { carpeta: dest, copia: !!c.copia } });
@@ -137,13 +170,15 @@
   async function copiaContenedores(p, lista) {
     lista = lista.filter(c => c.ultima && !c.copia); if (!lista.length) return N.toast('No hay nada que copiar en la selección.', 'mal');
     const aqui = new Set(lista.map(c => c.retencion || c.carpeta));
-    const dest = await eligeDestino(p, { titulo: 'Copiar a otra carpeta', boton: 'Copiar aquí', inicial: [...aqui][0], texto: (lista.length > 1 ? lista.length + ' documentos' : esc(lista[0].nombre)) + ' <span class="etq">se copia; el original se queda</span>',
-      apagada: () => '', permitida: (c) => !!c.subir, motivo: () => 'Sin permiso de carga en esta carpeta' });
+    const oC = { titulo: 'Copiar a otra carpeta', boton: 'Copiar aquí', inicial: [...aqui][0], texto: (lista.length > 1 ? lista.length + ' documentos' : esc(lista[0].nombre)) + ' <span class="etq">se copia; el original se queda</span>',
+      apagada: () => '', permitida: (c) => !!c.subir, motivo: () => 'Sin permiso de carga en esta carpeta', qa: { ids: lista.map(c => c.id), copia: true } };
+    const dest = await eligeDestino(p, oC);
     if (dest === null) return;
+    const qaC = new Map((oC.qaResultados || []).filter(r => r.aplica && r.ok).map(r => [r.id, r]));
     const normaDe = (r) => ((p.arbol || []).find(x => x.ruta === r) || {}).normaEfectiva || '', errores = [], hechos = [];
     let planes = [];
     if (normaDe(dest)) {
-      const res = await N.rejillaConformidad(p, dest, lista.map(c => ({ nombre: c.ultima.archivo, tam: c.ultima.tamano, ref: c, inicial: { atributos: c.atributos || {} } })), { modo: 'copiar', sinAnadir: true });
+      const res = await N.rejillaConformidad(p, dest, lista.map(c => { const q = qaC.get(c.id); return { nombre: (q && q.renombrar) || c.ultima.archivo, tam: c.ultima.tamano, ref: c, inicial: { atributos: Object.assign({}, c.atributos || {}, q && q.qa.datos.titulo ? { descripcion: q.qa.datos.titulo } : {}) } }; }), { modo: 'copiar', sinAnadir: true, qa: zonaDeCarpeta(p, dest) === 'compartido' });
       if (!res) return;
       planes = res.map(r => ({ c: r.ref, nombre: r.nombre, atributos: r.atributos, revision: r.revision, idoneidad: r.idoneidad }));
     } else {
@@ -165,7 +200,7 @@
   async function desplazaCarpetas(p, rutas) {
     const padres = new Set(rutas.map(r => r.split('/').slice(0, -1).join('/')));
     const dest = await eligeDestino(p, { titulo: 'Seleccionar carpeta de destino', boton: 'Desplazar', inicial: [...padres][0], texto: rutas.length > 1 ? rutas.length + ' carpetas' : 'Carpeta <b>' + esc(rutas[0].split('/').pop()) + '</b>',
-      apagada: (r) => rutas.some(x => r === x || r.startsWith(x + '/')) ? 'No se puede desplazar dentro de sí misma' : (padres.size === 1 && padres.has(r) ? 'Ya está aquí' : ''), permitida: (c) => c.editar || c.control, motivo: () => 'Hace falta permiso de edición', raiz: R[p.rol] >= 3 });
+      apagada: (r) => rutas.some(x => r === x || r.startsWith(x + '/')) ? 'No se puede desplazar dentro de sí misma' : (padres.size === 1 && padres.has(r) ? 'Ya está aquí' : ''), permitida: (c) => c.editar || c.control, motivo: () => 'Hace falta permiso de edición', raiz: R[p.rol] >= 3, qa: rutas.some(r => zonaDeCarpeta(p, r) !== 'compartido') ? { rutas } : null });
     if (dest === null) return;
     if (!(await N.confirma('¿Mover carpeta?', 'La carpeta heredará los permisos de la carpeta de destino. Si se aplica una norma de nomenclatura propia, se conservará esa configuración. Los archivos que no cumplan la norma del destino no se mueven.', 'Continuar'))) return;
     const errores = []; let ultima = '';
@@ -558,15 +593,18 @@
     const pid = p.id; let destino = carpeta || p.carpetaWip || '';
     const cola = [], conocidas = new Set(p.arbol.map(c => c.ruta)); let corriendo = false, mini = null, cambios = 0;
     const v = ventana(modo === 'vinculados' ? 'Cargar archivos vinculados' : 'Cargar', '<div class="cargar">' + (modo === 'vinculados' ? '<div class="aviso azul">Archivos vinculados (p. ej. un RVT anfitrión con sus vínculos): el <b>primero</b> que elijas es el principal y los demás quedan marcados como vinculados a él (se ve en la ficha de cada uno).</div>' : '') + '<div class="destino">Destino: <b id="cgDest"></b><button class="enlace" id="cgCambia">Cambiar</button><span style="flex:1"></span><button class="enlace" id="cgMin" title="Minimizar: la carga sigue en segundo plano">Minimizar ⤡</button></div>' +
+      '<div class="aviso azul oculto" id="cgQaAviso">Destino en el <b>compartido</b>: cada documento PDF o Word pasa por la <b>Validación QA</b> de su portada (cajetín, revisión y emisión, código y nombre, cuadro de revisiones y sello «Revisión de documentos técnicos») antes de cargarse. Agrega los archivos y pulsa <b>Validación QA</b>.</div>' +
       '<div class="elige"><button id="cgArch">' + ICO_PC + 'Seleccionar archivos</button><button id="cgCarp">' + ICO_PC + 'Seleccionar una carpeta</button></div>' +
-      '<div class="zona" id="cgZona"><div class="ilus">' + ILUS_CARPETA + '</div><div>Arrastre archivos o carpetas aquí. También puede optar por cargar archivos o carpetas desde el equipo indicado anteriormente.</div><div class="lim">' + N.ICO.info + LIMITES.archivos + ' archivos, ' + LIMITES.carpetas + ' carpetas, ' + LIMITES.niveles + ' niveles de subcarpetas</div></div>' +
+      '<div class="zona" id="cgZona"><div class="ilus">' + ILUS_CARPETA + '</div><div>Arrastre archivos o carpetas aquí. También puede optar por cargar archivos o carpetas desde el equipo indicado anteriormente.</div><div class="lim">' + N.ICO.info + LIMITES.archivos + ' archivos, ' + LIMITES.carpetas + ' carpetas, ' + LIMITES.niveles + ' niveles de subcarpetas</div><button class="primario qabtn oculto" id="cgQa" disabled title="Valida la portada de cada documento PDF o Word y carga los que la cumplen">Validación QA</button></div>' +
       '<div class="lista" id="cgLista"><table><thead><tr><th>Nombre</th><th>Subcarpeta</th><th class="num">Tamaño</th><th>Progreso</th><th>Estado</th></tr></thead><tbody></tbody></table></div>' +
       '<div class="pie"><span class="resumen" id="cgRes"></span><span class="crece"></span><span class="pista">En carpetas con norma (compartido / publicado) se abre la rejilla de nomenclatura y atributos; las subcarpetas se crean solas.</span><button class="primario" id="cgListo" disabled>Listo</button></div>' +
       '<input type="file" id="cgInA" multiple class="oculto"><input type="file" id="cgInC" webkitdirectory directory multiple class="oculto"></div>',
       { ancho: Math.min(1060, innerWidth - 60), alto: Math.min(660, innerHeight - 60), x: Math.max(20, (innerWidth - Math.min(1060, innerWidth - 60)) / 2), y: 40, alCerrar: () => { if (corriendo) { document.getElementById('ventanas').appendChild(win); minimiza(); } else if (cambios) vistaProyecto(pid); } });
     const win = v.closest('.ventana'), $ = (s) => v.querySelector(s);
-    const pintaDest = () => { $('#cgDest').textContent = destino || '(elige una carpeta)'; $('#cgDest').title = destino; };
-    const resumen = () => { const ok = cola.filter(x => x.estado === 'ok').length, mal = cola.filter(x => x.estado === 'mal').length, n = cola.length; const t = n ? (corriendo ? 'Cargando ' + (ok + mal + 1 > n ? n : ok + mal + 1) + ' de ' + n : ok + ' de ' + n + ' cargado(s)') + (mal ? ' · ' + mal + ' con error' : '') : ''; $('#cgRes').textContent = t; if (mini) mini.querySelector('span').textContent = corriendo ? t : 'Carga terminada · ' + t; $('#cgListo').disabled = corriendo || !n; return t; };
+    const enCom = () => !!destino && zonaDeCarpeta(p, destino) === 'compartido';
+    const pintaDest = () => { $('#cgDest').textContent = destino || '(elige una carpeta)'; $('#cgDest').title = destino; $('#cgQaAviso').classList.toggle('oculto', !enCom()); actQa(); };
+    const actQa = () => { const pend = cola.filter(x => x.estado === 'qa').length, b = $('#cgQa'); b.classList.toggle('oculto', !enCom() && !pend); b.disabled = !pend || corriendo; b.textContent = pend ? 'Validación QA (' + pend + ')' : 'Validación QA'; };
+    const resumen = () => { const ok = cola.filter(x => x.estado === 'ok').length, mal = cola.filter(x => x.estado === 'mal').length, n = cola.length; const t = n ? (corriendo ? 'Cargando ' + (ok + mal + 1 > n ? n : ok + mal + 1) + ' de ' + n : ok + ' de ' + n + ' cargado(s)') + (mal ? ' · ' + mal + ' con error' : '') : ''; $('#cgRes').textContent = t; if (mini) mini.querySelector('span').textContent = corriendo ? t : 'Carga terminada · ' + t; const pend = cola.filter(x => x.estado === 'qa').length; $('#cgListo').disabled = corriendo || !n || pend > 0; $('#cgListo').title = pend ? 'Hay ' + pend + ' documento(s) pendientes de Validación QA' : ''; actQa(); return t; };
     const fila = (x) => { let tr = x.tr; if (!tr) { tr = document.createElement('tr'); x.tr = tr; $('#cgLista tbody').appendChild(tr); } tr.innerHTML = '<td class="nom mono" title="' + esc(x.nombre ? x.nombre + '  (archivo: ' + x.file.name + ')' : x.file.name) + '">' + esc(x.nombre || x.file.name) + '</td><td class="pista">' + esc(x.rel || '—') + '</td><td class="num">' + tam(x.file.size) + '</td><td><div class="barrita"><i style="width:' + (x.pct || 0) + '%"></i></div></td><td class="est ' + (x.estado === 'ok' ? 'ok' : x.estado === 'mal' ? 'mal' : '') + '">' + x.msg + '</td>'; };
     const minimiza = () => { win.style.display = 'none'; if (!mini) { mini = document.createElement('div'); mini.className = 'minicarga'; mini.innerHTML = N.ICO.cargar.replace('<svg', '<svg width="20" height="20"') + '<span></span><button class="enlace">Mostrar</button>'; mini.onclick = () => { win.style.display = ''; mini.remove(); mini = null; }; document.body.appendChild(mini); } resumen(); };
     const avisa = (html) => { const d = document.createElement('div'); d.className = 'aviso rojo'; d.innerHTML = html; $('#cgZona').after(d); setTimeout(() => d.remove(), 9000); };
@@ -581,15 +619,16 @@
       const porCarpeta = new Map(); for (const x of items) { const k = destino + (x.rel ? '/' + x.rel : ''); if (!porCarpeta.has(k)) porCarpeta.set(k, []); porCarpeta.get(k).push(x); }
       const listos = [];
       for (const [carp, grupo] of porCarpeta) {
-        const res = await N.rejillaConformidad(p, carp, grupo.map(x => ({ nombre: x.file.name, tam: x.file.size, file: x.file, ref: x })), { modo: 'cargar' });
+        const res = await N.rejillaConformidad(p, carp, grupo.map(x => ({ nombre: x.file.name, tam: x.file.size, file: x.file, ref: x })), { modo: 'cargar', qa: zonaDeCarpeta(p, destino) === 'compartido' });
         if (!res) continue;
         for (const r of res) { const x = r.ref || { file: r.file, rel: grupo[0].rel }; if (r.nombre !== x.file.name) x.nombre = r.nombre; x.revision = r.revision; x.idoneidad = r.idoneidad; x.atributos = r.atributos; listos.push(x); }
       }
       if (!listos.length) return;
       items = listos;
-      for (const x of items) { x.estado = 'cola'; x.msg = 'En cola'; x.pct = 0; x.destino = destino; cola.push(x); fila(x); }
+      const qaAqui = enCom();   // al compartido: esperan el botón «Validación QA» (el servidor valida cada portada y solo carga lo que la cumple)
+      for (const x of items) { x.estado = qaAqui ? 'qa' : 'cola'; x.msg = qaAqui ? 'Pendiente de Validación QA' : 'En cola'; x.pct = 0; x.destino = destino; cola.push(x); fila(x); }
       $('#cgZona').classList.add('conlista'); $('#cgLista').classList.add('on'); resumen();
-      if (!corriendo) procesa();
+      if (!corriendo && !qaAqui) procesa();
     }
     async function asegura(dest, rel) { // crea las subcarpetas que faltan (destino/rel)
       const ps = rel.split('/'); let padre = dest;
@@ -617,7 +656,8 @@
           const val = await api('/api/proyectos/' + pid + '/valida-nombre', { json: { nombre: x.nombre || x.file.name, carpeta: carpetaX } });
           if (!val.ok && !val.retenido) { x.estado = 'mal'; x.msg = 'No cumple la norma de la carpeta' + (val.norma ? ' «' + esc(val.norma.nombre) + '»' : '') + ': ' + esc(val.errores.join(' · ')); fila(x); resumen(); continue; }
           const r = await envia(x, carpetaX, modo === 'vinculados' && cola[0] !== x ? { vinculadoA: cola[0].file.name } : null);
-          if (r.ok) { x.estado = 'ok'; x.pct = 100; cambios++; x.msg = (r.j.retenido ? '⚠ Retenido (no cumple la norma): queda en el Área de retención hasta que lo renombres' : '✓ V' + r.j.n + ' ' + esc(r.j.revision) + ' · ' + esc(r.j.estado) + (r.j.libre && !r.j.conforme ? ' · nombre libre (WIP): para compartirlo deberá cumplir la norma' : '')) + (r.j.revisionAutomatica ? ' · revisión iniciada (' + esc(r.j.revisionAutomatica.flujo) + ')' : ''); }
+          if (!r.ok && r.j.error === 'qa') { x.estado = 'mal'; x.qa = r.j.qa; x.msg = '✗ No pasó la Validación QA: ' + (r.j.qa.checks || []).filter(c => !c.ok).length + ' observación(es) · <a href="#" data-qa="' + cola.indexOf(x) + '">Ver detalle</a>'; fila(x); resumen(); continue; }
+          if (r.ok) { x.estado = 'ok'; x.pct = 100; cambios++; x.qa = r.j.qa && r.j.qa.ok ? r.j.qa : null; x.msg = (r.j.qa && r.j.qa.ok ? '✓ QA aprobada · ' : '') + (r.j.retenido ? '⚠ Retenido (no cumple la norma): queda en el Área de retención hasta que lo renombres' : '✓ V' + r.j.n + ' ' + esc(r.j.revision) + ' · ' + esc(r.j.estado) + (r.j.libre && !r.j.conforme ? ' · nombre libre (WIP): para compartirlo deberá cumplir la norma' : '')) + (r.j.revisionAutomatica ? ' · revisión iniciada (' + esc(r.j.revisionAutomatica.flujo) + ')' : '') + (r.j.qa && r.j.qa.aplica === false ? ' · QA de portada: ' + esc(r.j.qa.motivo) : ''); }
           else { x.estado = 'mal'; x.msg = esc(r.j.mensaje || r.j.error || 'Error') + (r.j.errores ? ': ' + esc(r.j.errores.join(' · ')) : ''); }
         } catch (e) { x.estado = 'mal'; x.msg = esc(e.message); }
         fila(x); resumen();
@@ -628,6 +668,8 @@
     pintaDest();
     $('#cgCambia').onclick = async () => { const d = await eligeDestino(p, { titulo: 'Seleccionar carpeta de destino', boton: 'Seleccionar', inicial: destino, permitida: (c) => c.subir, motivo: () => 'Sin permiso de carga' }); if (d !== null) { destino = d; pintaDest(); } };
     $('#cgMin').onclick = minimiza;
+    $('#cgQa').onclick = () => { for (const x of cola) if (x.estado === 'qa') { x.estado = 'cola'; x.msg = 'En cola · Validación QA'; fila(x); } resumen(); if (!corriendo) procesa(); };
+    $('#cgLista').addEventListener('click', (e) => { const a = e.target.closest('[data-qa]'); if (!a) return; e.preventDefault(); const x = cola[+a.dataset.qa]; if (x && x.qa) N.qaDetalle(x.qa, x.nombre || x.file.name); });
     $('#cgArch').onclick = () => $('#cgInA').click(); $('#cgCarp').onclick = () => $('#cgInC').click();
     $('#cgInA').onchange = (e) => { agrega([...e.target.files].map(f => ({ file: f, rel: '' }))); e.target.value = ''; };
     $('#cgInC').onchange = (e) => { agrega([...e.target.files].map(f => ({ file: f, rel: (f.webkitRelativePath || '').split('/').slice(0, -1).join('/') }))); e.target.value = ''; };

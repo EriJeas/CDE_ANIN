@@ -532,13 +532,14 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     ok(r.j.filas[0].ok === false && r.j.filas[0].partes.length === 8 && r.j.filas[0].partes[0] === 'INFORME' && r.j.filas[0].partes[6] === '' && r.j.filas[0].erroresCampo[0] && r.j.filas[0].erroresCampo[7] && r.j.filas[1].ok === true && r.j.filas[1].erroresCampo.every(e => !e), 'reparte el nombre campo a campo (los que faltan, vacios) con el error de cada uno; el nombre conforme sale limpio');
     ok(r.j.atributos.codigosEstado.length >= 5 && !r.j.atributos.parteDesignada.requerido && !r.j.atributos.parteDesignada.pista && !r.j.atributos.contrato.requerido && !r.j.atributos.contrato.pista && r.j.norma.campos.filter(c => c.tipo === 'lista').length === 5, 'rejilla: codigos de estado; «Parte designada» y «Contrato» ya no se piden; Activo, Nivel, Tipo de documento, Disciplina y Etapa son listas de la libreria maestra');
     r = await pide('/api/proyectos/' + pg + '/valida-nombres', { json: { carpeta: WIPg, nombres: ['lo que sea.pdf'] } }); ok(r.status === 200 && r.j.libre === true && r.j.norma === null && r.j.filas[0].ok, 'en una carpeta WIP (libre) no hay rejilla');
-    r = await subeG14('100030-JYS01-000-XXX-PLN-CST-E2-000002.pdf', 'pdf de prueba', '?carpeta=' + encodeURIComponent(COMg) + '&revision=R00&idoneidad=S3', { atributos: { parteDesignada: 'JYS01', contrato: '00123', inventado: 'x' } });
+    const PT = require('./portadas');
+    r = await subeG14('100030-JYS01-000-XXX-PLN-CST-E2-000002.pdf', PT.pdf({ codigo: '100030-JYS01-000-XXX-PLN-CST-E2-000002', titulo: 'PLAN DE GESTIÓN BIM' }), '?carpeta=' + encodeURIComponent(COMg) + '&revision=R00&idoneidad=S3', { atributos: { parteDesignada: 'JYS01', contrato: '00123', inventado: 'x' } });
     ok(r.status === 200 && r.j.revision === 'R00' && r.j.estado === 'COMPARTIDO', 'carga con la revision indicada en la rejilla (R00) aunque el nombre no la lleve'); const cR = r.j.contenedor;
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cR); ok(r.j.atributos.parteDesignada === 'JYS01' && r.j.atributos.contrato === '00123' && r.j.atributos.inventado === undefined && r.j.versiones[0].idoneidad === 'S3', 'guarda parte designada y contrato (y no atributos inventados) y el codigo de estado');
-    r = await subeG14('100030-JYS01-000-XXX-PLN-CST-E2-000002.pdf', 'v2', '?carpeta=' + encodeURIComponent(COMg) + '&revision=R00'); ok(r.status === 409, 'una version nueva no puede repetir la revision');
+    r = await subeG14('100030-JYS01-000-XXX-PLN-CST-E2-000002.pdf', PT.pdf({ codigo: '100030-JYS01-000-XXX-PLN-CST-E2-000002' }), '?carpeta=' + encodeURIComponent(COMg) + '&revision=R00'); ok(r.status === 422 && r.j.error === 'qa' && r.j.qa.checks.some(c => c.id === 'correlativa' && !c.ok), 'una version nueva no puede repetir la revision (la Validación QA exige R01)');
     r = await subeG14('100030-JYS01-000-XXX-PLN-CST-E2-000003.pdf', 'x', '?carpeta=' + encodeURIComponent(COMg) + '&revision=ZZ9'); ok(r.status === 400 && r.j.error === 'revision', 'revision con formato invalido: se rechaza');
     // de WIP (nombre libre) a compartido: renombrar contra la norma del destino + atributos + desplazar => queda COMPARTIDO y se puede revisar
-    r = await subeG14('INFORME-000017-2026-DEO-SE-ETL (1).pdf', 'informe', '?carpeta=' + encodeURIComponent(WIPg)); ok(r.status === 200 && r.j.estado === 'WIP', 'en WIP entra con nombre libre'); const cW = r.j.contenedor;
+    r = await subeG14('INFORME-000017-2026-DEO-SE-ETL (1).pdf', PT.pdf({ codigo: '100030-JYS01-000-XXX-INF-BIM-E2-000001', titulo: 'INFORME DEL MODELO BIM' }), '?carpeta=' + encodeURIComponent(WIPg)); ok(r.status === 200 && r.j.estado === 'WIP', 'en WIP entra con nombre libre'); const cW = r.j.contenedor;
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cW + '/mover', { json: { carpeta: COMg } }); ok(r.status === 409 && r.j.error === 'nomenclatura', 'no se desplaza a compartido con el nombre libre');
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cW + '/renombrar', { json: { nombre: '100030-JYS01-000-XXX-INF-BIM-E2-000001.pdf', carpeta: COMg } }); ok(r.status === 200, 'se renombra contra la norma de la carpeta de destino');
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cW + '/atributos', { method: 'PUT', json: { atributos: { parteDesignada: 'JYS01', contrato: '00123' }, revision: 'R00', idoneidad: 'S3' } }); ok(r.status === 200 && r.j.atributos.contrato === '00123', 'atributos + revision + codigo de estado de la ultima version');
@@ -552,6 +553,49 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cR + '/revisiones', { json: {} }); ok(r.status === 200, 'un WIP que esta en carpeta compartida se envia a revision');
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cR); ok(r.j.estado === 'COMPARTIDO', 'y queda COMPARTIDO');
     const ISO14 = require('../lib/iso19650'); ok(ISO14.errorCampo({ nombre: 'Etapa', valores: ['E1', 'E2'] }, 'E9') !== '' && ISO14.errorCampo({ nombre: 'Etapa', valores: ['E1', 'E2'] }, 'E2') === '' && ISO14.errorCampo({ nombre: 'N', obligatorio: false, longitud: 3 }, 'XXX') === '', 'errorCampo: lista, valor admitido y campo opcional con XXX');
+
+    { // v0.24.0: Validación QA de portadas al entrar al compartido (cargar, desplazar, copiar, desplazar carpeta)
+      console.log('\n14b. Validación QA de portadas (PDF y Word que entran al compartido)');
+      const K = (n) => '100030-JYS01-000-XXX-' + n, sube = (nombre, cuerpo, carpeta) => subeG14(nombre, cuerpo, '?carpeta=' + encodeURIComponent(carpeta));
+      const fallas = (x) => ((x.j.qa && x.j.qa.checks) || []).filter(c => !c.ok).map(c => c.id).join(',');
+      let x = await sube(K('INF-ARQ-E2-000010') + '.pdf', PT.pdf({ codigo: K('INF-ARQ-E2-000010'), titulo: 'INFORME DE DIAGNÓSTICO DEL MODELO' }), COMg);
+      ok(x.status === 200 && x.j.revision === 'R00' && x.j.qa && x.j.qa.ok, 'PDF con la portada de la plantilla: entra al compartido en R00 (' + x.status + ' ' + (x.j.mensaje || x.j.revision) + ')'); const cQ = x.j.contenedor;
+      let f = await pide('/api/proyectos/' + pg + '/contenedores/' + cQ); ok(f.j.atributos.descripcion === 'INFORME DE DIAGNÓSTICO DEL MODELO' && f.j.versiones[0].revision === 'R00', 'el nombre de la portada queda como descripción del documento');
+      x = await sube(K('INF-ARQ-E2-000010') + '.pdf', PT.pdf({ codigo: K('INF-ARQ-E2-000010'), rev: 'R01', emision: '05/02/2026', filas: [['R00', '22/01/2026'], ['R01', '05/02/2026']] }), COMg);
+      ok(x.status === 200 && x.j.revision === 'R01' && x.j.n === 2, 'la versión siguiente entra en R01 (' + x.status + ' ' + (x.j.mensaje || '') + ')');
+      x = await sube(K('INF-ARQ-E2-000010') + '.pdf', PT.pdf({ codigo: K('INF-ARQ-E2-000010'), rev: 'R03', emision: '01/03/2026', filas: [['R03', '01/03/2026']] }), COMg);
+      ok(x.status === 422 && fallas(x) === 'correlativa', 'si la portada se salta la revisión que corresponde (R02), se rechaza (' + fallas(x) + ')');
+      x = await sube(K('INF-ARQ-E2-000011') + '.pdf', PT.pdf({ codigo: K('INF-ARQ-E2-000011'), rev: 'R00', emision: '05/02/2026' }), COMg);
+      f = await pide('/api/proyectos/' + pg + '/contenedores?carpeta=' + encodeURIComponent(COMg));
+      ok(x.status === 422 && fallas(x) === 'coincide' && !f.j.contenedores.some(c => c.nombre === K('INF-ARQ-E2-000011')), 'emisión del cajetín distinta de la fecha del cuadro: no entra y no deja documento (' + fallas(x) + ')');
+      x = await sube(K('INF-ARQ-E2-000014') + '.pdf', PT.pdf({ codigo: K('INF-ARQ-E2-000099') }), COMg); ok(x.status === 422 && fallas(x) === 'codigo', 'el código de la portada debe ser el del documento (' + fallas(x) + ')');
+      x = await sube(K('MDE-ARQ-E2-000012') + '.docx', PT.docx({ codigo: K('MDE-ARQ-E2-000012'), titulo: 'MEMORIA DESCRIPTIVA DE ARQUITECTURA' }), COMg); ok(x.status === 200 && x.j.qa.ok && x.j.revision === 'R00', 'Word con la portada de la plantilla: entra (' + x.status + ' ' + (x.j.mensaje || '') + ')');
+      x = await sube(K('MDE-ARQ-E2-000013') + '.docx', PT.docx({ codigo: K('MDE-ARQ-E2-000013'), sello: false }), COMg); ok(x.status === 422 && fallas(x) === 'sello', 'sin el sello «Revisión de documentos técnicos» no entra (' + fallas(x) + ')');
+      x = await sube(K('INF-ARQ-E2-000019') + '.docx', PT.docx({ codigo: K('INF-ARQ-E2-000019'), logo: true, contrato: 'CONTRATO: NOMBRE DEL CONTRATO' }), COMg); ok(x.status === 422 && fallas(x) === 'llenado', 'cajetín con los textos de la plantilla (logo, contrato) no entra (' + fallas(x) + ')');
+      x = await sube(K('INF-ARQ-E2-000020') + '.pdf', PT.pdf({ vacia: true }), COMg); ok(x.status === 422 && fallas(x) === 'lectura', 'un PDF sin texto (escaneado) no se puede validar: no entra');
+      x = await sube(K('PLA-ARQ-E2-000015') + '.pdf', 'plano sin portada', COMg); ok(x.status === 200 && x.j.qa && x.j.qa.aplica === false && /Plano/.test(x.j.qa.motivo), 'los planos (PLA) no pasan por la QA de portada (tendrán la del membrete)');
+      x = await sube(K('MTZ-ARQ-E2-000016') + '.xlsx', 'hoja', COMg); ok(x.status === 200 && x.j.qa && x.j.qa.aplica === false, 'un Excel no lleva portada: entra sin QA');
+      x = await sube(K('INF-ARQ-E2-000021') + '.pdf', 'en WIP no se valida', WIPg); ok(x.status === 200 && x.j.estado === 'WIP' && !x.j.qa, 'en el WIP no se exige la QA');
+      // desplazar de WIP al compartido: validación previa, la portada propone el nombre, y la QA vuelve a correr al desplazar
+      x = await sube('memoria final.pdf', PT.pdf({ codigo: K('MDE-ARQ-E2-000017'), titulo: 'MEMORIA DE CÁLCULO ESTRUCTURAL' }), WIPg); const cM = x.j.contenedor;
+      let v = await pide('/api/proyectos/' + pg + '/qa/contenedores', { json: { ids: [cM], carpeta: COMg } });
+      ok(v.j.ok === true && v.j.resultados[0].renombrar === K('MDE-ARQ-E2-000017') + '.pdf', 'validación previa al desplazar: aprobada y propone como nombre el código de la portada (' + JSON.stringify(v.j.resultados.map(r => r.renombrar || r.motivo)) + ')');
+      await pide('/api/proyectos/' + pg + '/contenedores/' + cM + '/renombrar', { json: { nombre: K('MDE-ARQ-E2-000017') + '.pdf', carpeta: COMg } });
+      await pide('/api/proyectos/' + pg + '/contenedores/' + cM + '/atributos', { method: 'PUT', json: { atributos: {}, revision: 'R00' } });   // lo que hace la rejilla antes de desplazar
+      x = await pide('/api/proyectos/' + pg + '/contenedores/' + cM + '/mover', { json: { carpeta: COMg } }); f = await pide('/api/proyectos/' + pg + '/contenedores/' + cM);
+      ok(x.status === 200 && x.j.qa && x.j.qa.revision === 'R00' && f.j.estado === 'COMPARTIDO' && f.j.atributos.descripcion === 'MEMORIA DE CÁLCULO ESTRUCTURAL', 'desplazado al compartido con la QA aprobada: R00 y la descripción de la portada (' + x.status + ' ' + (x.j.mensaje || '') + ')');
+      x = await sube(K('INF-ARQ-E2-000018') + '.pdf', PT.pdf({ codigo: K('INF-ARQ-E2-000018'), emision: '30/01/2026' }), WIPg); const cMal = x.j.contenedor;
+      v = await pide('/api/proyectos/' + pg + '/qa/contenedores', { json: { ids: [cMal], carpeta: COMg } }); x = await pide('/api/proyectos/' + pg + '/contenedores/' + cMal + '/mover', { json: { carpeta: COMg } }); f = await pide('/api/proyectos/' + pg + '/contenedores/' + cMal);
+      ok(v.j.ok === false && x.status === 422 && x.j.error === 'qa' && f.j.carpeta === WIPg && f.j.estado === 'WIP', 'si la portada no pasa, no se desplaza y se queda en el WIP (' + x.status + ')');
+      // copiar al compartido: la copia nace en R00 y su nombre es el código de la portada
+      x = await pide('/api/proyectos/' + pg + '/contenedores/' + cMal + '/copiar', { json: { carpeta: COMg, nombre: K('INF-ARQ-E2-000022') + '.pdf' } }); ok(x.status === 422 && x.j.error === 'qa' && fallas(x).includes('codigo'), 'copiar al compartido también exige la QA: la copia lleva otro nombre y la portada otro código (' + x.status + ' ' + fallas(x) + ')');
+      // desplazar una CARPETA del WIP al compartido con un documento que no pasa la QA
+      await pide('/api/proyectos/' + pg + '/carpetas', { json: { padre: WIPg, nombre: 'QA-LOTE' } });
+      await pide('/api/proyectos/' + pg + '/contenedores/' + cMal + '/mover', { json: { carpeta: WIPg + '/QA-LOTE' } });
+      x = await pide('/api/proyectos/' + pg + '/carpetas/mover', { json: { ruta: WIPg + '/QA-LOTE', destino: COMg } }); f = await pide('/api/proyectos/' + pg);
+      ok(x.status === 422 && x.j.error === 'qa' && x.j.resultados.length === 1 && f.j.arbol.some(c => c.ruta === WIPg + '/QA-LOTE'), 'una carpeta del WIP con un documento que no pasa la QA no se desplaza al compartido (' + x.status + ')');
+      const QAm = require('../lib/qa'); ok(QAm.revisionEsperada([], true) === 'R00' && QAm.revisionEsperada(['R00', 'R01'], false) === 'R02' && QAm.revisionEsperada(['P01', 'P02'], false) === 'R02' && QAm.revisionEsperada(['P01'], true) === 'R00', 'revisión que corresponde: R00 la primera vez, luego la siguiente');
+    }
 
     // ───────────── 15. Plantilla por zonas y flujo de revisión en paralelo (DC · especialistas · GP)
     console.log('\n15. Plantilla por zonas y flujo paralelo');
