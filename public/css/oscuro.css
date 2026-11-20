@@ -337,3 +337,4 @@ html.tema-oscuro .pcfila .pcnom mark { background-color: var(--ambar2); color: v
 html.tema-oscuro .qg-cab.ok { background: var(--verde2); color: var(--verde); } html.tema-oscuro .qg-cab.mal { background: var(--rojo2); color: var(--rojo); }
 html.tema-oscuro .qg-it.ok b { color: var(--verde); } html.tema-oscuro .qg-it.mal { background: var(--rojo2); border-color: var(--rojo); } html.tema-oscuro .qg-it.mal b, html.tema-oscuro .qg-it.mal small { color: var(--rojo); }
 html.tema-oscuro .qg-it.aviso { border-color: var(--ambar); } html.tema-oscuro .qg-it.aviso b { color: var(--ambar); }
+html.tema-oscuro .fa-ch.ok, html.tema-oscuro .fa-okt, html.tema-oscuro .fa-h.ok i { color: var(--verde); } html.tema-oscuro .fa-ch.avi, html.tema-oscuro .fa-avt, html.tema-oscuro .fa-h.aviso i { color: var(--ambar); } html.tema-oscuro .fa-ch.mal, html.tema-oscuro li.fa-mal, html.tema-oscuro .fa-h.mal i, html.tema-oscuro .fa-h.mal b { color: var(--rojo); }

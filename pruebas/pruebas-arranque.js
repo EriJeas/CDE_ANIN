@@ -650,6 +650,31 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
         ok(!q.ok && q.checks.filter(c => !c.ok).map(c => c.id).join() === 'paginas' && /78.*1 página/.test(q.checks.find(c => c.id === 'paginas').detalle), 'si la portada dice «1 de 78» y el archivo tiene 1 página, no pasa (' + q.checks.find(c => c.id === 'paginas').detalle + ')'); }
     }
 
+    { // v0.24.3: ficha de análisis del documento (contenido de principio a fin)
+      console.log('\n14f. Ficha de análisis: encabezados, fechas, códigos, citas y comentarios en todo el documento');
+      const AN = require('../lib/analisis'), cab = (rev, emi, k, n) => 'PRESIDENCIA DEL CONSEJO DE MINISTROS Revisión: ' + rev + '\nEmisión: ' + emi + '\nPágina: ' + k + ' de ' + n;
+      const P = (k, texto, c) => ({ n: k, texto: (c || '') + '\n' + texto, cab: c || '', notas: 0 }), COD = '100030-JYS01-000-XXX-INF-ARQ-E2-000080';
+      const base = { total: 4, portada: { revision: 'R01', emision: '05/02/2026', filas: [{ rev: 'R00', fecha: '22/01/2026' }, { rev: 'R01', fecha: '05/02/2026' }] }, codigo: COD, proyecto: '100030', existe: (c) => c === '100030-JYS01-000-XXX-PLN-ARQ-E2-000001' };
+      let r = AN.comprueba(Object.assign({}, base, { paginas: [P(1, 'portada ' + COD, cab('R01', '05/02/2026', 1, 4)), P(2, 'ver 100030-JYS01-000-XXX-PLN-ARQ-E2-000001 del 10/01/2026', cab('R01', '05/02/2026', 2, 4)), P(3, 'texto', cab('R01', '05/02/2026', 3, 4)), P(4, 'cierre', cab('R01', '05/02/2026', 4, 4))] }));
+      ok(r.cuenta.mal === 0 && r.cuenta.aviso === 0 && r.referencias.length === 1 && r.referencias[0].enCde && r.fechas.total >= 3, 'un documento coherente: encabezados, numeración, fechas y citas conformes');
+      r = AN.comprueba(Object.assign({}, base, { paginas: [P(1, 'portada', cab('R01', '05/02/2026', 1, 4)), P(2, 'plazo 31/02/2026 y entrega 20/03/2026; ver 100030-JYS01-000-XXX-PLN-ARQ-E2-000099 y 100099-JYS01-000-XXX-PLN-ARQ-E2-000001', cab('R00', '05/02/2026', 2, 4)), P(3, 'valor por definir', cab('R01', '22/01/2026', 3, 9)), Object.assign(P(4, '', ''), { notas: 2 })] }));
+      const t = (x) => r.hallazgos.find(h => h.titulo.startsWith(x)) || { paginas: [] };
+      ok(t('Revisión del encabezado').nivel === 'mal' && t('Revisión del encabezado').paginas.join() === '2' && t('Fecha de emisión del encabezado').paginas.join() === '3' && t('Numeración').nivel === 'mal', 'detecta la página con otra revisión, la de otra fecha de emisión y el total de páginas que no cuadra, y dice en qué página');
+      ok(t('Fechas que no existen').nivel === 'mal' && t('Fechas posteriores').nivel === 'aviso' && /20\/03\/2026/.test(t('Fechas posteriores').detalle), 'detecta una fecha imposible (31/02) y una fecha posterior a la emisión');
+      ok(t('Cita documentos de otro proyecto').nivel === 'aviso' && t('Documentos citados').nivel === 'aviso' && /000099/.test(t('Documentos citados').detalle), 'detecta un código de otro proyecto y un documento citado que no está en el CDE');
+      ok(t('Texto sin terminar').paginas.join() === '3' && t('El PDF trae comentarios').paginas.join() === '4' && t('Páginas sin texto').paginas.join() === '4', 'detecta «por definir», comentarios que quedaron en el PDF y páginas sin texto');
+      r = AN.comprueba({ paginas: [P(1, 'x', '')], total: 1, portada: { filas: [{ rev: 'R00', fecha: '10/03/2026' }, { rev: 'R01', fecha: '01/03/2026' }] }, word: { cambios: 3, comentarios: 2 } });
+      ok(r.hallazgos.some(h => h.nivel === 'mal' && /orden de fecha/.test(h.titulo)) && r.hallazgos.some(h => h.nivel === 'mal' && /control de cambios/.test(h.titulo)), 'detecta el cuadro de revisiones con fechas desordenadas y un Word con control de cambios o comentarios');
+      ok(AN.fechasDe('el 12 de marzo de 2026 y 3-4-2026').filter(f => f.valida).length === 2, 'lee fechas con barra, guion y en texto («12 de marzo de 2026»)');
+      // en el CDE: la ficha se genera sola al cargar
+      const x = await subeG14('100030-JYS01-000-XXX-INF-ARQ-E2-000081.pdf', PT.pdf({ codigo: '100030-JYS01-000-XXX-INF-ARQ-E2-000081' }), '?carpeta=' + encodeURIComponent(WIPg));
+      let f = null; for (let i = 0; i < 20; i++) { await duerme(300); f = await pide('/api/proyectos/' + pg + '/versiones/' + x.j.version + '/resumen'); if (f.j.resumen.estado === 'listo') break; }
+      ok(f.j.resumen.estado === 'listo' && f.j.resumen.analisis && f.j.resumen.analisis.tipo === 'pdf' && f.j.resumen.analisis.paginas.total === 1 && Array.isArray(f.j.resumen.analisis.hallazgos) && !f.j.resumen.analisis.textoPorPagina, 'al cargar un PDF, su ficha trae la verificación automática del contenido');
+      const RS2 = require('../lib/resumen'); let visto = '';
+      const ia = await RS2.resumenIA('[pág. 1]\ntexto', { archivo: 'x.pdf', tipo: 'documento', analisis: { portada: { revision: 'R00' }, hallazgos: [{ nivel: 'aviso', titulo: 'T', detalle: 'D' }] } }, { IA_CLAVE: 'k' }, async (u, o) => { visto = JSON.parse(o.body).messages[0].content; return { ok: true, json: async () => ({ content: [{ type: 'text', text: '{"descripcion":"d","objetivo":"o","alcance":"a","ideas":["i"],"conclusiones":"c","inconsistencias":[{"texto":"El área dice 500 m2 en 3.1 y 650 m2 en 5.2","paginas":[4,9]}],"fechas_clave":[{"fecha":"10/03/2026","que":"entrega"}],"pendientes":["definir"]}' }] }) }; });
+      ok(ia.alcance === 'a' && ia.inconsistencias[0].paginas.join() === '4,9' && ia.fechasClave[0].que === 'entrega' && ia.pendientes.length === 1 && /inconsistencias/.test(visto) && /T — D/.test(visto), 'con IA, la ficha suma alcance, inconsistencias con sus páginas, fechas clave y pendientes (y la IA recibe las comprobaciones como contexto)');
+    }
+
     // ───────────── 15. Plantilla por zonas y flujo de revisión en paralelo (DC · especialistas · GP)
     console.log('\n15. Plantilla por zonas y flujo paralelo');
     galleta = ''; await pide('/api/acceso/local', { json: { email: 'admin@anin.gob.pe', clave: 'prueba' } });

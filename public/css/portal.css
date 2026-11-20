@@ -668,3 +668,13 @@ a.fmabre { padding: 2px 8px; font-size: 12px; }
 @media (max-width: 760px) { .fvx { flex-direction: column; } .fvlmv { min-height: 240px; } }
 .fmtabla td { white-space: normal; vertical-align: top; } .fmtabla td .mono { word-break: break-all; }
 .fmacc { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+
+/* v0.24.3 · ficha de análisis del documento */
+.fa-pg { display: inline-block; font-size: 11px; color: var(--azul); background: var(--azul2); border-radius: 9px; padding: 0 7px; margin-left: 4px; white-space: nowrap; }
+.fa-res { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 6px; } .fa-ch { font-size: 12px; font-weight: 600; border-radius: 10px; padding: 1px 9px; }
+.fa-ch.ok { background: rgba(31, 138, 76, .12); color: #17663a; } .fa-ch.avi { background: rgba(198, 132, 0, .14); color: #8a5d00; } .fa-ch.mal { background: rgba(211, 47, 47, .12); color: #a11d1d; }
+.fa-lista { display: flex; flex-direction: column; gap: 4px; } .fa-h { display: flex; gap: 8px; padding: 5px 8px; border: 1px solid var(--borde); border-radius: 6px; background: var(--panel); }
+.fa-h i { font-style: normal; font-weight: 700; width: 14px; flex: none; } .fa-h small { display: block; color: var(--suave); margin-top: 1px; }
+.fa-h.ok i { color: #1f8a4c; } .fa-h.aviso { border-color: rgba(198, 132, 0, .5); } .fa-h.aviso i { color: #c68400; } .fa-h.mal { border-color: rgba(211, 47, 47, .5); background: rgba(211, 47, 47, .05); } .fa-h.mal i, .fa-h.mal b { color: #c62828; }
+li.fa-mal { color: #a11d1d; } .fa-okt { color: #17663a; } .fa-avt { color: #8a5d00; } .fa-ref { margin-top: 6px; } .fa-ref summary { cursor: pointer; font-weight: 600; font-size: 12.5px; }
+.resumen .fa-ch.avi { display: inline-block; margin: 0; border: 0; background: rgba(198, 132, 0, .14); color: #8a5d00; }
