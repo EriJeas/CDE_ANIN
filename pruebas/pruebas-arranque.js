@@ -533,13 +533,14 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     ok(r.j.atributos.codigosEstado.length >= 5 && !r.j.atributos.parteDesignada.requerido && !r.j.atributos.parteDesignada.pista && !r.j.atributos.contrato.requerido && !r.j.atributos.contrato.pista && r.j.norma.campos.filter(c => c.tipo === 'lista').length === 5, 'rejilla: codigos de estado; «Parte designada» y «Contrato» ya no se piden; Activo, Nivel, Tipo de documento, Disciplina y Etapa son listas de la libreria maestra');
     r = await pide('/api/proyectos/' + pg + '/valida-nombres', { json: { carpeta: WIPg, nombres: ['lo que sea.pdf'] } }); ok(r.status === 200 && r.j.libre === true && r.j.norma === null && r.j.filas[0].ok, 'en una carpeta WIP (libre) no hay rejilla');
     const PT = require('./portadas');
-    r = await subeG14('100030-JYS01-000-XXX-PLN-CST-E2-000002.pdf', PT.pdf({ codigo: '100030-JYS01-000-XXX-PLN-CST-E2-000002', titulo: 'PLAN DE GESTIÓN BIM' }), '?carpeta=' + encodeURIComponent(COMg) + '&revision=R00&idoneidad=S3', { atributos: { parteDesignada: 'JYS01', contrato: '00123', inventado: 'x' } });
+    const FX = require('./firmas'), KP = FX.pki(), firma = (b, quien, op) => FX.firmaPdf(b, quien || KP.sandra, Object.assign({ cadena: [KP.inter, KP.raiz] }, op || {}));   // v0.25.0: en el compartido el PDF va firmado por quien figura en «ELAB. POR»
+    r = await subeG14('100030-JYS01-000-XXX-PLN-CST-E2-000002.pdf', firma(PT.pdf({ codigo: '100030-JYS01-000-XXX-PLN-CST-E2-000002', titulo: 'PLAN DE GESTIÓN BIM' })), '?carpeta=' + encodeURIComponent(COMg) + '&revision=R00&idoneidad=S3', { atributos: { parteDesignada: 'JYS01', contrato: '00123', inventado: 'x' } });
     ok(r.status === 200 && r.j.revision === 'R00' && r.j.estado === 'COMPARTIDO', 'carga con la revision indicada en la rejilla (R00) aunque el nombre no la lleve'); const cR = r.j.contenedor;
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cR); ok(r.j.atributos.parteDesignada === 'JYS01' && r.j.atributos.contrato === '00123' && r.j.atributos.inventado === undefined && r.j.versiones[0].idoneidad === 'S3', 'guarda parte designada y contrato (y no atributos inventados) y el codigo de estado');
     r = await subeG14('100030-JYS01-000-XXX-PLN-CST-E2-000002.pdf', PT.pdf({ codigo: '100030-JYS01-000-XXX-PLN-CST-E2-000002' }), '?carpeta=' + encodeURIComponent(COMg) + '&revision=R00'); ok(r.status === 422 && r.j.error === 'qa' && r.j.qa.checks.some(c => c.id === 'correlativa' && !c.ok), 'una version nueva no puede repetir la revision (la Validación QA exige R01)');
     r = await subeG14('100030-JYS01-000-XXX-PLN-CST-E2-000003.pdf', 'x', '?carpeta=' + encodeURIComponent(COMg) + '&revision=ZZ9'); ok(r.status === 400 && r.j.error === 'revision', 'revision con formato invalido: se rechaza');
     // de WIP (nombre libre) a compartido: renombrar contra la norma del destino + atributos + desplazar => queda COMPARTIDO y se puede revisar
-    r = await subeG14('INFORME-000017-2026-DEO-SE-ETL (1).pdf', PT.pdf({ codigo: '100030-JYS01-000-XXX-INF-BIM-E2-000001', titulo: 'INFORME DEL MODELO BIM' }), '?carpeta=' + encodeURIComponent(WIPg)); ok(r.status === 200 && r.j.estado === 'WIP', 'en WIP entra con nombre libre'); const cW = r.j.contenedor;
+    r = await subeG14('INFORME-000017-2026-DEO-SE-ETL (1).pdf', firma(PT.pdf({ codigo: '100030-JYS01-000-XXX-INF-BIM-E2-000001', titulo: 'INFORME DEL MODELO BIM' })), '?carpeta=' + encodeURIComponent(WIPg)); ok(r.status === 200 && r.j.estado === 'WIP', 'en WIP entra con nombre libre'); const cW = r.j.contenedor;
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cW + '/mover', { json: { carpeta: COMg } }); ok(r.status === 409 && r.j.error === 'nomenclatura', 'no se desplaza a compartido con el nombre libre');
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cW + '/renombrar', { json: { nombre: '100030-JYS01-000-XXX-INF-BIM-E2-000001.pdf', carpeta: COMg } }); ok(r.status === 200, 'se renombra contra la norma de la carpeta de destino');
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cW + '/atributos', { method: 'PUT', json: { atributos: { parteDesignada: 'JYS01', contrato: '00123' }, revision: 'R00', idoneidad: 'S3' } }); ok(r.status === 200 && r.j.atributos.contrato === '00123', 'atributos + revision + codigo de estado de la ultima version');
@@ -558,10 +559,10 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       console.log('\n14b. Validación QA de portadas (PDF y Word que entran al compartido)');
       const K = (n) => '100030-JYS01-000-XXX-' + n, sube = (nombre, cuerpo, carpeta) => subeG14(nombre, cuerpo, '?carpeta=' + encodeURIComponent(carpeta));
       const fallas = (x) => ((x.j.qa && x.j.qa.checks) || []).filter(c => !c.ok).map(c => c.id).join(',');
-      let x = await sube(K('INF-ARQ-E2-000010') + '.pdf', PT.pdf({ codigo: K('INF-ARQ-E2-000010'), titulo: 'INFORME DE DIAGNÓSTICO DEL MODELO' }), COMg);
+      let x = await sube(K('INF-ARQ-E2-000010') + '.pdf', firma(PT.pdf({ codigo: K('INF-ARQ-E2-000010'), titulo: 'INFORME DE DIAGNÓSTICO DEL MODELO' })), COMg);
       ok(x.status === 200 && x.j.revision === 'R00' && x.j.qa && x.j.qa.ok, 'PDF con la portada de la plantilla: entra al compartido en R00 (' + x.status + ' ' + (x.j.mensaje || x.j.revision) + ')'); const cQ = x.j.contenedor;
       let f = await pide('/api/proyectos/' + pg + '/contenedores/' + cQ); ok(f.j.atributos.descripcion === 'INFORME DE DIAGNÓSTICO DEL MODELO' && f.j.versiones[0].revision === 'R00', 'el nombre de la portada queda como descripción del documento');
-      x = await sube(K('INF-ARQ-E2-000010') + '.pdf', PT.pdf({ codigo: K('INF-ARQ-E2-000010'), rev: 'R01', emision: '05/02/2026', filas: [['R00', '22/01/2026'], ['R01', '05/02/2026']] }), COMg);
+      x = await sube(K('INF-ARQ-E2-000010') + '.pdf', firma(PT.pdf({ codigo: K('INF-ARQ-E2-000010'), rev: 'R01', emision: '05/02/2026', filas: [['R00', '22/01/2026'], ['R01', '05/02/2026']] })), COMg);
       ok(x.status === 200 && x.j.revision === 'R01' && x.j.n === 2, 'la versión siguiente entra en R01 (' + x.status + ' ' + (x.j.mensaje || '') + ')');
       x = await sube(K('INF-ARQ-E2-000010') + '.pdf', PT.pdf({ codigo: K('INF-ARQ-E2-000010'), rev: 'R03', emision: '01/03/2026', filas: [['R03', '01/03/2026']] }), COMg);
       ok(x.status === 422 && fallas(x) === 'correlativa', 'si la portada se salta la revisión que corresponde (R02), se rechaza (' + fallas(x) + ')');
@@ -577,7 +578,7 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       x = await sube(K('MTZ-ARQ-E2-000016') + '.xlsx', 'hoja', COMg); ok(x.status === 200 && x.j.qa && x.j.qa.aplica === false, 'un Excel no lleva portada: entra sin QA');
       x = await sube(K('INF-ARQ-E2-000021') + '.pdf', 'en WIP no se valida', WIPg); ok(x.status === 200 && x.j.estado === 'WIP' && !x.j.qa, 'en el WIP no se exige la QA');
       // desplazar de WIP al compartido: validación previa, la portada propone el nombre, y la QA vuelve a correr al desplazar
-      x = await sube('memoria final.pdf', PT.pdf({ codigo: K('MDE-ARQ-E2-000017'), titulo: 'MEMORIA DE CÁLCULO ESTRUCTURAL' }), WIPg); const cM = x.j.contenedor;
+      x = await sube('memoria final.pdf', firma(PT.pdf({ codigo: K('MDE-ARQ-E2-000017'), titulo: 'MEMORIA DE CÁLCULO ESTRUCTURAL' })), WIPg); const cM = x.j.contenedor;
       let v = await pide('/api/proyectos/' + pg + '/qa/contenedores', { json: { ids: [cM], carpeta: COMg } });
       ok(v.j.ok === true && v.j.resultados[0].renombrar === K('MDE-ARQ-E2-000017') + '.pdf', 'validación previa al desplazar: aprobada y propone como nombre el código de la portada (' + JSON.stringify(v.j.resultados.map(r => r.renombrar || r.motivo)) + ')');
       await pide('/api/proyectos/' + pg + '/contenedores/' + cM + '/renombrar', { json: { nombre: K('MDE-ARQ-E2-000017') + '.pdf', carpeta: COMg } });
@@ -665,6 +666,9 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       ok(t('Texto sin terminar').paginas.join() === '3' && t('El PDF trae comentarios').paginas.join() === '4' && t('Páginas sin texto').paginas.join() === '4', 'detecta «por definir», comentarios que quedaron en el PDF y páginas sin texto');
       r = AN.comprueba({ paginas: [P(1, 'x', '')], total: 1, portada: { filas: [{ rev: 'R00', fecha: '10/03/2026' }, { rev: 'R01', fecha: '01/03/2026' }] }, word: { cambios: 3, comentarios: 2 } });
       ok(r.hallazgos.some(h => h.nivel === 'mal' && /orden de fecha/.test(h.titulo)) && r.hallazgos.some(h => h.nivel === 'mal' && /control de cambios/.test(h.titulo)), 'detecta el cuadro de revisiones con fechas desordenadas y un Word con control de cambios o comentarios');
+      { const pag = (n, t) => ({ n, texto: t, cab: '', notas: 0 });
+        const E = AN.estructura([pag(1, 'PORTADA'), pag(2, 'ÍNDICE\n1. INTRODUCCIÓN .......... 3\n2. OBJETIVO .......... 3\n3. DESARROLLO .......... 4\n3.1 Criterios .......... 4\n4. CONCLUSIONES .......... 6'), pag(3, '1. INTRODUCCIÓN\nEl presente informe describe el diagnóstico del modelo federado del hospital.\n2. OBJETIVO\nEvaluar la calidad del modelo BIM federado antes de su entrega.'), pag(4, '3. DESARROLLO\n3.1 Criterios\nSe revisaron interferencias y nomenclatura.'), pag(5, '4. CONCLUSIONES\nEl modelo cumple con observaciones menores.')]);
+        ok(E.secciones.length === 5 && E.indice === 5 && E.objetivo.pagina === 3 && /Evaluar la calidad/.test(E.objetivo.texto) && /cumple con observaciones/.test(E.conclusiones[0].texto) && E.difs.length === 1 && E.difs[0].num === '4' && E.difs[0].indice === 6 && E.difs[0].real === 5, 'sin IA: de los títulos numerados salen el objetivo, las conclusiones y las secciones con su página, y se detecta que el índice manda a una página equivocada'); }
       ok(AN.fechasDe('el 12 de marzo de 2026 y 3-4-2026').filter(f => f.valida).length === 2, 'lee fechas con barra, guion y en texto («12 de marzo de 2026»)');
       // en el CDE: la ficha se genera sola al cargar
       const x = await subeG14('100030-JYS01-000-XXX-INF-ARQ-E2-000081.pdf', PT.pdf({ codigo: '100030-JYS01-000-XXX-INF-ARQ-E2-000081' }), '?carpeta=' + encodeURIComponent(WIPg));
@@ -673,6 +677,85 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       const RS2 = require('../lib/resumen'); let visto = '';
       const ia = await RS2.resumenIA('[pág. 1]\ntexto', { archivo: 'x.pdf', tipo: 'documento', analisis: { portada: { revision: 'R00' }, hallazgos: [{ nivel: 'aviso', titulo: 'T', detalle: 'D' }] } }, { IA_CLAVE: 'k' }, async (u, o) => { visto = JSON.parse(o.body).messages[0].content; return { ok: true, json: async () => ({ content: [{ type: 'text', text: '{"descripcion":"d","objetivo":"o","alcance":"a","ideas":["i"],"conclusiones":"c","inconsistencias":[{"texto":"El área dice 500 m2 en 3.1 y 650 m2 en 5.2","paginas":[4,9]}],"fechas_clave":[{"fecha":"10/03/2026","que":"entrega"}],"pendientes":["definir"]}' }] }) }; });
       ok(ia.alcance === 'a' && ia.inconsistencias[0].paginas.join() === '4,9' && ia.fechasClave[0].que === 'entrega' && ia.pendientes.length === 1 && /inconsistencias/.test(visto) && /T — D/.test(visto), 'con IA, la ficha suma alcance, inconsistencias con sus páginas, fechas clave y pendientes (y la IA recibe las comprobaciones como contexto)');
+    }
+
+    { // v0.25.0: firma digital (ReFirma) de quien elaboró el documento, obligatoria para los PDF que entran al compartido
+      console.log('\n14c. Firma digital de los PDF que entran al compartido (ELAB. POR) y llamada a ReFirma');
+      const K = (n) => '100030-JYS01-000-XXX-' + n, sube = (nombre, cuerpo, carpeta, qs) => subeG14(nombre, cuerpo, (carpeta ? '?carpeta=' + encodeURIComponent(carpeta) : '?x=1') + (qs || ''));
+      const FIR = require('../lib/firma'), fall = (x) => ((x.j.firma && x.j.firma.checks) || []).filter(c => !c.ok).map(c => c.id).join(',');
+      const cubierta = (n, o) => PT.pdf(Object.assign({ codigo: K(n), titulo: 'INFORME FIRMADO ' + n }, o || {}));
+      await pide('/api/proyectos/' + pg + '/conformidad', { method: 'PUT', json: { firmaDigital: true } });   // la firma es opcional por proyecto: aquí se activa
+      // verificador (sin servidor)
+      let ev = FIR.evalua(firma(cubierta('INF-ARQ-E2-000040')), 'S. Campoverde', { raices: [] });
+      ok(ev.ok && ev.firmante.nombre === 'SANDRA CAMPOVERDE RUIZ' && ev.firmante.dni === '40000001' && ev.checks.find(c => c.id === 'cadena').aviso, 'verificador: firma válida de S. Campoverde (sin raíces cargadas la cadena se informa como aviso)');
+      ok(!FIR.evalua(FX.cambiaDespues(firma(cubierta('INF-ARQ-E2-000040'))), 'S. Campoverde', {}).ok && !FIR.evalua(firma(cubierta('INF-ARQ-E2-000040'), KP.sandra, { resumenFalso: true }), 'S. Campoverde', {}).ok && !FIR.evalua(firma(cubierta('INF-ARQ-E2-000040'), KP.vencido), 'S. Campoverde', {}).ok, 'verificador: rechaza cambios después de firmar, un resumen alterado y un certificado vencido');
+      const ext = require('fs').readFileSync(__dirname + '/muestras/firma-externa-pades.pdf'), raizExt = new (require('crypto').X509Certificate)(require('fs').readFileSync(__dirname + '/muestras/firma-externa-raiz.pem'));
+      ev = FIR.evalua(ext, 'S. Campoverde', { raices: [raizExt] }); ok(ev.ok && ev.verificacion.firmas[0].subFiltro === 'ETSI.CAdES.detached' && ev.checks.find(c => c.id === 'cadena').ok && !ev.checks.find(c => c.id === 'cadena').aviso, 'verificador: valida una firma PAdES hecha por otro firmador (pyHanko, CAdES detached) hasta su raíz de confianza');
+      ok(FIR.coincideNombre('S. Campoverde', { nombre: 'SANDRA CAMPOVERDE RUIZ' }).ok && FIR.coincideNombre('Ing. Sandra Campoverde R.', { nombre: 'SANDRA CAMPOVERDE RUIZ' }).ok && !FIR.coincideNombre('M. Wong', { nombre: 'SANDRA CAMPOVERDE RUIZ' }).ok && !FIR.coincideNombre('J. Campoverde', { nombre: 'SANDRA CAMPOVERDE RUIZ' }).ok && !FIR.coincideNombre('S. C.', { nombre: 'SANDRA CAMPOVERDE RUIZ' }).ok, 'ELAB. POR contra el certificado: iniciales y apellidos (S. Campoverde sí; M. Wong, J. Campoverde o solo iniciales, no)');
+      const QAm = require('../lib/qa'); let q1 = await QAm.validaArchivo(PT.pdf({ codigo: 'X', rev: 'R01', emision: '05/02/2026', filas: [['R00', '22/01/2026', 'J. Pérez'], ['R01', '05/02/2026', 'S. Campoverde']] }), 'x.pdf', {}), q2 = await QAm.validaArchivo(PT.docx({ codigo: 'X', filas: [['R00', '22/01/2026', 'M. Wong']] }), 'x.docx', {});
+      ok(q1.datos.elabPor === 'S. Campoverde' && q2.datos.elabPor === 'M. Wong', 'la QA lee «ELAB. POR» de la fila de la revisión de la portada (PDF por columnas y Word por celdas)');
+      // carga al compartido
+      let x = await sube(K('INF-ARQ-E2-000041') + '.pdf', cubierta('INF-ARQ-E2-000041'), COMg); let f = await pide('/api/proyectos/' + pg + '/contenedores?carpeta=' + encodeURIComponent(COMg));
+      ok(x.status === 422 && x.j.error === 'firma' && x.j.firma.sinFirma && x.j.firma.elabPor === 'S. Campoverde' && x.j.pendiente && x.j.qa.ok && !f.j.contenedores.some(c => c.nombre === K('INF-ARQ-E2-000041')), 'PDF que pasa la QA pero sin firma: no entra, dice quién debe firmar y deja listo el pedido a ReFirma (' + x.status + ' ' + (x.j.error || '') + ')');
+      const tok = x.j.pendiente;
+      x = await sube(K('INF-ARQ-E2-000042') + '.pdf', firma(cubierta('INF-ARQ-E2-000042'), KP.marco), COMg); ok(x.status === 422 && fall(x) === 'firmante' && !x.j.pendiente, 'firmado por otra persona (M. Wong en vez de S. Campoverde): no entra (' + fall(x) + ')');
+      x = await sube(K('INF-ARQ-E2-000043') + '.pdf', FX.cambiaDespues(firma(cubierta('INF-ARQ-E2-000043'))), COMg); ok(x.status === 422 && fall(x) === 'cubre', 'PDF modificado después de firmarse: no entra (' + fall(x) + ')');
+      x = await sube(K('INF-ARQ-E2-000044') + '[R].pdf', firma(cubierta('INF-ARQ-E2-000044')), COMg); f = x.j.contenedor ? await pide('/api/proyectos/' + pg + '/contenedores/' + x.j.contenedor) : { j: {} };
+      ok(x.status === 200 && f.j.nombre === K('INF-ARQ-E2-000044') && f.j.versiones[0].meta.firma.ok && f.j.versiones[0].meta.firma.firmante.nombre === 'SANDRA CAMPOVERDE RUIZ', 'firmado por S. Campoverde: entra; el «[R]» de ReFirma PDF se quita del nombre y la firma queda en la versión (' + x.status + ' ' + (x.j.mensaje || '') + ')');
+      x = await sube(K('MDE-ARQ-E2-000045') + '.docx', PT.docx({ codigo: K('MDE-ARQ-E2-000045') }), COMg); ok(x.status === 200, 'los Word no se firman: entran solo con la QA');
+      // raíces de confianza: con una raíz cargada, un certificado de una entidad desconocida ya no sirve
+      x = await sube(K('INF-ARQ-E2-000046') + '.pdf', firma(cubierta('INF-ARQ-E2-000046'), KP.falsa, { cadena: [KP.impostora] }), COMg); ok(x.status === 200, 'sin raíces cargadas, la cadena del certificado no se puede comprobar (aviso): hay que cargar las de RENIEC');
+      let rr = await fetch(B + '/api/firma/raices', { method: 'POST', headers: { cookie: galleta }, body: KP.raiz.pem }); ok(rr.status === 403, 'solo el administrador del CDE carga raíces de confianza');
+      galleta = ''; await pide('/api/acceso/local', { json: { email: 'admin@anin.gob.pe', clave: 'prueba' } });
+      rr = await fetch(B + '/api/firma/raices', { method: 'POST', headers: { cookie: galleta }, body: KP.raiz.pem }).then(r => r.json()); let lr = await pide('/api/firma/raices');
+      ok(rr.ok && lr.j.raices.length === 1 && lr.j.raices[0].nombre === 'RAIZ DE PRUEBA CDE' && lr.j.raices[0].autofirmada, 'el administrador carga una raíz de confianza (.pem/.cer)');
+      await entra('gestor@anin.gob.pe');
+      x = await sube(K('INF-ARQ-E2-000047') + '.pdf', firma(cubierta('INF-ARQ-E2-000047'), KP.falsa, { cadena: [KP.impostora] }), COMg); ok(x.status === 422 && fall(x) === 'cadena', 'con la raíz cargada, un certificado con el mismo nombre pero de otra entidad no entra (' + fall(x) + ')');
+      x = await sube(K('INF-ARQ-E2-000048') + '.pdf', firma(cubierta('INF-ARQ-E2-000048')), COMg); f = await pide('/api/proyectos/' + pg + '/contenedores/' + x.j.contenedor);
+      ok(x.status === 200 && f.j.versiones[0].meta.firma.cadena.confiable === true, 'y uno de la entidad de confianza sí (cadena comprobada)');
+      // llamada a ReFirma (simulada: lo que hace ReFirma contra el CDE)
+      let st = await pide('/api/firma/pend/' + tok); ok(st.status === 200 && st.j.estado === 'pendiente' && st.j.elabPor === 'S. Campoverde', 'el pedido de firma está pendiente y dice quién firma');
+      let ar = await pide('/api/firma/pend/' + tok + '/argumentos'), A = JSON.parse(Buffer.from(ar.j.args || '', 'base64').toString('utf8') || '{}');
+      ok(ar.status === 200 && A.app === 'pdf' && A.type === 'W' && A.protocol === 'T' && A.idFile === 'documento' && A.fileDownloadUrl.endsWith('/api/firma/refirma/' + tok + '/documento.pdf') && A.fileUploadUrl.endsWith('/firmado') && A.outputFile === K('INF-ARQ-E2-000041') + '[R].pdf' && A.dcfilter === '.*FIR.*|.*FAU.*' && ar.j.credenciales === false && A.clientId === '', 'argumentos para ReFirma Invoker (JSON en base64: app pdf, tipo W, URL de descarga y de devolución); sin credenciales de RENIEC va en modo diagnóstico');
+      await pide('/api/firma/pend/' + tok + '/evento', { json: { ev: 'getArguments', detalle: 'el componente pidió los argumentos' } });
+      const dl = await fetch(A.fileDownloadUrl); const orig = Buffer.from(await dl.arrayBuffer());
+      ok(dl.status === 200 && /pdf/.test(dl.headers.get('content-type')) && orig.slice(0, 5).toString() === '%PDF-', 'ReFirma descarga el PDF sin sesión, con el código del pedido');
+      const mp = (buf, nombre) => { const lim = '----refirma' + Date.now(); return { headers: { 'content-type': 'multipart/form-data; boundary=' + lim }, body: Buffer.concat([Buffer.from('--' + lim + '\r\nContent-Disposition: form-data; name="documento"; filename="' + nombre + '"\r\nContent-Type: application/pdf\r\n\r\n'), buf, Buffer.from('\r\n--' + lim + '--\r\n')]) }; };
+      let up = await fetch(A.fileUploadUrl, Object.assign({ method: 'POST' }, mp(firma(orig), K('INF-ARQ-E2-000041') + '[R].pdf'))); const upT = await up.text();
+      st = await pide('/api/firma/pend/' + tok);
+      ok(up.status === 200 && upT === 'OK' && st.j.estado === 'firmado' && st.j.checks.find(c => c.id === 'mismo').ok && st.j.firmante.nombre === 'SANDRA CAMPOVERDE RUIZ', 'ReFirma devuelve el PDF firmado (multipart, campo «documento»): el CDE lo verifica (mismo documento, firma de S. Campoverde)');
+      ok(['creado', 'argumentos', 'getArguments', 'descarga', 'devolucion', 'firmado'].every(e => st.j.eventos.some(v => v.ev === e)) && !JSON.stringify(st.j.eventos).includes(tok), 'quedan anotados todos los pasos (navegador, servidor y ReFirma), sin el código del pedido');
+      const fd = await fetch(B + '/api/firma/pend/' + tok + '/firmado', { headers: { cookie: galleta } }), firmadoBuf = Buffer.from(await fd.arrayBuffer());
+      x = await sube(K('INF-ARQ-E2-000041') + '.pdf', firmadoBuf, COMg); ok(fd.status === 200 && x.status === 200 && x.j.revision === 'R00', 'con el PDF que devolvió ReFirma el documento entra al compartido (' + x.status + ' ' + (x.j.mensaje || '') + ')');
+      rr = await fetch(B + '/api/firma/pend/no-existe/argumentos', { headers: { cookie: galleta } }); ok(rr.status === 404, 'un pedido inexistente o vencido: 404');
+      x = await sube(K('INF-ARQ-E2-000049') + '.pdf', cubierta('INF-ARQ-E2-000049'), COMg); const tok2 = x.j.pendiente;
+      ar = await pide('/api/firma/pend/' + tok2 + '/argumentos'); A = JSON.parse(Buffer.from(ar.j.args, 'base64').toString('utf8'));
+      up = await fetch(A.fileUploadUrl, Object.assign({ method: 'POST' }, mp(firma(await fetch(A.fileDownloadUrl).then(r => r.arrayBuffer()).then(b => Buffer.from(b)), KP.marco), 'x[R].pdf'))); st = await pide('/api/firma/pend/' + tok2);
+      ok((await up.text()).startsWith('RECHAZADO') && st.j.estado === 'rechazado' && st.j.checks.some(c => c.id === 'firmante' && !c.ok), 'si en ReFirma firma otra persona, el pedido queda rechazado y dice por qué');
+      up = await fetch(A.fileUploadUrl, Object.assign({ method: 'POST' }, mp(firma(cubierta('INF-ARQ-E2-000050')), 'otro[R].pdf'))); st = await pide('/api/firma/pend/' + tok2);
+      ok(st.j.estado === 'rechazado' && st.j.checks.some(c => c.id === 'mismo' && !c.ok), 'si llega firmado otro documento (no el que pasó la QA), se rechaza');
+      x = await fetch(B + '/api/firma/pend/' + tok2 + '/subir-firmado', { method: 'POST', headers: { cookie: galleta, 'content-type': 'application/pdf' }, body: firma(await fetch(B + '/api/firma/pend/' + tok2 + '/original', { headers: { cookie: galleta } }).then(r => r.arrayBuffer()).then(b => Buffer.from(b))) });
+      st = await pide('/api/firma/pend/' + tok2); ok(x.status === 200 && st.j.estado === 'firmado', 'ruta manual: se descarga el PDF, se firma en ReFirma PDF y se sube el [R].pdf al pedido');
+      await entra('bim@ghemet.com'); rr = await pide('/api/firma/pend/' + tok2); ok(rr.status === 403, 'otra persona no ve el pedido de firma'); await entra('gestor@anin.gob.pe');
+      // desplazar del WIP al compartido: prevalidación con la firma, ReFirma firma la versión y se desplaza
+      const nS = K('INF-ARQ-E2-000051') + '.pdf';
+      x = await sube(nS, cubierta('INF-ARQ-E2-000051'), WIPg); const cS = x.j.contenedor;
+      let v = await pide('/api/proyectos/' + pg + '/qa/contenedores', { json: { ids: [cS], carpeta: COMg } }), r0 = v.j.resultados[0];
+      ok(v.j.ok === false && r0.qa.ok && r0.firma.sinFirma && r0.pendiente, 'prevalidación al desplazar: la QA pasa pero falta la firma, y deja el pedido a ReFirma');
+      x = await pide('/api/proyectos/' + pg + '/contenedores/' + cS + '/mover', { json: { carpeta: COMg } }); f = await pide('/api/proyectos/' + pg + '/contenedores/' + cS);
+      ok(x.status === 422 && x.j.error === 'firma' && x.j.pendiente && f.j.carpeta === WIPg, 'sin firma no se desplaza al compartido y se queda en el WIP (' + x.status + ' ' + x.j.error + ')');
+      ar = await pide('/api/firma/pend/' + r0.pendiente + '/argumentos'); A = JSON.parse(Buffer.from(ar.j.args, 'base64').toString('utf8'));
+      await fetch(A.fileUploadUrl, Object.assign({ method: 'POST' }, mp(firma(await fetch(A.fileDownloadUrl).then(r => r.arrayBuffer()).then(b => Buffer.from(b))), 'x[R].pdf')));
+      const fv = Buffer.from(await (await fetch(B + '/api/firma/pend/' + r0.pendiente + '/firmado', { headers: { cookie: galleta } })).arrayBuffer());
+      x = await sube(nS, fv, ''); ok(x.status === 200 && x.j.n === 2, 'el PDF firmado entra como versión nueva del documento en el WIP (' + x.status + ' ' + (x.j.mensaje || '') + ')');
+      v = await pide('/api/proyectos/' + pg + '/qa/contenedores', { json: { ids: [cS], carpeta: COMg } }); ok(v.j.ok === true && v.j.resultados[0].firma.ok, 'la prevalidación ya pasa (QA y firma)');
+      await pide('/api/proyectos/' + pg + '/contenedores/' + cS + '/atributos', { method: 'PUT', json: { atributos: {}, revision: 'R00' } });   // lo que hace la rejilla
+      x = await pide('/api/proyectos/' + pg + '/contenedores/' + cS + '/mover', { json: { carpeta: COMg } }); f = await pide('/api/proyectos/' + pg + '/contenedores/' + cS);
+      ok(x.status === 200 && f.j.estado === 'COMPARTIDO' && f.j.versiones.find(z => z.n === 2).meta.firma.ok && f.j.versiones.find(z => z.n === 2).revision === 'R00', 'y se desplaza al compartido en R00 con la firma verificada (' + x.status + ' ' + (x.j.mensaje || '') + ')');
+      // el proyecto puede apagar la exigencia (Configuración → Archivos → Conformidad → Firma digital)
+      await pide('/api/proyectos/' + pg + '/conformidad', { method: 'PUT', json: { firmaDigital: false } });
+      x = await sube(K('INF-ARQ-E2-000052') + '.pdf', cubierta('INF-ARQ-E2-000052'), COMg); ok(x.status === 200, 'con la firma digital desactivada en el proyecto, basta la QA');
+      st = await pide('/api/firma/estado'); ok(st.status === 200 && st.j.credenciales === false && /clientclickonce\.js$/.test(st.j.invoker.porDefecto) && st.j.raices.length === 1, 'estado de la firma: credenciales de RENIEC, script del Invoker y raíces de confianza');
     }
 
     // ───────────── 15. Plantilla por zonas y flujo de revisión en paralelo (DC · especialistas · GP)

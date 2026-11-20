@@ -518,3 +518,15 @@ body.plegado .lateral .lopcion { display: none; }
 @media (max-width: 760px) { .qg-cuerpo { flex-direction: column; } .qg-hoja { flex: none; height: 62vh; padding: 8px; } .qg-lado { width: auto; overflow: visible; } .qg-ley { display: none; } .qg-cab { flex-wrap: wrap; } }
 
 .cargar td.est .cg-meta { color: var(--texto); font-size: 12px; margin-top: 2px; }   /* v0.24.2: la descripción que vino de la portada */
+
+/* v0.25.0 · ventana de firma digital */
+.fd { display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; overflow: auto; }
+.fd-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .fd-op { border: 1px solid var(--linea); border-radius: var(--radio); padding: 10px 12px; background: var(--panel); } .fd-op h4 { margin: 0 0 4px; font-size: 13px; }
+.fd-pasos { margin: 4px 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.fd-cred { font-size: 12px; margin-top: 8px; } .fd-cred.ok { color: #17663a; } .fd-cred.mal { color: #8a5d00; }
+.fd-reg summary, .fd-raices summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.fd-log { max-height: 210px; overflow: auto; border: 1px solid var(--linea); border-radius: var(--radio); margin-top: 6px; font-size: 12px; background: var(--panel); }
+.fd-ev { display: grid; grid-template-columns: 64px 78px 1fr; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--linea2); } .fd-ev:last-child { border-bottom: 0; }
+.fd-ev b { font-weight: 600; } .fd-ev.refirma b { color: var(--azul); } .fd-ev.mal { background: rgba(211, 47, 47, .07); } .fd-ev.mal span:last-child { color: #a11d1d; } .fd-ev.ok { background: rgba(31, 138, 76, .08); }
+.fd .pie { display: flex; gap: 8px; align-items: center; margin-top: auto; }
+@media (max-width: 760px) { .fd-cols { grid-template-columns: 1fr; } }

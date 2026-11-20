@@ -63,6 +63,7 @@ require('./lib/correspondencia').monta(app, Object.assign({ db: BD.db }, ctx)); 
 require('./lib/gestion').monta(app, Object.assign({ db: BD.db }, ctx));           // compartir, suprimidos, marcas, atributos (tablas marcas/compartidos antes que cde.js)
 require('./lib/resumen').monta(app, ctx);                                          // resumen automatico de cada archivo (deja ctx.resumenes para cde.js)
 require('./lib/cde').monta(app, ctx);
+require('./lib/refirma').monta(app, ctx);                                         // firma digital con ReFirma Invoker (pendientes de firma, raíces de confianza)
 require('./lib/forma').monta(app, Object.assign(ctx, { db: BD.db }));             // normas por carpeta, conjuntos, puentes, transmisiones, incidencias suprimidas, pagina de revision (usa ctx.cdeInterno)
 require('./lib/documentos').monta(app, ctx);                                       // Buscar - Registro de documentos (como Aconex), sobre los documentos del CDE (usa ctx.cdeInterno)
 require('./lib/modelos').monta(app, ctx);
