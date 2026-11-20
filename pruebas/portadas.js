@@ -13,7 +13,8 @@ function lineas(o) {
   if (o.vacia) return L;
   L.push([150, 740, 'PRESIDENCIA DEL CONSEJO DE MINISTROS', 9], [440, 740, 'Revisión: ' + o.rev, 10], [150, 726, 'AUTORIDAD NACIONAL DE INFRAESTRUCTURA', 10]);
   L.push([150, 705, o.contrato, 9], [440, 705, 'Emisión: ' + o.emision, 10], [150, 684, o.region, 9], [440, 684, o.pagina || 'Página: 1 de 1', 10]);
-  L.push([150, 520, o.titulo, 16], [150, o.proyecto ? 484 : 498, o.codigo, 12], [180, 460, o.direccion, 14]);
+  L.push([150, 520, o.titulo, 16], [150, o.proyecto || o.subtitulo ? 474 : 498, o.codigo, 12], [180, 460, o.direccion, 14]);
+  if (o.subtitulo) L.push([150, 494, o.subtitulo, 16]);   // el establecimiento bajo el título, separado como otro bloque (no es la descripción)
   if (o.proyecto) L.push([150, 504, o.proyecto, 11]);   // el «PROYECTO: …» que va bajo el título (no es el nombre del documento)
   if (o.sello) L.push([330, 430, 'REVISIÓN DE DOCUMENTOS TÉCNICOS', 9], [330, 416, 'A- ACEPTADO', 9], [330, 402, 'B- RECHAZADO', 9], [340, 380, 'FIRMA', 8], [450, 380, 'FECHA', 8]);
   [[60, 'REV N°'], [100, 'FECHA'], [200, 'DESCRIPCIÓN'], [340, 'ELAB. POR'], [410, 'REV. POR'], [480, 'APROB. POR']].forEach(([x, t]) => L.push([x, 330, t, 8]));
@@ -56,7 +57,7 @@ const TC = (t) => '<w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>' + (A
 const TR = (cs) => '<w:tr>' + cs.map(TC).join('') + '</w:tr>';
 const TBL = (filas) => '<w:tbl><w:tblPr><w:tblW w:w="9000" w:type="dxa"/></w:tblPr>' + filas.map(TR).join('') + '</w:tbl>';
 function documentoXml(o) {
-  const cuerpo = TBL([[o.logo ? ['LOGO', 'CONTRATISTA'] : '', ['PRESIDENCIA DEL CONSEJO DE MINISTROS', '“AUTORIDAD NACIONAL DE INFRAESTRUCTURA”'], 'Revisión: ' + o.rev], [o.contrato, 'Emisión: ' + o.emision], [o.region, 'Página: 1 de 1']]) +
+  const cuerpo = TBL([[o.logo ? ['LOGO', 'CONTRATISTA'] : '', ['PRESIDENCIA DEL CONSEJO DE MINISTROS', '“AUTORIDAD NACIONAL DE INFRAESTRUCTURA”'], 'Revisión: ' + o.rev], [o.contrato, 'Emisión: ' + o.emision], [o.region, o.pagina || 'Página: 1 de 1']]) +
     P(o.titulo) + P(o.codigo) + P(o.direccion) +
     (o.sello ? TBL([[['REVISIÓN DE DOCUMENTOS TÉCNICOS', 'A- ACEPTADO', 'B- RECHAZADO', 'FIRMA        FECHA']]]) + '<w:p/>' : '') +
     TBL([['REV N°', 'FECHA', 'DESCRIPCIÓN', 'ELAB. POR', 'REV. POR', 'APROB. POR']].concat(o.filas.map(([r, f, e]) => [r, f, 'Emitido para Revisión y Comentarios', e || 'S. Campoverde', 'M. Wong', 'D. Swai'])).concat([['', '', 'CARGO:', '', '', ''], ['', '', 'FIRMAS:', '', '', '']])) +
@@ -79,7 +80,7 @@ function docx(op) {
   const o = Object.assign({}, BASE, op || {});
   return zip([['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'],
     ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'],
-    ['word/document.xml', documentoXml(o)]]);
+    ['word/document.xml', documentoXml(o)]].concat(o.paginasWord ? [['docProps/app.xml', '<?xml version="1.0" encoding="UTF-8"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Pages>' + o.paginasWord + '</Pages></Properties>']] : []));
 }
 
 module.exports = { pdf, docx };

@@ -645,6 +645,25 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       x = await pide('/api/proyectos/' + pg + '/contenedores/' + x.j.contenedor + '/renombrar', { json: { nombre: '100099-JYS01-000-XXX-MDE-ARQ-E2-000073.pdf', carpeta: COMg } });
       ok(x.status === 400 && /100030/.test(x.j.mensaje || ''), 'y no se puede renombrar con el código de otro proyecto para una carpeta con norma');
       BDp.q.corre('UPDATE proyectos SET codigo = ? WHERE id = ?', codAntes, pg);
+      { // v0.25.1 · la descripción es solo el título: el establecimiento de debajo («HOSPITAL LA CALETA») no entra; y se corrigen las ya cargadas
+        let x = await subeG14(K('INF-CIV-E2-000090') + '.pdf', PT.pdf({ codigo: K('INF-CIV-E2-000090'), titulo: 'INFORME CONCEPTUAL DE DRENAJE', subtitulo: 'HOSPITAL LA CALETA' }), '?carpeta=' + encodeURIComponent(COMg));
+        let f = await pide('/api/proyectos/' + pg + '/contenedores/' + x.j.contenedor);
+        ok(x.status === 200 && f.j.atributos.descripcion === 'INFORME CONCEPTUAL DE DRENAJE', 'la descripción es solo el título del recuadro, sin el «HOSPITAL LA CALETA» de debajo (' + (f.j.atributos || {}).descripcion + ')');
+        const c1 = x.j.contenedor; x = await subeG14(K('INF-CIV-E2-000091') + '.pdf', PT.pdf({ codigo: K('INF-CIV-E2-000091'), titulo: 'EVALUACIÓN DE RIESGOS', subtitulo: 'HOSPITAL LA CALETA' }), '?carpeta=' + encodeURIComponent(COMg)); const c2 = x.j.contenedor;
+        const viejo = (cid, desc, tit) => { const c = BDp.q.uno('SELECT atributos FROM contenedores WHERE id = ?', cid), at = JSON.parse(c.atributos || '{}'); at.descripcion = desc; BDp.q.corre('UPDATE contenedores SET atributos = ? WHERE id = ?', JSON.stringify(at), cid); for (const v of BDp.q.todos('SELECT id, meta FROM versiones WHERE contenedor_id = ?', cid)) { const m = JSON.parse(v.meta || '{}'); m.qa.titulo = tit; BDp.q.corre('UPDATE versiones SET meta = ? WHERE id = ?', JSON.stringify(m), v.id); } };
+        viejo(c1, 'INFORME CONCEPTUAL DE DRENAJE HOSPITAL LA CALETA', 'INFORME CONCEPTUAL DE DRENAJE HOSPITAL LA CALETA');   // como quedó con la lectura anterior
+        viejo(c2, 'Evaluación de riesgos (editada a mano)', 'EVALUACIÓN DE RIESGOS HOSPITAL LA CALETA');
+        let rc = await pide('/api/proyectos/' + pg + '/qa/recalcular-descripciones', { json: {} });
+        const f1 = await pide('/api/proyectos/' + pg + '/contenedores/' + c1), f2 = await pide('/api/proyectos/' + pg + '/contenedores/' + c2);
+        ok(rc.status === 200 && rc.j.corregidos.some(z => z.id === c1 && z.ahora === 'INFORME CONCEPTUAL DE DRENAJE') && f1.j.atributos.descripcion === 'INFORME CONCEPTUAL DE DRENAJE' && f1.j.versiones[0].meta.qa.titulo === 'INFORME CONCEPTUAL DE DRENAJE', 'documentos ya cargados: se corrige la descripción que había puesto la QA');
+        ok(f2.j.atributos.descripcion === 'Evaluación de riesgos (editada a mano)' && !rc.j.corregidos.some(z => z.id === c2), 'una descripción editada a mano no se toca');
+        await entra('bim@ghemet.com'); rc = await pide('/api/proyectos/' + pg + '/qa/recalcular-descripciones', { json: {} }); ok(rc.status === 403, 'solo el gestor puede pedir la corrección'); await entra('gestor@anin.gob.pe'); }
+      { const QW = require('../lib/qa'); let q = await QW.validaArchivo(PT.docx({ codigo: K('MDE-ARQ-E2-000075'), pagina: 'Página: 1 de 12', paginasWord: 12 }), 'x.docx', { codigo: K('MDE-ARQ-E2-000075') });
+        ok(q.ok && q.checks.find(c => c.id === 'paginas').ok, 'Word: «Página 1 de 12» coincide con las 12 páginas que Word registró al guardarlo');
+        q = await QW.validaArchivo(PT.docx({ codigo: K('MDE-ARQ-E2-000075'), pagina: 'Página: 1 de 12', paginasWord: 15 }), 'x.docx', { codigo: K('MDE-ARQ-E2-000075') });
+        ok(!q.ok && q.checks.filter(c => !c.ok).map(c => c.id).join() === 'paginas', 'Word: si la portada dice «1 de 12» y Word registró 15 páginas, no pasa la QA');
+        q = await QW.validaArchivo(PT.docx({ codigo: K('MDE-ARQ-E2-000075') }), 'x.docx', { codigo: K('MDE-ARQ-E2-000075') });
+        ok(q.ok && !q.checks.some(c => c.id === 'paginas'), 'un Word que no trae su número de páginas no se puede comprobar: no se exige'); }
       { const QAm = require('../lib/qa'); let q = await QAm.validaArchivo(PT.pdf({ codigo: K('INF-ARQ-E2-000074'), pagina: 'Página 1 de 1' }), 'x.pdf', { codigo: K('INF-ARQ-E2-000074') });
         ok(q.ok && q.checks.find(c => c.id === 'paginas').ok && q.zonas.cajas.some(z => z.id === 'paginas'), '«Página 1 de 1» sin dos puntos también vale, y el total coincide con las páginas del archivo');
         q = await QAm.validaArchivo(PT.pdf({ codigo: K('INF-ARQ-E2-000074'), pagina: 'Página: 1 de 78' }), 'x.pdf', { codigo: K('INF-ARQ-E2-000074') });
@@ -669,6 +688,14 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       { const pag = (n, t) => ({ n, texto: t, cab: '', notas: 0 });
         const E = AN.estructura([pag(1, 'PORTADA'), pag(2, 'ÍNDICE\n1. INTRODUCCIÓN .......... 3\n2. OBJETIVO .......... 3\n3. DESARROLLO .......... 4\n3.1 Criterios .......... 4\n4. CONCLUSIONES .......... 6'), pag(3, '1. INTRODUCCIÓN\nEl presente informe describe el diagnóstico del modelo federado del hospital.\n2. OBJETIVO\nEvaluar la calidad del modelo BIM federado antes de su entrega.'), pag(4, '3. DESARROLLO\n3.1 Criterios\nSe revisaron interferencias y nomenclatura.'), pag(5, '4. CONCLUSIONES\nEl modelo cumple con observaciones menores.')]);
         ok(E.secciones.length === 5 && E.indice === 5 && E.objetivo.pagina === 3 && /Evaluar la calidad/.test(E.objetivo.texto) && /cumple con observaciones/.test(E.conclusiones[0].texto) && E.difs.length === 1 && E.difs[0].num === '4' && E.difs[0].indice === 6 && E.difs[0].real === 5, 'sin IA: de los títulos numerados salen el objetivo, las conclusiones y las secciones con su página, y se detecta que el índice manda a una página equivocada'); }
+      { const NOMx = require('../lib/nomenclatura'), Dx = require('../lib/docpg002'), cfgx = { normas: [Dx.norma()], carpetas: [{ ruta: 'COM', norma: Dx.ID }], normaPorDefecto: Dx.ID };
+        const d1 = NOMx.detalleCodigo(cfgx, 'COM', '100022-SHYD1-000-XXX-INF-SOC-E2-000001', '100022'), d2 = NOMx.detalleCodigo(cfgx, 'COM', '100031-SHYDRO-000-XX-INF-ARQ-E9-000001', '100022');
+        ok(!d1.ok && d1.campos.filter(c => c.error).map(c => c.nombre).join() === 'Disciplina' && d1.campos[5].admitidos.length === 55 && d1.campos[4].etiqueta === 'Informe', 'nomenclatura campo por campo: «SOC» no es disciplina de la norma (y se muestran las 55 admitidas)');
+        ok(d2.campos.filter(c => c.error).map(c => c.nombre).join() === 'Codigo de proyecto,Originador,Nivel,Etapa' && /otro proyecto/.test(d2.campos[0].error) && /5 caracteres \(tiene 6\)/.test(d2.campos[1].error), 'nomenclatura campo por campo: proyecto ajeno, originador de 6 letras, nivel de 2 y etapa E9');
+        const QAx = require('../lib/qa'); const q3 = await QAx.validaArchivo(PT.pdf({ codigo: '100022-SHYD1-000-XXX-INF-SOC-E2-000001' }), 'x.pdf', { detalleCodigo: (c) => NOMx.detalleCodigo(cfgx, 'COM', c, '100022') });
+        ok(/Disciplina «SOC»: no está entre los 55 valores/.test(q3.checks.find(c => c.id === 'codigo').detalle) && q3.datos.codigoCampos.length === 8, 'la QA dice qué campo del código de la portada no cumple (Disciplina «SOC»)');
+        const q4 = await QAx.validaArchivo(PT.pdf({ codigo: '100031-JYS01-000-XXX-PLN-ZZZ-E4-000002' }), 'x.pdf', { codigo: '100022-JYS01-000-XXX-PLN-ZZZ-E4-000002', detalleCodigo: (c) => NOMx.detalleCodigo(cfgx, 'COM', c, '100022') });
+        ok(/Difiere en Codigo de proyecto \(portada «100031», nombre «100022»\)/.test(q4.checks.find(c => c.id === 'codigo').detalle), 'si la portada y el nombre no coinciden, dice en qué campo difieren'); }
       ok(AN.fechasDe('el 12 de marzo de 2026 y 3-4-2026').filter(f => f.valida).length === 2, 'lee fechas con barra, guion y en texto («12 de marzo de 2026»)');
       // en el CDE: la ficha se genera sola al cargar
       const x = await subeG14('100030-JYS01-000-XXX-INF-ARQ-E2-000081.pdf', PT.pdf({ codigo: '100030-JYS01-000-XXX-INF-ARQ-E2-000081' }), '?carpeta=' + encodeURIComponent(WIPg));
@@ -755,6 +782,18 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       // el proyecto puede apagar la exigencia (Configuración → Archivos → Conformidad → Firma digital)
       await pide('/api/proyectos/' + pg + '/conformidad', { method: 'PUT', json: { firmaDigital: false } });
       x = await sube(K('INF-ARQ-E2-000052') + '.pdf', cubierta('INF-ARQ-E2-000052'), COMg); ok(x.status === 200, 'con la firma digital desactivada en el proyecto, basta la QA');
+      // v0.25.1 · con la firma desactivada se OFRECE (no bloquea): «Firmar (opcional)» y la versión firmada conserva la revisión
+      await pide('/api/proyectos/' + pg + '/conformidad', { method: 'PUT', json: { firmaDigital: false } });
+      x = await sube(K('INF-ARQ-E2-000053') + '.pdf', cubierta('INF-ARQ-E2-000053'), COMg);
+      ok(x.status === 200 && x.j.revision === 'R00' && x.j.firmaOpcional && x.j.firmaOpcional.pendiente && x.j.firmaOpcional.elabPor === 'S. Campoverde', 'firma opcional: el PDF sin firma entra y se ofrece «Firmar (opcional)» para quien lo elaboró');
+      const op = x.j, ar2 = await pide('/api/firma/pend/' + op.firmaOpcional.pendiente + '/argumentos'), A2 = JSON.parse(Buffer.from(ar2.j.args, 'base64').toString('utf8'));
+      const orig2 = Buffer.from(await (await fetch(A2.fileDownloadUrl)).arrayBuffer()), firmado2 = firma(orig2);
+      let vf = await fetch(B + '/api/proyectos/' + pg + '/subir?carpeta=' + encodeURIComponent(COMg), { method: 'POST', headers: { cookie: galleta, 'x-nombre': encodeURIComponent(K('INF-ARQ-E2-000053') + '.pdf'), 'x-firma-de': op.version, 'content-type': 'application/octet-stream' }, body: firmado2 }).then(async r => ({ status: r.status, j: await r.json() }));
+      ok(vf.status === 200 && vf.j.n === 2 && vf.j.revision === 'R00' && vf.j.firmaDe === 1 && vf.j.firma && vf.j.firma.ok, 'la versión firmada entra como V2 con la MISMA revisión (R00) y la firma verificada (' + vf.status + ' ' + (vf.j.mensaje || '') + ')');
+      vf = await fetch(B + '/api/proyectos/' + pg + '/subir?carpeta=' + encodeURIComponent(COMg), { method: 'POST', headers: { cookie: galleta, 'x-nombre': encodeURIComponent(K('INF-ARQ-E2-000053') + '.pdf'), 'x-firma-de': vf.j.version, 'content-type': 'application/octet-stream' }, body: firma(cubierta('INF-ARQ-E2-000053')) }).then(async r => ({ status: r.status, j: await r.json() }));
+      ok(vf.status === 409, 'un PDF firmado que no es la última versión con la firma agregada no se acepta como versión firmada');
+      x = await sube(K('INF-ARQ-E2-000054') + '.pdf', firma(cubierta('INF-ARQ-E2-000054'), KP.marco), COMg);
+      ok(x.status === 200 && x.j.firma && !x.j.firma.ok && !x.j.firmaOpcional, 'firma opcional: un PDF firmado por otra persona entra, pero queda marcada la firma como no válida para «ELAB. POR»');
       st = await pide('/api/firma/estado'); ok(st.status === 200 && st.j.credenciales === false && /clientclickonce\.js$/.test(st.j.invoker.porDefecto) && st.j.raices.length === 1, 'estado de la firma: credenciales de RENIEC, script del Invoker y raíces de confianza');
     }
 
