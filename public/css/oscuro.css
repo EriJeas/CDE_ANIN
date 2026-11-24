@@ -340,3 +340,4 @@ html.tema-oscuro .qg-it.aviso { border-color: var(--ambar); } html.tema-oscuro .
 html.tema-oscuro .fa-ch.ok, html.tema-oscuro .fa-okt, html.tema-oscuro .fa-h.ok i { color: var(--verde); } html.tema-oscuro .fa-ch.avi, html.tema-oscuro .fa-avt, html.tema-oscuro .fa-h.aviso i { color: var(--ambar); } html.tema-oscuro .fa-ch.mal, html.tema-oscuro li.fa-mal, html.tema-oscuro .fa-h.mal i, html.tema-oscuro .fa-h.mal b { color: var(--rojo); }
 html.tema-oscuro .vbusq { background-color: var(--fondo) }
 html.tema-oscuro .vbusq #dResultados .doctabla .fija { background-color: var(--fondo) } html.tema-oscuro .vbusq #dResultados .doctabla thead th.fija { background-color: var(--suelo) } html.tema-oscuro .vbusq #dResultados .doctabla tr.clic:hover td.fija { background-color: var(--suelo) }
+html.tema-oscuro .rvreinicia { color: #f2c46d }
