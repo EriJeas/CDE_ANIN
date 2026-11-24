@@ -394,7 +394,7 @@
     const pid = p.id, t = (href, tit, txt, ext) => '<a class="obenlace" href="' + href + '"' + (ext ? ' target="_blank"' : '') + '><b>' + tit + '</b><span>' + txt + '</span><i>Abrir →</i></a>';
     app.innerHTML = cabecera(p, 'enlaces', res) + '<p class="pista" style="margin:0 0 12px">Estas partes de la gestión de obra ya existen en el CDE, con sus flujos y su trazabilidad. Desde aquí se abren directamente, sin duplicarlas.</p><div class="obenlaces">' +
       t('#/p/' + pid, 'Archivos', 'Todos los archivos de la obra viven en Documentos de proyecto, con versiones, permisos por carpeta y estados WIP · COM · PUB.') +
-      t('#/p/' + pid + '/revisiones', 'Entregas para aprobación', 'Los entregables se envían a Revisión contractual y siguen el flujo en paralelo: Document Control, especialistas y Gerente de Proyecto.') +
+      t('#/p/' + pid + '/revisiones', 'Entregas para aprobación', 'Los entregables se envían a Revisión contractual con uno de sus cuatro flujos (QA del Document Control, revisión de especialistas y aprobación del Gerente de Proyecto).') +
       t('#/p/' + pid + '/correspondencia', 'Comunicaciones contractuales', 'Cuando una consulta de obra deba quedar como comunicación formal entre las partes, se emite desde Comunicaciones contractuales.') +
       t('#/p/' + pid + '/registros', 'Alertas tempranas y Eventos compensables', 'Una orden de cambio que afecte el contrato se formaliza como alerta temprana o evento compensable.') +
       t('#/p/' + pid + '/incidencias', 'Observaciones', 'Las observaciones sobre documentos y modelos se gestionan en Observaciones contractuales.') +
