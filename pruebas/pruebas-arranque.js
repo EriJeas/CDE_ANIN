@@ -57,9 +57,8 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     r = await pide('/api/proyectos/' + pid + '/contenedores/' + cid); ok(r.j.estado === 'WIP' && r.j.transiciones.length === 2, 'devuelto → vuelve a WIP con historial');
     r = await sube('SECHURA-GHE-ZZ-XX-M3-A-0001-P03.rvt', Buffer.from('v3')); ok(r.status === 200 && r.j.n === 3, 'P03 → v3'); const vid3 = r.j.version;
     r = await pide('/api/proyectos/' + pid + '/contenedores/' + cid + '/estado', { json: { estado: 'COMPARTIDO', idoneidad: 'S4' } });
-    const FSE = (await pide('/api/proyectos/' + pid + '/flujos', { json: require('../lib/flujos').plantillasAnteriores({ contr: 'GHEMET', super: 'SUPERV' }).supervisionEntidad })).j.flujo.id;   // v0.25.4: el flujo de 2 etapas ya no viene de serie
-    r = await pide('/api/proyectos/' + pid + '/contenedores/' + cid + '/revisiones', { json: { flujo: FSE } }); ok(r.j.ronda === 2, 'ronda 2');
-    const rid2 = r.j.id; r = await pide('/api/proyectos/' + pid + '/revisiones/' + rid2 + '/cerrar', { json: { estado: 'aprobada' } }); ok(r.status === 200 && r.j.estado === 'abierta' && r.j.etapa === 1, 'flujo de 2 etapas (Supervisión y Entidad): la primera aprobada pasa a la segunda');
+    r = await pide('/api/proyectos/' + pid + '/contenedores/' + cid + '/revisiones', { json: {} }); ok(r.j.ronda === 2, 'ronda 2');
+    const rid2 = r.j.id; r = await pide('/api/proyectos/' + pid + '/revisiones/' + rid2 + '/cerrar', { json: { estado: 'aprobada' } }); ok(r.status === 200 && r.j.estado === 'abierta' && r.j.etapa === 1, 'flujo por defecto de 2 etapas: la primera aprobada pasa a la segunda');
     r = await pide('/api/proyectos/' + pid + '/revisiones/' + rid2 + '/decidir', { json: { decision: 'aprobar' } }); ok(r.status === 200 && r.j.estado === 'aprobada', 'segunda etapa aprobada → ronda aprobada');
     r = await pide('/api/proyectos/' + pid + '/contenedores/' + cid); ok(r.j.estado === 'PUBLICADO' && r.j.versiones[0].idoneidad === 'A1', 'al aprobar la ronda el flujo publica solo (PUBLICADO, A1)');
     r = await pide('/api/proyectos/' + pid + '/contenedores/' + cid + '/estado', { json: { estado: 'PUBLICADO', idoneidad: 'A1' } }); ok(r.status === 403, 'publicar lo ya publicado → rechazado');
@@ -144,9 +143,6 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     const WIP_G = 'E3_DISEÑO PRELIMINAR/E3.00_TRABAJO EN PROGRESO (WIP)/GHEMET', BIM = 'E3_DISEÑO PRELIMINAR/E3.01_COMPARTIDO (SHARED)/02. REVISIÓN DE PRESENTACIONES CONTRACTUALES/E3. Desarrollo de Ingeniería - Presentación 4.0 (P4.0)/E3.04.0.20 BIM', PUB = 'E3_DISEÑO PRELIMINAR/E3.02_PUBLICADO (PUBLISHED)';
     for (const [e, rol, org] of [['autor@ghemet.com', 'document-control', 'GHEMET'], ['rev@ghemet.com', 'revisor', 'GHEMET'], ['sup@superv.com', 'revisor', 'SUPERV'], ['sup2@superv.com', 'revisor', 'SUPERV'], ['esp@anin.gob.pe', 'revisor', 'ANIN'], ['gestor@anin.gob.pe', 'gestor', 'ANIN'], ['lector@anin.gob.pe', 'lector', 'ANIN']]) await pide('/api/proyectos/' + ph + '/miembros', { json: { email: e, rol, organizacion: org } });
     const entra = async (e) => { galleta = ''; await pide('/api/acceso/local', { json: { email: e, clave: 'prueba' } }); };
-    // v0.25.4: «Coordinación interna» y «DC → especialistas → GP» ya no vienen de serie: las pruebas del motor los crean como flujos propios del proyecto
-    const FLT = require('../lib/flujos').plantillasAnteriores({ contr: 'GHEMET', super: 'SUPERV' });
-    const creaFlujo = async (pid, plantilla) => { const g = galleta; await entra('gestor@anin.gob.pe'); const x = await pide('/api/proyectos/' + pid + '/flujos', { json: plantilla }); galleta = g; return x.j.flujo ? x.j.flujo.id : ''; };
     const subeH = (nombre, carpeta) => fetch(B + '/api/proyectos/' + ph + '/subir?carpeta=' + encodeURIComponent(carpeta), { method: 'POST', headers: { cookie: galleta, 'x-nombre': encodeURIComponent(nombre) }, body: Buffer.from('x') }).then(async x => ({ status: x.status, j: await x.json() }));
     // carpetas: crear, renombrar, permisos, borrar
     r = await pide('/api/proyectos/' + ph + '/carpetas', { json: { padre: 'E3_DISEÑO PRELIMINAR/E3.01_COMPARTIDO (SHARED)/01. REVISIONES PREVIAS', nombre: 'Reunion 01' } }); ok(r.status === 200, 'el gestor crea una subcarpeta');
@@ -170,7 +166,6 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     // flujos: editar y crear uno con etapa en paralelo
     await entra('gestor@anin.gob.pe');
     r = await pide('/api/proyectos/' + ph + '/flujos'); ok(r.j.flujos.length === 4 && r.j.flujos.find(f => f.id === 'especialistas-paralelo').etapas[1].pasos.length === 2, 'flujos por defecto; el de especialistas tiene 2 pasos en paralelo');
-    const FCO_H = await creaFlujo(ph, FLT.coordinacion);
     r = await pide('/api/proyectos/' + ph + '/flujos', { json: { nombre: 'Presentacion 4.0 - Levantamiento de observaciones', descripcion: 'Como en ACC pero con revision tecnica en paralelo', iniciadores: [{ tipo: 'org', valor: 'GHEMET' }], etapas: [{ nombre: 'Control documentario', pasos: [{ id: 'cd', nombre: 'Control documentario', tipo: 'uno', revisores: [{ tipo: 'org', valor: 'SUPERV' }], dias: 2 }] }, { nombre: 'Revision tecnica', pasos: [{ id: 'sup', nombre: 'Especialistas de la Supervision', tipo: 'todos', revisores: [{ tipo: 'org', valor: 'SUPERV' }], dias: 10 }, { id: 'anin', nombre: 'Especialista de ANIN', tipo: 'uno', revisores: [{ tipo: 'usuario', valor: 'esp@anin.gob.pe' }], dias: 10 }] }, { nombre: 'Aprobacion', pasos: [{ id: 'gp', nombre: 'Gerente de proyecto', tipo: 'uno', revisores: [{ tipo: 'rol', valor: 'gestor' }], dias: 3 }] }], alAprobar: { estado: 'PUBLICADO', idoneidad: 'A1', copiarA: PUB, iniciadorPuedeCambiar: true } } });
     ok(r.status === 200 && r.j.flujo.id.startsWith('presentacion-4-0') && r.j.flujo.etapas.length === 3, 'crea flujo de 3 etapas (la 2da con 2 pasos en paralelo, uno "todos")'); const fid = r.j.flujo.id;
     r = await pide('/api/proyectos/' + ph + '/flujos', { json: { nombre: 'Malo', etapas: [{ pasos: [{ nombre: 'x', revisores: [] }] }] } }); ok(r.status === 400, 'flujo sin revisores → rechazado');
@@ -178,7 +173,7 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     await entra('autor@ghemet.com');
     r = await pide('/api/proyectos/' + ph + '/contenedores/' + ch + '/estado', { json: { estado: 'COMPARTIDO' } }); ok(r.status === 400, 'WIP→COMPARTIDO desde zona WIP sin carpeta destino → pide carpeta');
     r = await pide('/api/proyectos/' + ph + '/contenedores/' + ch + '/estado', { json: { estado: 'COMPARTIDO', carpeta_destino: BIM, idoneidad: 'S3' } }); ok(r.status === 200 && r.j.carpeta === BIM, 'WIP→COMPARTIDO mueve a E3.04.0.20 BIM');
-    r = await pide('/api/proyectos/' + ph + '/contenedores/' + ch + '/revisiones', { json: { flujo: FCO_H } });
+    r = await pide('/api/proyectos/' + ph + '/contenedores/' + ch + '/revisiones', { json: { flujo: 'coordinacion' } });
     r = await pide('/api/proyectos/' + ph + '/revisiones/' + r.j.id + '/anular', { json: { comentario: 'me equivoque de flujo' } }); ok(r.status === 200, 'el iniciador anula una ronda abierta');
     r = await pide('/api/proyectos/' + ph + '/contenedores/' + ch + '/revisiones', { json: { flujo: fid } }); ok(r.status === 200 && r.j.etapas.length === 3 && r.j.vence, 'inicia el flujo de 3 etapas con fecha limite de la etapa 1'); const rh = r.j.id;
     await entra('sup2@superv.com'); r = await pide('/api/proyectos/' + ph + '/revisiones/' + rh + '/decidir', { json: { decision: 'aprobar' } }); ok(r.status === 200 && r.j.etapa === 1, 'etapa 1 (control documentario, cualquiera de SUPERV) → etapa 2');
@@ -272,13 +267,12 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     r = await subeW('SECHURA2-GHE-ZZ-XX-DR-A-0001-P01.pdf', 'E3_DISEÑO/COM/COM CONTRATISTA'); ok(r.status === 200 && r.j.estado === 'COMPARTIDO' && !r.j.revisionAutomatica, 'sube a COM CONTRATISTA → nace COMPARTIDO (sin desencadenador)'); const cw = r.j.contenedor;
     r = await subeW('SECHURA2-GHE-ZZ-XX-DR-A-0002-P01.pdf', 'E3_DISEÑO/WIP/WIP CLIENTE'); ok(r.status === 403, 'GHEMET no sube a WIP CLIENTE');
     r = await subeW('SECHURA2-GHE-ZZ-XX-M3-A-0003-P01.rvt'); ok(r.status === 200 && r.j.carpeta === 'E3_DISEÑO/WIP/WIP CONTRATISTA' && r.j.estado === 'WIP', 'sin carpeta (complemento) → su WIP de la etapa en curso');
-    const FCO_W = await creaFlujo(pw, FLT.coordinacion);
-    r = await pide('/api/proyectos/' + pw + '/contenedores/' + cw + '/revisiones', { json: { flujo: FCO_W, comentario: 'ronda 1 desde COM' } }); ok(r.status === 200 && r.j.ronda === 1, 'el autor inicia la revision de un contenedor COM (' + (r.j.mensaje || '') + ')');
+    r = await pide('/api/proyectos/' + pw + '/contenedores/' + cw + '/revisiones', { json: { flujo: 'coordinacion', comentario: 'ronda 1 desde COM' } }); ok(r.status === 200 && r.j.ronda === 1, 'el autor inicia la revision de un contenedor COM (' + (r.j.mensaje || '') + ')');
     await entra('gestor@anin.gob.pe');
     // desencadenador automatico
     r = await pide('/api/proyectos/' + pw + '/carpetas', { method: 'PUT', json: { ruta: 'E3_DISEÑO/COM/COM CONTRATISTA', disparador: { flujo: 'no-existe' } } }); ok(r.status === 400, 'desencadenador con flujo inexistente → 400');
-    r = await pide('/api/proyectos/' + pw + '/carpetas', { method: 'PUT', json: { ruta: 'E3_DISEÑO/COM/COM CONTRATISTA', disparador: { flujo: FCO_W } } }); ok(r.status === 200, 'el gestor pone un desencadenador en COM CONTRATISTA');
-    r = await pide('/api/proyectos/' + pw); ok((r.j.config.carpetas.find(c => c.ruta === 'E3_DISEÑO/COM/COM CONTRATISTA') || {}).disparador.flujo === FCO_W, 'el desencadenador queda guardado en la carpeta');
+    r = await pide('/api/proyectos/' + pw + '/carpetas', { method: 'PUT', json: { ruta: 'E3_DISEÑO/COM/COM CONTRATISTA', disparador: { flujo: 'coordinacion' } } }); ok(r.status === 200, 'el gestor pone un desencadenador en COM CONTRATISTA');
+    r = await pide('/api/proyectos/' + pw); ok((r.j.config.carpetas.find(c => c.ruta === 'E3_DISEÑO/COM/COM CONTRATISTA') || {}).disparador.flujo === 'coordinacion', 'el desencadenador queda guardado en la carpeta');
     await entra('autor@ghemet.com');
     r = await subeW('SECHURA2-GHE-ZZ-XX-DR-A-0004-P01.pdf', 'E3_DISEÑO/COM/COM CONTRATISTA'); ok(r.status === 200 && r.j.revisionAutomatica && r.j.revisionAutomatica.ronda === 1, 'cargar en esa carpeta inicia la revision sola (' + JSON.stringify(r.j.revisionAutomatica) + ')'); const cw4 = r.j.contenedor;
     r = await pide('/api/proyectos/' + pw + '/revisiones'); ok(r.j.revisiones.some(x => x.contenedor_id === cw4 && x.estado === 'abierta' && /automaticamente/.test(x.comentario || '')), 'la ronda automatica aparece en Revisiones');
@@ -346,9 +340,8 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     r = await subeG('TALARA-GHE-ZZ-XX-M3-A-0002-P01.rvt', 'E3_DISEÑO/COM/COM CONTRATISTA'); const cg2 = r.j.contenedor;
     r = await subeG('TALARA-GHE-ZZ-XX-SH-A-0003-P01.docx', 'E3_DISEÑO/WIP/WIP CONTRATISTA'); ok(r.status === 200 && r.j.estado === 'WIP', 'sube un DOCX a WIP CONTRATISTA'); const cg3 = r.j.contenedor;
     // crear revision con nombre, notas y lote; numero correlativo del proyecto
-    const FCO_G = await creaFlujo(pg, FLT.coordinacion);
-    r = await pide('/api/proyectos/' + pg + '/contenedores/' + cg1 + '/revisiones', { json: { flujo: FCO_G, nombre: 'ETAPA 3_PLANOS DE ARQUITECTURA', notas: 'Revisar cotas', lote: 'ltx' } }); ok(r.status === 200 && r.j.numero === 1, 'revision #1 con nombre y notas'); const rg1 = r.j.id;
-    r = await pide('/api/proyectos/' + pg + '/contenedores/' + cg2 + '/revisiones', { json: { flujo: FCO_G, nombre: 'ETAPA 3_PLANOS DE ARQUITECTURA', lote: 'ltx' } }); ok(r.j.numero === 2, 'la segunda del lote es #2');
+    r = await pide('/api/proyectos/' + pg + '/contenedores/' + cg1 + '/revisiones', { json: { flujo: 'coordinacion', nombre: 'ETAPA 3_PLANOS DE ARQUITECTURA', notas: 'Revisar cotas', lote: 'ltx' } }); ok(r.status === 200 && r.j.numero === 1, 'revision #1 con nombre y notas'); const rg1 = r.j.id;
+    r = await pide('/api/proyectos/' + pg + '/contenedores/' + cg2 + '/revisiones', { json: { flujo: 'coordinacion', nombre: 'ETAPA 3_PLANOS DE ARQUITECTURA', lote: 'ltx' } }); ok(r.j.numero === 2, 'la segunda del lote es #2');
     r = await pide('/api/proyectos/' + pg + '/revisiones'); ok(r.j.revisiones.filter(x => x.lote === 'ltx' && x.nombre === 'ETAPA 3_PLANOS DE ARQUITECTURA').length === 2 && r.j.revisiones.find(x => x.id === rg1).notas === 'Revisar cotas', 'la bandeja trae numero, nombre, notas y lote');
     // desplazar a CUALQUIER carpeta aunque tenga revision abierta (lo que pidio Erick)
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cg1 + '/mover', { json: { carpeta: 'E3_DISEÑO/WIP/WIP CONTRATISTA' } }); ok(r.status === 200 && r.j.carpeta === 'E3_DISEÑO/WIP/WIP CONTRATISTA', 'desplaza un archivo CON revision abierta a una carpeta WIP');
@@ -554,11 +547,11 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cW); ok(r.j.versiones[0].revision === 'R00' && r.j.versiones[0].idoneidad === 'S3' && /-R00\.pdf$/.test(r.j.versiones[0].archivo), 'la ultima version queda R00 / S3');
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cW + '/atributos', { method: 'PUT', json: { atributos: {}, revision: 'XX' } }); ok(r.status === 400, 'revision invalida por atributos: 400');
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cW + '/mover', { json: { carpeta: COMg } }); ok(r.status === 200 && r.j.estado === 'COMPARTIDO', 'al entrar a la carpeta compartida el archivo queda COMPARTIDO');
-    r = await pide('/api/proyectos/' + pg + '/contenedores/' + cW + '/revisiones', { json: { flujo: FCO_G } }); ok(r.status === 200 && r.j.ronda === 1, 'y se puede enviar a revision desde la carpeta');
+    r = await pide('/api/proyectos/' + pg + '/contenedores/' + cW + '/revisiones', { json: {} }); ok(r.status === 200 && r.j.ronda === 1, 'y se puede enviar a revision desde la carpeta');
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cW + '/mover', { json: { carpeta: WIPg } }); ok(r.status === 200 && r.j.estado === 'COMPARTIDO', 'con revision abierta el desplazamiento no cambia el estado');
     // un archivo que quedo WIP dentro de una carpeta compartida (datos anteriores) se puede revisar: pasa a COMPARTIDO al enviarlo
     require('../lib/bd').q.corre("UPDATE contenedores SET estado = 'WIP' WHERE id = ?", cR);
-    r = await pide('/api/proyectos/' + pg + '/contenedores/' + cR + '/revisiones', { json: { flujo: FCO_G } }); ok(r.status === 200, 'un WIP que esta en carpeta compartida se envia a revision');
+    r = await pide('/api/proyectos/' + pg + '/contenedores/' + cR + '/revisiones', { json: {} }); ok(r.status === 200, 'un WIP que esta en carpeta compartida se envia a revision');
     r = await pide('/api/proyectos/' + pg + '/contenedores/' + cR); ok(r.j.estado === 'COMPARTIDO', 'y queda COMPARTIDO');
     const ISO14 = require('../lib/iso19650'); ok(ISO14.errorCampo({ nombre: 'Etapa', valores: ['E1', 'E2'] }, 'E9') !== '' && ISO14.errorCampo({ nombre: 'Etapa', valores: ['E1', 'E2'] }, 'E2') === '' && ISO14.errorCampo({ nombre: 'N', obligatorio: false, longitud: 3 }, 'XXX') === '', 'errorCampo: lista, valor admitido y campo opcional con XXX');
 
@@ -828,9 +821,8 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     ok(rz.indexOf('WIP') < rz.indexOf('COM') && rz.indexOf('COM') < rz.indexOf('PUB'), 'el orden es WIP → COM → PUB');
     r = await pide('/api/proyectos/' + pz + '/carpetas/permisos?ruta=' + encodeURIComponent('COM/ETAPA 2/CONTRATISTA')); ok(r.j.zonaEfectiva === 'compartido' && r.j.entradas.some(e => e.valor === 'GHEMET' && e.nivel === 'ver-descargar-subir-editar'), 'COM/ETAPA 2/CONTRATISTA: zona compartido y la edita el contratista');
     r = await pide('/api/proyectos/' + pz + '/carpetas/permisos?ruta=' + encodeURIComponent('PUB/ETAPA 2/PUB CLIENTE')); ok(r.j.zonaEfectiva === 'publicado', 'PUB/ETAPA 2/PUB CLIENTE: zona publicado');
-    r = await pide('/api/proyectos/' + pz + '/flujos', { json: FLT.paraleloDc }); const FPAR = r.j.flujo.id;
-    r = await pide('/api/proyectos/' + pz + '/flujos'); const fpar = (r.j.flujos || r.j).find(f => f.id === FPAR);
-    ok(fpar && fpar.etapas.length === 3 && fpar.etapas[0].modo === 'consenso' && fpar.etapas[0].alVencer === 'avanzar' && fpar.etapas[0].pasos.length === 2 && fpar.etapas[1].pasos.every(x => x.recomienda) && fpar.etapas[1].pasos[1].decide.length === 1 && fpar.etapas[0].pasos[1].revisores[0].org === 'SUPERV', 'el flujo paralelo (creado como flujo propio): paso 1 por consenso (2 DC), paso 2 con recomendaciones y decisión del KP1, paso 3 GP');
+    r = await pide('/api/proyectos/' + pz + '/flujos'); const fpar = (r.j.flujos || r.j).find(f => f.id === 'paralelo-dc-especialistas-gp');
+    ok(fpar && fpar.etapas.length === 3 && fpar.etapas[0].modo === 'consenso' && fpar.etapas[0].alVencer === 'avanzar' && fpar.etapas[0].pasos.length === 2 && fpar.etapas[1].pasos.every(x => x.recomienda) && fpar.etapas[1].pasos[1].decide.length === 1 && fpar.etapas[0].pasos[1].revisores[0].org === 'SUPERV', 'el proyecto nace con el flujo paralelo: paso 1 por consenso (2 DC), paso 2 con recomendaciones y decisión del KP1, paso 3 GP');
     const MZ = [['autor@ghemet.com', 'document-control', 'GHEMET', ''], ['dc@anin.gob.pe', 'revisor', 'ANIN', 'DC'], ['dc@superv.com', 'revisor', 'SUPERV', 'DC'], ['esp1@anin.gob.pe', 'revisor', 'ANIN', 'ESPECIALISTA'], ['esp2@anin.gob.pe', 'revisor', 'ANIN', 'ESPECIALISTA'], ['esp@superv.com', 'revisor', 'SUPERV', 'ESPECIALISTA'], ['kp1@superv.com', 'revisor', 'SUPERV', 'KP1'], ['gp@anin.gob.pe', 'gestor', 'ANIN', 'GP']];
     for (const [e, rol, org, cargo] of MZ) { r = await pide('/api/proyectos/' + pz + '/miembros', { json: { email: e, rol, organizacion: org, cargo } }); if (r.status !== 200) ok(false, 'agrega ' + e + ' ' + JSON.stringify(r.j)); }
     r = await pide('/api/proyectos/' + pz + '/miembros'); ok((r.j.miembros || r.j).find(m => m.email === 'kp1@superv.com').cargo === 'KP1', 'los miembros guardan su cargo (DC, ESPECIALISTA, KP1, GP)');
@@ -838,7 +830,7 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     const subeZ = (nombre) => fetch(B + '/api/proyectos/' + pz + '/subir?carpeta=' + encodeURIComponent('COM/ETAPA 2/CONTRATISTA'), { method: 'POST', headers: { cookie: galleta, 'x-nombre': encodeURIComponent(nombre) }, body: Buffer.from('contenido ' + nombre) }).then(async x => ({ status: x.status, j: await x.json() }));
     const decideZ = (rid, cuerpo) => pide('/api/proyectos/' + pz + '/revisiones/' + rid + '/decidir', { json: cuerpo });
     const miaZ = async (rid) => (await pide('/api/proyectos/' + pz + '/revisiones')).j.revisiones.find(x => x.id === rid);
-    const abreZ = async (n) => { await entraZ('autor@ghemet.com'); let x = await subeZ('ZONAS-GHE-ZZ-XX-DR-A-' + n + '-P01.pdf'); if (x.status !== 200) throw new Error('sube ' + JSON.stringify(x.j)); const cid = x.j.contenedor; x = await pide('/api/proyectos/' + pz + '/contenedores/' + cid + '/revisiones', { json: { flujo: FPAR } }); if (x.status !== 200) throw new Error('abre ' + JSON.stringify(x.j)); return { cid, rid: x.j.id }; };
+    const abreZ = async (n) => { await entraZ('autor@ghemet.com'); let x = await subeZ('ZONAS-GHE-ZZ-XX-DR-A-' + n + '-P01.pdf'); if (x.status !== 200) throw new Error('sube ' + JSON.stringify(x.j)); const cid = x.j.contenedor; x = await pide('/api/proyectos/' + pz + '/contenedores/' + cid + '/revisiones', { json: { flujo: 'paralelo-dc-especialistas-gp' } }); if (x.status !== 200) throw new Error('abre ' + JSON.stringify(x.j)); return { cid, rid: x.j.id }; };
     await entraZ('autor@ghemet.com'); r = await pide('/api/proyectos/' + pz); ok(r.j.carpetaWip === 'WIP/ETAPA 2/CONTRATISTA', 'el WIP del contratista es WIP/ETAPA 2/CONTRATISTA (etapa en curso) (' + r.j.carpetaWip + ')');
 
     // A) los dos DC aceptan → paso 2; recomendaciones; KP1; GP
@@ -912,7 +904,7 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     mz = await miaZ(z.rid); ok(mz.paso === 1 && mz.estado === 'abierta', 'vencido el plazo sin que nadie revise: pasa a los especialistas');
     // E) la revision lleva su linea de correspondencia: envio → QA Accepted (GP) → estado final con reporte de incidencias → ronda 2 por el mismo hilo
     await entraZ('autor@ghemet.com'); r = await subeZ('ZONAS-GHE-ZZ-XX-DR-A-1020-P01.pdf'); const cE = r.j.contenedor;
-    r = await pide('/api/proyectos/' + pz + '/contenedores/' + cE + '/revisiones', { json: { flujo: FPAR, nombre: 'Planos 1020', correspondencia: { crear: true } } });
+    r = await pide('/api/proyectos/' + pz + '/contenedores/' + cE + '/revisiones', { json: { flujo: 'paralelo-dc-especialistas-gp', nombre: 'Planos 1020', correspondencia: { crear: true } } });
     ok(r.status === 200 && r.j.correo && /GHEMET-TRA-/.test(r.j.correo.numero), 'al crear la revisión se emite la correspondencia de envío (' + (r.j.correo || {}).numero + ')'); const rE = r.j.id, mE = r.j.correo.id;
     const hiloE = async () => (await pide('/api/proyectos/' + pz + '/correspondencia/' + mE)).j;
     r = await hiloE(); ok(/paralelo/i.test(r.cuerpo) && r.adjuntos.some(a => a.tipo === 'version') && r.para.some(d => d.email === 'dc@anin.gob.pe') && r.para.some(d => d.email === 'gp@anin.gob.pe'), 'el correo indica el flujo usado, adjunta la versión y va a los revisores del flujo');
@@ -926,67 +918,16 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     r = await pide('/api/proyectos/' + pz + '/correspondencia/' + finE.id); const repE = r.j.adjuntos.find(a => a.tipo === 'archivo' && /Reporte-incidencias/.test(a.nombre));
     ok(repE && r.j.adjuntos.some(a => a.tipo === 'version'), 'y adjunta por defecto el reporte de incidencias y el documento');
     { const x = await fetch(B + '/api/proyectos/' + pz + '/correspondencia/' + finE.id + '/adjunto/' + repE.id, { headers: { cookie: galleta } }); const t = await x.text(); ok(x.status === 200 && /Reporte de incidencias/.test(t) && /ZONAS-GHE-ZZ-XX-DR-A-1020/.test(t), 'el reporte se descarga y trae el documento y la revisión'); }
-    r = await subeZ('ZONAS-GHE-ZZ-XX-DR-A-1020-P02.pdf'); r = await pide('/api/proyectos/' + pz + '/contenedores/' + cE + '/revisiones', { json: { flujo: FPAR, nombre: 'Planos 1020' } });
+    r = await subeZ('ZONAS-GHE-ZZ-XX-DR-A-1020-P02.pdf'); r = await pide('/api/proyectos/' + pz + '/contenedores/' + cE + '/revisiones', { json: { flujo: 'paralelo-dc-especialistas-gp', nombre: 'Planos 1020' } });
     ok(r.status === 200 && r.j.ronda === 2 && r.j.correo && r.j.correo.id === mE, 'la ronda 2 sigue la misma línea (' + JSON.stringify(r.j.mensaje || r.j.correo) + ')');
     r = await pide('/api/proyectos/' + pz + '/correspondencia?hilo=' + mE + '&bandeja=todos'); ok(r.j.correos.length === 4 && r.j.correos.some(c => /levantamiento de observaciones/.test(c.asunto) && c.de_email === 'autor@ghemet.com'), 'y envía el levantamiento de observaciones por el hilo');
     r = await pide('/api/proyectos/' + pz + '/correspondencia/' + mE); ok((r.j.hilo || []).length === 4 || r.status === 200, 'la línea de comunicación reúne los 4 correos');
-
-    // v0.25.4 · los cuatro flujos de la DEO, fechas de envío y de respuesta (14 días, no editables) y QA Rejected con un solo DC
-    { await entraZ('admin@anin.gob.pe'); const FLx = require('../lib/flujos'), BDz = require('../lib/bd');
-      for (const [e, rol, org, cargo] of [['autor@ghemet.com', 'document-control', 'GHEMET', 'DC'], ['esp1@anin.gob.pe', 'revisor', 'ANIN', 'ESPECIALISTA'], ['esp2@anin.gob.pe', 'revisor', 'ANIN', 'ESPECIALISTA'], ['esp@superv.com', 'revisor', 'SUPERV', 'ESPECIALISTA'], ['kp1@superv.com', 'revisor', 'SUPERV', 'KP1']]) await pide('/api/proyectos/' + pz + '/miembros', { json: { email: e, rol, organizacion: org, cargo } });
-      const fz = await pide('/api/proyectos/' + pz + '/flujos'), F = (id) => fz.j.flujos.find(f => f.id === id) || { iniciadores: [], etapas: [] }, L4 = fz.j.flujos.filter(f => f.activo !== false && f.id !== FPAR).map(f => f.id);
-      ok(['especialistas-paralelo', 'revision-especialistas-anin', 'revision-especialistas-supervision', 'revision-supervision-gp'].every((id, k) => L4[k] === id) && L4.length === 4 && !fz.j.flujos.some(f => FLx.RETIRADOS.includes(f.id)), 'el proyecto nace con los 4 flujos de la DEO, en orden y sin los retirados (Supervisión y Entidad, DC → especialistas → GP, Coordinación interna)');
-      ok(F('especialistas-paralelo').nombre === 'Revisión ANIN y Supervisión en Paralelo' && F('especialistas-paralelo').etapas[1].pasos.length === 2 && F('revision-especialistas-anin').nombre === 'Revisión de especialistas ANIN' && F('revision-especialistas-supervision').nombre === 'Revisión de especialistas de Supervisión' && F('revision-supervision-gp').nombre === 'Revisión de Supervisión a GP', 'nombres: Revisión ANIN y Supervisión en Paralelo (misma estructura, 2 pasos en paralelo), de especialistas ANIN, de especialistas de Supervisión, de Supervisión a GP');
-      ok(FLx.describe(F('especialistas-paralelo').iniciadores) === 'DC de GHEMET' && FLx.describe(F('revision-especialistas-anin').iniciadores) === 'DC de GHEMET' && FLx.describe(F('revision-especialistas-supervision').iniciadores) === 'DC de GHEMET' && FLx.describe(F('revision-supervision-gp').iniciadores) === 'DC de SUPERV', 'los inicia el Document Control del contratista; el de Supervisión a GP, el DC de la Supervisión');
-      const pasos = (id) => F(id).etapas.map(e => e.pasos.map(x => FLx.describe(x.revisores) + (x.recomienda ? ' recomienda' : '') + (x.decide ? ' / cierra ' + FLx.describe(x.decide) : '')).join(' ∥ ')).join(' → ');
-      ok(pasos('revision-especialistas-anin') === 'DC de ANIN → ESPECIALISTA de ANIN recomienda → GP de ANIN' && pasos('revision-supervision-gp') === pasos('revision-especialistas-anin') && pasos('revision-especialistas-supervision') === 'DC de SUPERV → ESPECIALISTA de SUPERV recomienda / cierra KP1 de SUPERV → GP de ANIN', 'pasos: QA del DC → recomendación de los especialistas (en Supervisión la cierra el KP1) → aprobación del GP (' + pasos('revision-especialistas-supervision') + ')');
-      ok(L4.every(id => F(id).tieneQA && F(id).etapas[0].etiquetas.devuelta === 'QA Rejected') && L4.every(id => F(id).etapas.reduce((t, e) => t + Math.max(...e.pasos.map(x => x.dias || 0)), 0) === 14), 'los cuatro empiezan con la revisión de calidad (QA Accepted / QA Rejected) y sus pasos suman los 14 días de respuesta');
-      ok(fz.j.diasRespuesta === 14 && fz.j.hoy === FLx.fechaLocal() && fz.j.respuesta === FLx.fechaRespuesta(new Date().toISOString()) && FLx.fechaRespuesta('2026-11-23T16:00:00Z') === '2026-12-07' && FLx.fechaRespuesta('2026-11-23T03:30:00Z') === '2026-12-06', 'fechas: envío = hoy (hora de Lima) y respuesta = +14 días calendario (23/11 → 07/12; las 22:30 del 22/11 en Lima cuentan como 22/11)');
-      await entraZ('autor@ghemet.com'); let x = await subeZ('ZONAS-GHE-ZZ-XX-DR-A-2001-P01.pdf'); const c1 = x.j.contenedor;
-      x = await pide('/api/proyectos/' + pz + '/contenedores/' + c1 + '/revisiones', { json: { flujo: 'revision-supervision-gp' } }); ok(x.status === 403 && /DC de SUPERV/.test(x.j.mensaje), 'el DC del contratista no inicia «Revisión de Supervisión a GP» (lo inicia el DC de la Supervisión)');
-      x = await pide('/api/proyectos/' + pz + '/contenedores/' + c1 + '/revisiones', { json: { flujo: 'revision-especialistas-anin', plazo: '2031-01-01' } }); const r1 = x.j.id;
-      ok(x.status === 200 && x.j.fechaEnvio === FLx.fechaLocal() && x.j.fechaRespuesta === fz.j.respuesta, 'al enviar: fecha de envío = hoy y de respuesta = +14 días; una fecha que mande el navegador no cuenta (no se edita)');
-      ok(BDz.q.uno('SELECT plazo FROM revisiones WHERE id = ?', r1).plazo === fz.j.respuesta, 'la fecha de respuesta queda guardada en la ronda');
-      await entraZ('dc@anin.gob.pe'); let m = await miaZ(r1); ok(m.fechaEnvio === FLx.fechaLocal() && m.fechaRespuesta === fz.j.respuesta && !m.respuestaVencida && m.acciones.some(a => a.paso === 'dc-anin' && a.accion === 'decidir'), 'la lista trae fecha de envío y de respuesta; al DC de ANIN le toca la QA');
-      x = await decideZ(r1, { decision: 'devolver', comentario: 'falta el rótulo' }); m = await miaZ(r1);
-      ok(x.status === 200 && x.j.estado === 'devuelta' && m.qaRechazada && !m.respuestaVencida, 'QA Rejected con un solo DC: la ronda vuelve al contratista y queda marcada para reiniciar el plazo');
-      const av = BDz.q.uno("SELECT cuerpo FROM correos WHERE proyecto_id = ? AND numero LIKE 'REV-%' AND asunto LIKE ? ORDER BY creado DESC", pz, '%RECHAZADO%') || {};
-      ok(/el tiempo de revisión se reinicia\. Los 14 días de respuesta vuelven a contar desde que se envíe el levantamiento de las observaciones \(ronda 2\)/.test(av.cuerpo || ''), 'el aviso al contratista dice que el tiempo de revisión se reinicia hasta que se levanten las observaciones');
-      // recorrido completo: QA Accepted → recomendaciones de ANIN → GP
-      await entraZ('autor@ghemet.com'); x = await subeZ('ZONAS-GHE-ZZ-XX-DR-A-2002-P01.pdf'); const c2 = x.j.contenedor; x = await pide('/api/proyectos/' + pz + '/contenedores/' + c2 + '/revisiones', { json: { flujo: 'revision-especialistas-anin' } }); const r2 = x.j.id;
-      await entraZ('dc@anin.gob.pe'); x = await decideZ(r2, { decision: 'aprobar' }); const e1 = x.j.etapa;
-      await entraZ('esp1@anin.gob.pe'); m = await miaZ(r2); const recom = m.acciones.some(a => a.paso === 'esp-anin' && a.accion === 'recomendar'); await decideZ(r2, { decision: 'aprobar' });
-      await entraZ('esp2@anin.gob.pe'); x = await decideZ(r2, { decision: 'devolver', comentario: 'detalle' }); const e2 = x.j.etapa;
-      await entraZ('gp@anin.gob.pe'); x = await decideZ(r2, { decision: 'aprobar' });
-      ok(e1 === 1 && recom && e2 === 2 && x.status === 200 && x.j.estado === 'aprobada', 'Revisión de especialistas ANIN: QA Accepted → cada especialista recomienda (no cierra) → el GP acepta y se publica');
-      // Supervisión: el KP1 cierra el paso 2 con la recomendación de su equipo
-      await entraZ('autor@ghemet.com'); x = await subeZ('ZONAS-GHE-ZZ-XX-DR-A-2003-P01.pdf'); const c3 = x.j.contenedor; x = await pide('/api/proyectos/' + pz + '/contenedores/' + c3 + '/revisiones', { json: { flujo: 'revision-especialistas-supervision' } }); const r3 = x.j.id;
-      await entraZ('dc@anin.gob.pe'); x = await decideZ(r3, { decision: 'aprobar' }); const noAnin = x.status === 403;
-      await entraZ('dc@superv.com'); x = await decideZ(r3, { decision: 'aprobar' }); const s1 = x.j.etapa;
-      await entraZ('esp@superv.com'); x = await decideZ(r3, { decision: 'aprobar' }); const rev = x.j.revisado;
-      await entraZ('kp1@superv.com'); m = await miaZ(r3); const kp = m.acciones.some(a => a.paso === 'esp-super' && a.accion === 'decidir-equipo'); x = await decideZ(r3, { decision: 'aprobar', paso: 'esp-super' }); const s2 = x.j.etapa;
-      await entraZ('gp@anin.gob.pe'); x = await decideZ(r3, { decision: 'aprobar' });
-      ok(noAnin && s1 === 1 && rev && kp && s2 === 2 && x.j.estado === 'aprobada', 'Revisión de especialistas de Supervisión: QA del DC de la Supervisión (el de ANIN no participa) → especialista → el KP1 cierra el paso 2 → el GP aprueba');
-      // proyecto con los flujos de antes: se actualiza una sola vez (el que tiene rondas abiertas se desactiva) y los desencadenadores pasan al flujo 1
-      await entraZ('autor@ghemet.com'); x = await subeZ('ZONAS-GHE-ZZ-XX-DR-A-2004-P01.pdf'); const c4 = x.j.contenedor; x = await pide('/api/proyectos/' + pz + '/contenedores/' + c4 + '/revisiones', { json: { flujo: 'revision-especialistas-anin' } }); const r4 = x.j.id;
-      BDz.q.corre("UPDATE revisiones SET flujo_id = 'coordinacion' WHERE id = ?", r4);
-      const cfgZ = JSON.parse(BDz.q.uno('SELECT config FROM proyectos WHERE id = ?', pz).config), PA = FLx.plantillasAnteriores({ contr: 'GHEMET', super: 'SUPERV' }), t1 = FLx.revisionAninSupervision({ contr: 'GHEMET', super: 'SUPERV' });
-      t1.nombre = 'Revision de especialistas en paralelo y aprobacion'; t1.iniciadores = [{ tipo: '*', valor: '' }]; delete t1.etapas[0].etiquetas; t1.etapas[1].pasos.forEach(p => { p.dias = 10; });
-      const viejo = Object.assign({}, cfgZ, { flujos: [FLx.normaliza(PA.supervisionEntidad).flujo, FLx.normaliza(t1).flujo, FLx.normaliza(PA.paraleloDc).flujo, FLx.normaliza(PA.coordinacion).flujo, fpar] }); delete viejo.flujosVersion;
-      viejo.carpetas = cfgZ.carpetas.map(c => c.ruta === 'COM/ETAPA 3/CONTRATISTA' ? Object.assign({}, c, { disparador: { flujo: 'supervision-entidad' } }) : c);
-      BDz.q.corre('UPDATE proyectos SET config = ? WHERE id = ?', JSON.stringify(viejo), pz);
-      await entraZ('admin@anin.gob.pe'); const fm = await pide('/api/proyectos/' + pz + '/flujos'), G = (id) => fm.j.flujos.find(f => f.id === id);
-      ok(G('especialistas-paralelo').nombre === 'Revisión ANIN y Supervisión en Paralelo' && FLx.describe(G('especialistas-paralelo').iniciadores) === 'DC de GHEMET' && G('especialistas-paralelo').etapas[1].pasos.every(p => p.dias === 9) && G('especialistas-paralelo').etapas[0].etiquetas.devuelta === 'QA Rejected', 'proyecto existente: «Revision de especialistas en paralelo y aprobacion» pasa a «Revisión ANIN y Supervisión en Paralelo» con su misma estructura (iniciador DC del contratista; 9 días a los especialistas para sumar 14)');
-      ok(!G('supervision-entidad') && !G('paralelo-dc-especialistas-gp') && G('coordinacion').activo === false && G('revision-especialistas-anin') && G('revision-especialistas-supervision') && G('revision-supervision-gp') && G(FPAR), 'se quitan los tachados (el que tiene una ronda abierta queda inactivo, sin cortar esa ronda), se añaden los 3 nuevos y se respetan los flujos propios');
-      const cf2 = JSON.parse(BDz.q.uno('SELECT config FROM proyectos WHERE id = ?', pz).config);
-      ok(cf2.flujosVersion === FLx.VERSION_FLUJOS && cf2.carpetas.find(c => c.ruta === 'COM/ETAPA 3/CONTRATISTA').disparador.flujo === 'especialistas-paralelo' && !!BDz.q.uno("SELECT 1 FROM auditoria WHERE accion = 'flujos.actualizar' AND proyecto_id = ?", pz), 'queda registrado (bitácora), no se repite y el desencadenador de carpeta que usaba un flujo quitado pasa al flujo 1');
-      BDz.q.corre("UPDATE revisiones SET flujo_id = 'revision-especialistas-anin' WHERE id = ?", r4); }
 
     // aplicar la plantilla por zonas a un proyecto que ya tiene archivos: no deja huerfanos
     galleta = ''; await pide('/api/acceso/local', { json: { email: 'admin@anin.gob.pe', clave: 'prueba' } });
     r = await pide('/api/proyectos/' + pw + '/carpetas/plantilla', { json: { plantilla: 'zonas', orgContr: 'GHEMET', orgSuper: 'SUPERV' } });
     ok(r.status === 200 && r.j.conservadas.includes('E3_DISEÑO/WIP/WIP CONTRATISTA') && r.j.conservadas.includes('E3_DISEÑO') && !r.j.conservadas.includes('E1/WIP'), 'al cambiar a la plantilla por zonas se conservan solo las carpetas anteriores que tienen archivos (' + r.j.conservadas.join(' · ') + ')');
-    r = await pide('/api/proyectos/' + pw); ok(r.j.arbol.some(c => c.ruta === 'WIP/ETAPA 1/CONTRATISTA') && r.j.arbol.some(c => c.ruta === 'E3_DISEÑO/WIP/WIP CONTRATISTA') && !r.j.config.flujos.some(f => f.id === 'paralelo-dc-especialistas-gp') && ['especialistas-paralelo', 'revision-especialistas-anin', 'revision-especialistas-supervision', 'revision-supervision-gp'].every(id => r.j.config.flujos.some(f => f.id === id)), 'el arbol nuevo convive con las carpetas con archivos y el proyecto recibe el flujo paralelo');
+    r = await pide('/api/proyectos/' + pw); ok(r.j.arbol.some(c => c.ruta === 'WIP/ETAPA 1/CONTRATISTA') && r.j.arbol.some(c => c.ruta === 'E3_DISEÑO/WIP/WIP CONTRATISTA') && r.j.config.flujos.some(f => f.id === 'paralelo-dc-especialistas-gp'), 'el arbol nuevo convive con las carpetas con archivos y el proyecto recibe el flujo paralelo');
     // ───────────── 16. Portada «Direcciones ejecutoras» y grupos de usuarios
     console.log('\n16. Direcciones ejecutoras y usuarios por grupo');
     galleta = ''; await pide('/api/acceso/local', { json: { email: 'admin@anin.gob.pe', clave: 'prueba' } });

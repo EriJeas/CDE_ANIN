@@ -456,7 +456,6 @@
   async function vistaProyecto(pid) {
     const p = await api('/api/proyectos/' + pid);
     const F = N.FILTRO, gestor = R[p.rol] >= 3, porRuta = new Map(p.arbol.map(c => [c.ruta, c]));
-    F.q = '';   // v0.25.2: la caja «Buscar y filtrar» se quitó (la Búsqueda del proyecto la reemplaza); ningún filtro de texto queda escondido
     if (N.ABIERTAS_DE !== pid) { N.ABIERTAS = new Set(); N.ABIERTAS_DE = pid; if (conZonas(p)) despliegaZona(p); }   // al entrar: la estructura de la zona elegida, desplegada
     // si la carpeta elegida no es de la zona que se esta viendo, se sube a la mas cercana que si
     while (F.carpeta && porRuta.has(F.carpeta) && !zonaOk(p, porRuta.get(F.carpeta))) F.carpeta = F.carpeta.split('/').slice(0, -1).join('/');
@@ -480,7 +479,7 @@
       '<div class="acctabs"><div class="tabs"><button class="activa">Carpetas</button><button data-t="conjuntos" title="Grupos de archivos con nombre (entregas, paquetes)">Conjuntos</button><button data-t="retencion" title="Archivos que no cumplen la norma de su carpeta y los que están fuera de la estructura">Área de retención' + (p.retenidos ? ' <span class="etq">' + p.retenidos + '</span>' : '') + '</button><button data-t="suprimidos" title="Papelera: archivos y carpetas suprimidos">Elementos suprimidos</button></div><a href="#/p/' + pid + '/archivos/configuracion" class="enlace">⚙ Configuración</a><div class="crece"></div><div class="modbarra">' + (puedeSubir ? '<button class="modb primario" id="mdCarga"' + (!destCarga ? ' title="Elige una carpeta en la que puedas cargar"' : '') + '>⇧ Carga de documentos <i>▾</i></button>' : '') + '<button class="modb" id="mdExporta">⇪ Exportar registro <i>▾</i></button><button class="modb" id="mdOpc">Opciones de documento <i>▾</i></button><button class="modb" id="mdFlu">Flujos y observaciones <i>▾</i></button><button class="modb" id="mdPer">Permisos <i>▾</i></button></div></div>' +
       '<div class="acc"><div class="accarbol">' + arbolHtml(p) + '</div>' +
       '<div class="acclista">' +
-      '<div class="accbarra"><div class="crece"></div><div class="buscar"><label class="sub"><input type="checkbox" id="fsub"' + (F.sub ? ' checked' : '') + '> subcarpetas</label><button class="mini fbusca" id="fBusca" title="Búsqueda en todo el proyecto (y en otros): número, descripción, atributos, estado, fechas o contenido. Se abre al costado, sin salir de la carpeta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>Búsqueda</button></div><button class="mini" id="cols" title="Columnas">⚙</button></div>' +
+      '<div class="accbarra"><div class="crece"></div><div class="buscar"><input id="fq" placeholder="Buscar y filtrar" value="' + esc(F.q) + '"><label class="sub"><input type="checkbox" id="fsub"' + (F.sub ? ' checked' : '') + '> subcarpetas</label><button class="mini fbusca" id="fBusca" title="Búsqueda en todo el proyecto (y en otros): número, descripción, atributos, estado, fechas o contenido. Se abre al costado, sin salir de la carpeta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>Búsqueda</button></div><button class="mini" id="cols" title="Columnas">⚙</button></div>' +
       '<div id="selBarra"></div>' +
       (sel ? '<div class="accruta"><a href="#" data-r="">Archivos de proyecto</a> › ' + rutaTxt + '</div>' : '') +
       '<div class="acctabla"><table><thead><tr><th class="chk"><input type="checkbox" id="todos"></th>' + cab('nombre', 'Nombre', 'nombre', 'nombre') + cab('descripcion', 'Descripción') + cab('version', 'Versión') + cab('indicadores', 'Indicadores') + cab('marcas', 'Marcas de revisión') + cab('incidencias', 'Incidencias') + cab('tamano', 'Tamaño', '', 'tamano') + cab('actualizado', 'Última actualización', '', 'fecha') + cab('por', 'Actualizado por') + cab('aprobado', 'Aprobado por') + cab('estado', 'Estado', '', 'estado') + cab('carpeta', 'Carpeta') + cab('tipo', 'Tipo') + cab('creado', 'Creado') + nomCols.map(x => '<th>' + esc(x.nombre) + '</th>').join('') + '<th class="accion"></th></tr></thead><tbody>' +
@@ -510,12 +509,13 @@
     };
     app.querySelectorAll('tbody .chk input').forEach(x => x.onchange = pintaSel);
     const t = document.getElementById('todos'); if (t) t.onchange = () => { app.querySelectorAll('tbody .chk input').forEach(x => { x.checked = t.checked; }); pintaSel(); };
+    document.getElementById('fq').onkeydown = (e) => { if (e.key === 'Enter') { F.q = e.target.value; recarga(); } };
     F.estado = '';
     document.getElementById('fsub').onchange = (e) => { F.sub = e.target.checked; recarga(); };
     const tb = app.querySelector('button[data-t="retencion"]'); if (tb) tb.onclick = () => vistaRetencion(p);
     const ts = app.querySelector('button[data-t="suprimidos"]'); if (ts) ts.onclick = () => { location.hash = '#/p/' + pid + '/archivos/suprimidos'; };
-    // v0.25.2: «Búsqueda» dejó de ser pestaña: su botón (junto a «subcarpetas») abre el panel lateral de búsqueda del proyecto
-    const fb = document.getElementById('fBusca'); if (fb) fb.onclick = () => N.busquedaPanel && N.busquedaPanel(p);
+    // v0.25.2: «Búsqueda» dejó de ser pestaña: el botón de la caja «Buscar y filtrar» abre el panel lateral (con lo escrito en la caja, si hay algo)
+    const fb = document.getElementById('fBusca'); if (fb) fb.onclick = () => N.busquedaPanel && N.busquedaPanel(p, document.getElementById('fq').value.trim());
     if (N._busqPend && N._busqPend.pid === pid && N.busquedaPanel) { const b = N._busqPend; N._busqPend = null; N.busquedaPanel(p, '', b.buscar); }   // llegó por un enlace a la búsqueda
     const tj = app.querySelector('button[data-t="conjuntos"]'); if (tj) tj.onclick = () => { location.hash = '#/p/' + pid + '/archivos/conjuntos'; };
     app.querySelectorAll('a[data-mk]').forEach(a => a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); const c = conts.find(x => x.id === a.dataset.mk); N.marcasVentana(p, c, c.ultima.id); });

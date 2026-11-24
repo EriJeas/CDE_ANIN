@@ -692,12 +692,3 @@ li.fa-mal { color: #a11d1d; } .fa-okt { color: #17663a; } .fa-avt { color: #8a5d
 .vbusq .dpbarra { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; } .vbusq .dpbarra .pista { max-width: 60ch; }
 .vbusq .dgrupos { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 24px; }
 .vbusq .docbuscar .buscacaja { flex: 1 1 300px; }
-/* v0.25.2 · resultados de la Búsqueda: la tabla se desplaza dentro de su propia caja (la barra horizontal queda a la vista sin bajar hasta el final),
-   con la cabecera fija arriba y la casilla, el icono y el No. de documento fijos a la izquierda */
-.vbusq #dResultados .acctabla { max-height: calc(100vh - 250px); min-height: 200px; overflow: auto; overscroll-behavior: contain; }
-.vbusq #dResultados .doctabla thead th { position: sticky; top: 0; z-index: 3; }
-.vbusq #dResultados .doctabla .fija { position: sticky; z-index: 2; background: #fff; } .vbusq #dResultados .doctabla thead th.fija { z-index: 4; background: #f7f8fa; }
-.vbusq #dResultados .doctabla tr.clic:hover td.fija { background: #f4f7fb; } .vbusq #dResultados .doctabla .fija-fin { box-shadow: inset -1px 0 0 var(--linea), 6px 0 8px -6px rgba(15, 33, 55, .18); }
-/* v0.25.4 · Crear revisión: fecha de envío y de respuesta (automáticas, no editables) y aviso de QA Rejected */
-.nrfechas { display: flex; gap: 12px; flex-wrap: wrap; } .nrfechas > div { flex: 0 1 170px; } .nrfechas input[readonly] { background: var(--suelo, #f3f5f8); color: var(--texto); cursor: default; font-variant-numeric: tabular-nums; }
-.aviso.nrqa { margin-top: 8px; } .rvreinicia { display: inline; font-weight: 600; color: #8a5a00; }
