@@ -641,19 +641,21 @@
         xhr.setRequestHeader('x-nombre', encodeURIComponent(x.nombre || x.file.name)); xhr.setRequestHeader('Content-Type', 'application/octet-stream'); if (meta) xhr.setRequestHeader('x-meta', encodeURIComponent(JSON.stringify(meta)));
         if (x.pre) xhr.setRequestHeader('x-qa-pre', x.pre);   // v0.24.2: el archivo ya lo tiene el CDE (lectura previa de la portada)
         xhr.upload.onprogress = (e) => { if (e.lengthComputable) { x.pct = Math.round(100 * e.loaded / e.total); x.msg = 'Cargando ' + x.pct + ' %'; fila(x); } };
-        xhr.onload = () => { let j = {}; try { j = JSON.parse(xhr.responseText); } catch (e) {} ok({ ok: xhr.status >= 200 && xhr.status < 300, j }); };
+        xhr.onload = () => { let j = null; try { j = JSON.parse(xhr.responseText); } catch (e) {} ok(j ? { ok: xhr.status >= 200 && xhr.status < 300, j } : { ok: false, j: { mensaje: sinRespuesta(xhr.status).replace('vuelve a pulsar Validación QA', 'vuelve a cargarlo') } }); };
         xhr.onerror = () => ok({ ok: false, j: { mensaje: 'Se cortó la conexión' } });
         xhr.send(x.pre ? null : x.file);
       });
     }
+    /** v0.25.5 · El servidor no devolvió una respuesta legible (se reinició, no respondió a tiempo, rechazó el tamaño): decirlo con su código. */
+    const sinRespuesta = (st) => st === 413 ? 'El archivo supera el tamaño que acepta el servidor.' : (!st || st === 502 || st === 503 || st === 504) ? 'El servidor no respondió' + (st ? ' (código ' + st + ')' : '') + ': pudo estar reiniciándose. Espera un minuto y vuelve a pulsar Validación QA.' : 'El servidor respondió con un error (código ' + st + ').';
     /** v0.24.2 · Lectura previa de la portada (sube el archivo una sola vez; la carga final usa el mismo archivo). */
     function leePortada(x, carpeta) {
       return new Promise((ok) => {
         const xhr = new XMLHttpRequest(); xhr.open('POST', '/api/proyectos/' + pid + '/qa/leer?carpeta=' + encodeURIComponent(carpeta));
         xhr.setRequestHeader('x-nombre', encodeURIComponent(x.nombre || x.file.name)); xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-        xhr.upload.onprogress = (e) => { if (e.lengthComputable) { x.pct = Math.round(100 * e.loaded / e.total); x.msg = 'Leyendo la portada… ' + x.pct + ' %'; fila(x); } };
-        xhr.onload = () => { let j = {}; try { j = JSON.parse(xhr.responseText); } catch (e) {} ok({ ok: xhr.status >= 200 && xhr.status < 300, j }); };
-        xhr.onerror = () => ok({ ok: false, j: { mensaje: 'Se cortó la conexión' } });
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) { x.pct = Math.round(100 * e.loaded / e.total); x.msg = x.pct < 100 ? 'Leyendo la portada… ' + x.pct + ' %' : 'Leyendo la portada en el servidor…'; fila(x); } };
+        xhr.onload = () => { let j = null; try { j = JSON.parse(xhr.responseText); } catch (e) {} ok(j ? { ok: xhr.status >= 200 && xhr.status < 300, j } : { ok: false, reintento: xhr.status !== 413, j: { mensaje: sinRespuesta(xhr.status) } }); };
+        xhr.onerror = () => ok({ ok: false, reintento: true, j: { mensaje: 'Se cortó la conexión con el servidor. Vuelve a pulsar Validación QA.' } });
         xhr.send(x.file);
       });
     }
@@ -665,6 +667,7 @@
           x.msg = 'Leyendo la portada…'; fila(x);
           const carpetaX = x.rel ? await asegura(x.destino, x.rel) : x.destino; x.carpetaX = carpetaX;
           const r = await leePortada(x, carpetaX);
+          if (!r.ok && r.reintento) { x.estado = 'qa'; x.pct = 0; x.msg = '⚠ ' + esc(r.j.mensaje); fila(x); continue; }   // v0.25.5: queda pendiente para volver a intentarlo
           if (!r.ok) { x.estado = 'mal'; x.msg = esc(r.j.mensaje || r.j.error || 'No se pudo leer la portada'); fila(x); continue; }
           x.pre = r.j.token;
           if (!r.j.aplica) { x.estado = 'espera'; x.msg = 'Sin Validación QA (' + esc(r.j.motivo || 'no aplica') + '): faltan sus metadatos'; fila(x); aRejilla.push(x); continue; }
