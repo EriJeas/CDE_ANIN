@@ -9,4 +9,5 @@ Revit del archivo (su matriz de soporte): la vía completa, con geometría exact
 complemento de Revit del CDE.
 
 - Otra ubicación del ejecutable: variable `RVT_IFC` en `cde.env`.
-- En Linux / macOS (servidor): `pip install rvt` (el mismo lector, para Python) o el binario de esa plataforma aquí como `rvt-ifc`.
+- En Linux x64 (servidor): `linux/rvt/` es el mismo lector para Python (**rvt 0.25.0**, rueda oficial `manylinux2014_x86_64`, sin cambios; misma licencia). El CDE lo usa solo: basta con que el servidor tenga Python 3.8 o superior.
+- En macOS u otra plataforma: `pip install rvt` o el binario de esa plataforma aquí como `rvt-ifc`.

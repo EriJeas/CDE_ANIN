@@ -162,10 +162,13 @@
     }
     // los ids del visor (SVF2) se pasan a los de la base de propiedades (SVF), los del indice; se comprueba con los nombres
     let I = await correspondencia(modelo); const it = modelo.getInstanceTree(), dbDe2 = L.dbDe, FUERA = 0x40000000;
-    const muestraIds = (M) => { const P = []; for (let f = 0, salto = Math.max(1, Math.floor(L.n / 400)); f < L.n && P.length < 400; f += salto) { if (L.tipo[f] !== 1) continue; const d2 = dbDe2(f), d1 = M.v1(d2); if (d1 <= 0) continue; let nm = ''; try { nm = it.getNodeName(d2); } catch (e) {} if (nm) P.push([d1, nm]); } return P; };
+    const muestraIds = (M) => { const P = []; for (let f = 0, salto = Math.max(1, Math.floor(L.n / 400)); f < L.n && P.length < 400; f += salto) { if (L.tipo[f] !== 1) continue; const d2 = dbDe2(f), d1 = M.v1(d2); if (d1 <= 0) continue; let nm = ''; try { nm = it.getNodeName(d2); } catch (e) {} if (!nm) continue;
+      // v0.25.7: con la pieza van sus antecesores: si la pieza no tiene ficha propia en el índice (no lleva propiedades), se comprueba con el primero que sí la tenga
+      const fila = [d1, nm]; let p2 = d2; for (let k = 0; k < 6; k++) { let pa = 0; try { pa = it.getNodeParentId(p2); } catch (e) {} if (!(pa > 0)) break; const p1 = M.v1(pa); let pn = ''; try { pn = it.getNodeName(pa); } catch (e) {} if (p1 > 0 && pn) fila.push(p1, pn); p2 = pa; }
+      P.push(fila); } return P; };
     let VI = await api(F + '/modelos/' + encodeURIComponent(VID) + '/valida-ids', { json: { pares: muestraIds(I) } });
     if (I.otra && !(VI.total >= 20 && VI.coinciden / VI.total >= 0.8)) { const VB = await api(F + '/modelos/' + encodeURIComponent(VID) + '/valida-ids', { json: { pares: muestraIds(I.otra) } }); if (VB.coinciden > VI.coinciden) { I = I.otra; VI = VB; } }
-    if (VI.total >= 20 && VI.coinciden / VI.total < 0.8) throw new Error('Los identificadores del visor de Autodesk no coinciden con los del índice (' + VI.coinciden + ' de ' + VI.total + ' nombres): no se arma el modelo para no mostrar datos cruzados.');
+    if (VI.total >= 20 && VI.coinciden / VI.total < 0.8) throw new Error('Los identificadores del visor de Autodesk no coinciden con los del índice (' + VI.coinciden + ' de ' + VI.total + ' nombres' + (VI.sinFicha ? '; ' + VI.sinFicha + ' sin ficha' : '') + '): no se arma el modelo para no mostrar datos cruzados.' + ((VI.ejemplos || []).length ? ' Ejemplos (id · visor · índice): ' + VI.ejemplos.slice(0, 3).map((x) => x[0] + ' · «' + x[1] + '» · «' + (x[2] == null ? 'sin ficha' : x[2]) + '»').join('; ') : ''));
     const v1 = (d) => { const r = I.v1(d); return r > 0 ? r : FUERA + d; };   // sin correspondencia: un id aparte (no cruza con el indice)
     L.dbDe = (f) => { const d = dbDe2(f); return d == null || d < 0 ? d : v1(d); };
     // el arbol (padres) de las piezas, para juntarlas en su elemento del indice (con ids de la base de propiedades)

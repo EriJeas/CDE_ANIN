@@ -1099,6 +1099,11 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     r = await subeArch('FEDERADO-001.nwd', Buffer.from('no es un nwd real')); const vNwd = r.j.version_id || r.j.version;
     st = (await pide('/api/modelos/' + pn + '/' + vNwd + '/estado')).j; ok(st.estado === 'no-legible' && /Navisworks/.test(st.error || ''), 'un NWD queda «sin lector libre» con la explicación');
     const RVT = require('../lib/lector-rvt');
+    if (process.platform === 'linux' && process.arch === 'x64') { const hR = RVT.herramienta(); ok(!!hR && hR.tipo === 'python' && !!hR.env && /herramientas[\\/]rvt[\\/]linux/.test(hR.env.PYTHONPATH), 'en Linux el lector de RVT viaja con el CDE (herramientas/rvt/linux): no hay que instalar nada más que Python'); }
+    { const vj = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'visor.js'), 'utf8'); const mE = /const esForma = ([^\n]+)\n/.exec(vj), esF = new Function('return ' + mE[1].replace(/;\s*$/, ''))();
+      const X = (archivo, origen, ix, geo) => ({ archivo, origen, indice: ix ? { estado: ix } : null, geometria: !!geo });
+      ok(esF(X('a.nwd', 'forma')) && esF(X('a.rvt', 'forma', 'no-legible')) && esF(X('a.rvt', 'forma')) && esF(X('a.rvt', 'forma', 'error')) && !esF(X('a.rvt', 'forma', 'listo', true)) && !esF(X('a.rvt', 'forma', 'convirtiendo')) && !esF(X('a.rvt', '', 'no-legible')) && !esF(X('a.ifc', 'forma')), 'un RVT traído de Forma que el CDE no leyó se abre con la traducción de Autodesk (como el NWD); si ya está listo o leyéndose, o no vino de Forma, sigue su camino');
+      ok(/esc\(x\.contenedor\) \+ esc\(extDe\(x\)\)/.test(vj), 'la lista de modelos del visor muestra la extensión del archivo (.rvt, .nwd, .ifc)'); }
     if (RVT.disponible()) {
       r = await subeArch('MODELO-MINIMO-2023.rvt', fs.readFileSync(path.join(__dirname, 'muestras', 'minimo-2023.rvt'))); const vRvt = r.j.version_id || r.j.version;
       st = await espera(vRvt, 90000); ok(st.estado === 'error' && /complemento de Revit/.test(st.error || ''), 'un RVT del que el lector libre no saca elementos avisa y sugiere el complemento ' + JSON.stringify(st.error || '').slice(0, 160));
@@ -1628,7 +1633,10 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
           ok(tI && tI.indice.estado === 'listo' && MDX.pedidos.length === p0 && /ya tenía/.test(tI.indice.texto), 'rehacer un modelo ya instalado desde Forma reutiliza su índice (una copia, sin volver a pedir la base de propiedades a Autodesk) ' + JSON.stringify(tI && tI.indice).slice(0, 160));
           r = await pide(F + '/modelos/' + mM.vid + '/valida-ids', { json: { pares: [[3, 'Muro básico'], [6, 'Puerta simple [123456]'], [4, 'Solid'], [7, 'Solid']] } });
           const rMal = await pide(F + '/modelos/' + mM.vid + '/valida-ids', { json: { pares: [[3, 'Puerta simple'], [6, 'Muro básico'], [4, 'Nivel 1'], [99, 'Solid']] } });
-          ok(r.j.total === 4 && r.j.coinciden === 4 && rMal.j.coinciden === 0 && rMal.j.ejemplos.length === 4, 'la comprobación de ids compara los nombres de una muestra con el índice (con o sin el sufijo [id] del visor) y detecta ids cruzados');
+          ok(r.j.total === 4 && r.j.coinciden === 4 && rMal.j.coinciden === 0 && rMal.j.total === 3 && rMal.j.sinFicha === 1 && rMal.j.ejemplos.length === 3, 'la comprobación de ids compara los nombres de una muestra con el índice (con o sin el sufijo [id] del visor) y detecta ids cruzados');
+          // v0.25.7: una pieza sin ficha en el índice (sin propiedades) se comprueba con su antecesor; si el antecesor está cruzado, se detecta
+          const rAnc = await pide(F + '/modelos/' + mM.vid + '/valida-ids', { json: { pares: [[99, 'Solid', 3, 'Muro básico'], [98, 'Body', 97, 'Capa', 6, 'Puerta simple'], [96, 'Solid'], [95, 'Solid', 3, 'Puerta simple']] } });
+          ok(rAnc.j.total === 3 && rAnc.j.coinciden === 2 && rAnc.j.sinFicha === 1 && rAnc.j.ejemplos.length === 1 && rAnc.j.ejemplos[0][0] === 3, 'las piezas sin ficha propia se comprueban con su primer antecesor del índice: no cuentan como ids cruzados (2 de 3, 1 sin ficha), y un antecesor cruzado sí se detecta');
           // v0.13.7: el navegador entrega el árbol entero y el CDE ordena el índice como Navisworks (en un hilo)
           const arb = new Int32Array(8); for (const [h, p] of [[2, 1], [3, 2], [4, 3], [5, 3], [6, 2], [7, 6]]) arb[h] = p;
           const cabA = Buffer.alloc(8); cabA.write('CDA2', 0, 'latin1'); cabA.writeUInt32LE(8, 4); const mA = Buffer.from([0, 0, 0, 0, 1, 1, 0, 1]);

@@ -268,9 +268,11 @@ async function cargaLista() {
   // todos los modelos del proyecto, de CUALQUIER carpeta (WIP, compartido, publicado), con lo que el CDE sabe de cada version
   const d = await api('/api/modelos/' + PID + '/lista');
   LISTA = d.modelos.map(m => ({ vid: m.vid, cid: m.cid, contenedor: m.contenedor, carpeta: m.carpeta, n: m.n, revision: m.revision, estado: m.estado, archivo: m.archivo, fecha: m.fecha, formato: m.formato, origen: m.origen || '', indice: m.indice, geometria: !!(m.indice && m.indice.geometria && m.indice.estado === 'listo'), elementos: m.indice && m.indice.elementos }));
-  const txtEstado = (x) => { const ix = x.indice; if (esForma(x) && (!ix || ix.estado !== 'listo')) return 'de Forma: se prepara al abrirlo'; if (!ix) return x.formato === 'nwd' ? 'sin lector libre' : 'sin procesar'; return ix.estado === 'listo' ? (ix.elementos ? num(ix.elementos) + ' elem.' : 'listo') : (ESTADO_MODELO[ix.estado] || ix.estado).toLowerCase(); };
+  const txtEstado = (x) => { const ix = x.indice; if (esForma(x) && (!ix || ix.estado !== 'listo')) return 'de Forma: se prepara al abrirlo'; if (!ix) return x.formato === 'nwd' ? 'sin lector libre' : 'sin procesar'; if (ix.estado === 'no-legible' && x.formato === 'rvt') return 'falta el lector de RVT en el servidor'; return ix.estado === 'listo' ? (ix.elementos ? num(ix.elementos) + ' elem.' : 'listo') : (ESTADO_MODELO[ix.estado] || ix.estado).toLowerCase(); };
+  // v0.25.7: el nombre lleva su extensión (.rvt, .nwd, .ifc): un RVT y un NWD pueden tener el mismo código
+  const extDe = (x) => { const m = /\.[A-Za-z0-9]{2,5}$/.exec(x.archivo || ''); return m && !String(x.contenedor || '').toLowerCase().endsWith(m[0].toLowerCase()) ? m[0].toLowerCase() : ''; };
   const grupos = new Map(); for (const x of LISTA) { if (!grupos.has(x.carpeta)) grupos.set(x.carpeta, []); grupos.get(x.carpeta).push(x); }
-  const sel = $('selModelo'); sel.innerHTML = '<option value="">' + (LISTA.length ? 'Elige un modelo del CDE (cualquier carpeta)…' : 'Este proyecto aún no tiene modelos IFC / RVT') + '</option>' + [...grupos].map(([carp, L]) => '<optgroup label="' + esc(carp || 'Archivos de proyecto') + '">' + L.map(x => '<option value="' + x.vid + '"' + (x.vid === VID ? ' selected' : '') + '>' + esc(x.contenedor) + ' · v' + x.n + ' ' + esc(x.revision || '') + ' · ' + esc(txtEstado(x)) + '</option>').join('') + '</optgroup>').join('');
+  const sel = $('selModelo'); sel.innerHTML = '<option value="">' + (LISTA.length ? 'Elige un modelo del CDE (cualquier carpeta)…' : 'Este proyecto aún no tiene modelos IFC / RVT') + '</option>' + [...grupos].map(([carp, L]) => '<optgroup label="' + esc(carp || 'Archivos de proyecto') + '">' + L.map(x => '<option value="' + x.vid + '"' + (x.vid === VID ? ' selected' : '') + '>' + esc(x.contenedor) + esc(extDe(x)) + ' · v' + x.n + ' ' + esc(x.revision || '') + ' · ' + esc(txtEstado(x)) + '</option>').join('') + '</optgroup>').join('');
   sel.onchange = () => { VID = sel.value; if (VID) { history.replaceState(null, '', '?pid=' + PID + '&vid=' + VID); cargaModelo(); } };
   if (VID) cargaModelo(); else { $('estadoCarga').textContent = 'Elige un modelo arriba.'; abreModulo('filtros'); }
 }
@@ -282,7 +284,8 @@ let VIGIA = null;
 /* ───── NWD traido de Autodesk Forma: no hay lector libre, pero Autodesk ya lo tradujo para Forma. Al abrirlo aqui, el CDE lo
    prepara solo con esa traduccion (forma-paso.html, incrustada en el lienzo: se ve el modelo de Autodesk mientras se lee) y
    despues lo abre en este visor. La primera vez tarda unos minutos; desde entonces abre directo (queda guardado en el CDE). */
-const esForma = (x) => !!x && x.origen === 'forma' && /\.(nwd|nwc|nwf)$/i.test(x.archivo || '');
+// v0.25.7: también los RVT traídos de Forma que el CDE no leyó por su cuenta: se abren con la traducción de Autodesk (geometría exacta y todos sus parámetros)
+const esForma = (x) => !!x && x.origen === 'forma' && (/\.(nwd|nwc|nwf)$/i.test(x.archivo || '') || (/\.rvt$/i.test(x.archivo || '') && !(x.indice && ['listo', 'en-cola', 'convirtiendo', 'armando', 'recibiendo'].includes(x.indice.estado) && (x.indice.estado !== 'listo' || x.geometria))));
 let FPASO = null;
 const PASOS_FORMA = [['prep', 'Preparar'], ['abrir', 'Abrir la traducción de Autodesk'], ['geo', 'Traer la geometría'], ['mallas', 'Revisar las piezas'], ['indice', 'Índice de parámetros (en el servidor)'], ['armar', 'Aligerar y armar la geometría del CDE'], ['subir', 'Guardar en el CDE']];
 function paraFormaPaso() {
