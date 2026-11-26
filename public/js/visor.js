@@ -59,6 +59,22 @@ function cieloEntorno() {
 const pmrem = new THREE.PMREMGenerator(render); escena.environment = pmrem.fromScene(cieloEntorno(), 0).texture;
 const camara = new THREE.PerspectiveCamera(50, 1, 0.1, 20000);
 const control = new OrbitControls(camara, render.domElement); control.screenSpacePanning = true; control.enableDamping = true; control.dampingFactor = 0.12;
+// v0.25.8 · desplazar (paneo) como en Forma / Navisworks: botón central (apretar la rueda) o derecho y arrastrar; la rueda acerca hacia donde
+// apunta el ratón; y la herramienta «Mover» hace que arrastrar con el botón izquierdo desplace en vez de girar.
+control.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN }; control.zoomToCursor = true; control.keyPanSpeed = 28;
+let MOVER = false;
+function ponMover(si) {
+  MOVER = !!si; control.mouseButtons.LEFT = MOVER ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE; control.touches.ONE = MOVER ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+  render.domElement.style.cursor = MOVER ? 'grab' : ''; const b = document.querySelector('.herramientas button[data-h="mover"]'); if (b) b.classList.toggle('activo', MOVER);
+}
+render.domElement.addEventListener('pointerdown', () => { if (MOVER) render.domElement.style.cursor = 'grabbing'; });
+window.addEventListener('pointerup', () => { if (MOVER) render.domElement.style.cursor = 'grab'; });
+/** Desplaza la vista dx, dy píxeles de pantalla (flechas del teclado). */
+function desplaza(dx, dy) {
+  const d = camara.position.distanceTo(control.target), alto = 2 * d * Math.tan(THREE.MathUtils.degToRad(camara.fov / 2)), k = alto / Math.max(1, render.domElement.clientHeight);
+  const der = new THREE.Vector3().setFromMatrixColumn(camara.matrix, 0), arr = new THREE.Vector3().setFromMatrixColumn(camara.matrix, 1), m = der.multiplyScalar(-dx * k).add(arr.multiplyScalar(dy * k));
+  camara.position.add(m); control.target.add(m); control.update();
+}
 // luz de cielo azulada desde arriba y gris neutro desde abajo (sin tinte lila en las sombras): lo que mira al cielo (cubiertas, losas) toma el tono del cielo
 const hemi = new THREE.HemisphereLight(0xbfd3ee, 0xd6d8d6, 0.22); escena.add(hemi);
 // fondo: degradado claro (gris azulado arriba, calido abajo)
@@ -91,7 +107,10 @@ function cuadro() {
 }
 // sol que acompana a la camara (desde arriba a la izquierda de quien mira, como la luz de Forma): la fachada que se mira queda
 // blanca, la cubierta un poco mas oscura y azulada por el cielo, y el costado en gris claro. Gira con la vista, no con el modelo.
-const LUZ = { elev: THREE.MathUtils.degToRad(25), giro: THREE.MathUtils.degToRad(35) }, _f = new THREE.Vector3(), _d = new THREE.Vector3(), _c = new THREE.Vector3();
+// v0.25.8: el sol sube de 25° a 38° (cubiertas y losas ya no quedan apagadas vistas desde arriba) y una luz de relleno, sin sombra,
+// entra por el otro lado de la vista: las caras que el sol no toca conservan su color en vez de irse a un gris azulado oscuro.
+const relleno = new THREE.DirectionalLight(0xffffff, 0.9); escena.add(relleno); escena.add(relleno.target);
+const LUZ = { elev: THREE.MathUtils.degToRad(38), giro: THREE.MathUtils.degToRad(35), elevR: THREE.MathUtils.degToRad(30), giroR: THREE.MathUtils.degToRad(75) }, _f = new THREE.Vector3(), _d = new THREE.Vector3(), _c = new THREE.Vector3();
 function luzDeCamara(caja) {
   caja.getCenter(_c); _f.subVectors(camara.position, control.target); _f.y = 0;
   if (_f.lengthSq() < 1e-9) camara.getWorldDirection(_f).negate().setY(0);
@@ -101,6 +120,9 @@ function luzDeCamara(caja) {
   _d.set(Math.sin(az) * Math.cos(LUZ.elev), Math.sin(LUZ.elev), Math.cos(az) * Math.cos(LUZ.elev));
   const rad = caja.getSize(_f).length() / 2 || 1;
   sol.position.copy(_c).addScaledVector(_d, rad * 1.8); sol.target.position.copy(_c); sol.target.updateMatrixWorld();
+  const azR = az + LUZ.giro + LUZ.giroR;   // a la derecha de quien mira
+  _d.set(Math.sin(azR) * Math.cos(LUZ.elevR), Math.sin(LUZ.elevR), Math.cos(azR) * Math.cos(LUZ.elevR));
+  relleno.position.copy(_c).addScaledVector(_d, rad * 1.8); relleno.target.position.copy(_c); relleno.target.updateMatrixWorld();
 }
 const ESF = new THREE.Sphere();
 /** Planos de recorte de la camara segun donde esta: el cercano lo mas lejos posible sin cortar nada que se vea. Con un plano
@@ -410,6 +432,7 @@ function aplicaEstilo() {
   const e = $('estilo').value;
   if (e === 'mono') { G.mallaOp.material = MAT.mono; G.mallaTr.material = MAT.monoVidrio; render.shadowMap.enabled = false; if (!G.aristas) muestraAristas(true); else G.aristas.visible = true; herr('aristas').classList.add('activo'); }
   else { G.mallaOp.material = MAT.opaco; G.mallaTr.material = MAT.vidrio; render.shadowMap.enabled = e === 'realista'; sol.intensity = e === 'realista' ? 2.3 : 2.0; hemi.intensity = e === 'realista' ? 0.22 : 0.3; MAT.opaco.envMapIntensity = e === 'realista' ? 0.53 : 0.5; }
+  relleno.visible = e !== 'mono';
   G.sombra.visible = e === 'realista';
   for (const m of [MAT.opaco, MAT.vidrio, MAT.mono, MAT.monoVidrio]) m.needsUpdate = true;
 }
@@ -653,11 +676,12 @@ MODULOS.filtros = () => {
   V.alAbrirFiltros.forEach(fn => { try { fn(c); } catch (e) { console.warn(e); } });
 };
 MODULOS.elemento = () => { panel('Elemento', '<div id="elemFicha" class="elemficha"></div>'); pintaElemento(); };
-MODULOS.ayuda = () => panel('Atajos', '<div class="grupo"><h4>Ratón</h4><p>Arrastrar: orbitar · Rueda: acercar · Botón derecho / Shift: desplazar · Clic: seleccionar · Doble clic: acercar al elemento.</p></div><div class="grupo"><h4>Teclas</h4><p><b>Esc</b> quita la selección o cancela la medida · <b>Enter</b> cierra un área · <b>F</b> encuadra · <b>H</b> oculta la selección · <b>I</b> aísla · <b>T</b> muestra todo.</p></div><div class="grupo"><h4>Módulos</h4><p>Cada módulo del carril abre su panel (se arrastra por el título). Las ventanas grandes (inventario, planos, resultados) se mueven por su cabecera y se agrandan por la esquina o con ▢.</p></div>');
+MODULOS.ayuda = () => panel('Atajos', '<div class="grupo"><h4>Ratón</h4><p>Arrastrar: girar · Rueda: acercar hacia donde apunta el ratón · <b>Desplazar (paneo):</b> apretar la rueda (botón central) o el botón derecho y arrastrar, Shift + arrastrar, o activar <b>Mover</b> en la barra de abajo y arrastrar · Clic: seleccionar · Doble clic: acercar al elemento.</p></div><div class="grupo"><h4>Teclas</h4><p><b>Esc</b> quita la selección o cancela la medida · <b>Enter</b> cierra un área · <b>P</b> activa o quita Mover · <b>Flechas</b> desplazan la vista (con Shift, más) · <b>F</b> encuadra · <b>H</b> oculta la selección · <b>I</b> aísla · <b>T</b> muestra todo.</p></div><div class="grupo"><h4>Módulos</h4><p>Cada módulo del carril abre su panel (se arrastra por el título). Las ventanas grandes (inventario, planos, resultados) se mueven por su cabecera y se agrandan por la esquina o con ▢.</p></div>');
 
 // ---------- herramientas ----------
 document.querySelectorAll('.herramientas button[data-h]').forEach(b => b.onclick = () => {
-  const h = b.dataset.h; if (!G) return;
+  const h = b.dataset.h; if (h === 'mover') { ponMover(!MOVER); return; }
+  if (!G) return;
   if (h === 'encuadrar') encuadra(VIS ? cajaDe(VIS) : (SEL ? cajaDe(new Set([SEL.e])) : null));
   if (h === 'aislar' && SEL) { muestraSolo(new Set([SEL.e]), true); }
   if (h === 'ocultar' && SEL) { OCULTOS.add(SEL.e); selecciona(null); recalcula(false); }
@@ -728,6 +752,8 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { if (MEDIR.modo) cancelaMedida(); else selecciona(null); }
   if (e.key === 'Enter' && MEDIR.modo === 'area') cierraArea();
   if (!G) return;
+  if (e.key === 'p' || e.key === 'P') ponMover(!MOVER);
+  { const paso = e.shiftKey ? 240 : 80, fl = { ArrowLeft: [paso, 0], ArrowRight: [-paso, 0], ArrowUp: [0, paso], ArrowDown: [0, -paso] }[e.key]; if (fl) { e.preventDefault(); desplaza(fl[0], fl[1]); } }
   if (e.key === 'f' || e.key === 'F') herr('encuadrar').click(); if ((e.key === 'h' || e.key === 'H') && SEL) herr('ocultar').click(); if ((e.key === 'i' || e.key === 'I') && SEL) herr('aislar').click(); if (e.key === 't' || e.key === 'T') herr('todo').click();
 });
 

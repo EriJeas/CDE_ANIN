@@ -1103,7 +1103,10 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     { const vj = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'visor.js'), 'utf8'); const mE = /const esForma = ([^\n]+)\n/.exec(vj), esF = new Function('return ' + mE[1].replace(/;\s*$/, ''))();
       const X = (archivo, origen, ix, geo) => ({ archivo, origen, indice: ix ? { estado: ix } : null, geometria: !!geo });
       ok(esF(X('a.nwd', 'forma')) && esF(X('a.rvt', 'forma', 'no-legible')) && esF(X('a.rvt', 'forma')) && esF(X('a.rvt', 'forma', 'error')) && !esF(X('a.rvt', 'forma', 'listo', true)) && !esF(X('a.rvt', 'forma', 'convirtiendo')) && !esF(X('a.rvt', '', 'no-legible')) && !esF(X('a.ifc', 'forma')), 'un RVT traído de Forma que el CDE no leyó se abre con la traducción de Autodesk (como el NWD); si ya está listo o leyéndose, o no vino de Forma, sigue su camino');
-      ok(/esc\(x\.contenedor\) \+ esc\(extDe\(x\)\)/.test(vj), 'la lista de modelos del visor muestra la extensión del archivo (.rvt, .nwd, .ifc)'); }
+      ok(/esc\(x\.contenedor\) \+ esc\(extDe\(x\)\)/.test(vj), 'la lista de modelos del visor muestra la extensión del archivo (.rvt, .nwd, .ifc)');
+      const vh = fs.readFileSync(path.join(__dirname, '..', 'public', 'visor.html'), 'utf8');
+      ok(/MIDDLE: THREE\.MOUSE\.PAN, RIGHT: THREE\.MOUSE\.PAN/.test(vj) && /data-h="mover"/.test(vh) && /h === 'mover'\) \{ ponMover/.test(vj) && /ArrowLeft/.test(vj) && /zoomToCursor = true/.test(vj), 'el visor desplaza (paneo) con el botón central o derecho, con la herramienta «Mover», con Shift y con las flechas; la rueda acerca hacia el cursor');
+      ok(/const relleno = new THREE\.DirectionalLight/.test(vj) && /elev: THREE\.MathUtils\.degToRad\(38\)/.test(vj), 'la iluminación del visor lleva luz de relleno y el sol más alto (colores vivos en cubiertas y caras sin sol)'); }
     if (RVT.disponible()) {
       r = await subeArch('MODELO-MINIMO-2023.rvt', fs.readFileSync(path.join(__dirname, 'muestras', 'minimo-2023.rvt'))); const vRvt = r.j.version_id || r.j.version;
       st = await espera(vRvt, 90000); ok(st.estado === 'error' && /complemento de Revit/.test(st.error || ''), 'un RVT del que el lector libre no saca elementos avisa y sugiere el complemento ' + JSON.stringify(st.error || '').slice(0, 160));
