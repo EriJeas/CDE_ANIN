@@ -353,10 +353,11 @@ async function modeloListo(vid) {
   // v0.13.7 (tipos de Revit como elementos y aligerado por rejilla) o de la v0.13.8 (ejes sin malla como elementos, sin aristas
   // precalculadas) o de la v0.13.9 (lo que va completo elegido por el largo, cajas sin orientar) se rehace solo; reutiliza el
   // indice que ya tiene el CDE
-  const rsF = st.resumen || {}, formaSinIds = esForma(x) && st.estado === 'listo' && st.geometria && rsF.origen === 'Traducción de Autodesk Forma' && !(rsF.ids && (rsF.arbol === 'navisworks-3' || rsF.arbol === 'no-aplica') && rsF.aristas && rsF.criterio === 'cdeg-4');
+  // v0.25.9: un RVT de Forma armado antes de esta versión (todo el modelo como un solo elemento: una caja) también se rehace solo
+  const rsF = st.resumen || {}, rvtForma = !!x && x.origen === 'forma' && /\.rvt$/i.test(x.archivo || ''), formaSinIds = (esForma(x) || rvtForma) && st.estado === 'listo' && st.geometria && rsF.origen === 'Traducción de Autodesk Forma' && !(rsF.ids && (rsF.arbol === 'navisworks-3' || rsF.arbol === 'no-aplica') && rsF.aristas && rsF.criterio === 'cdeg-4' && (!rvtForma || rsF.reglaElem === 2));
   if (st.estado === 'listo' && st.geometria && !formaSinIds) return true;
   caja.classList.remove('oculto');
-  if (esForma(x) && !['en-cola', 'convirtiendo', 'armando', 'recibiendo'].includes(st.estado)) { pasaDesdeForma(vid, x); return false; }
+  if ((esForma(x) || formaSinIds) && !['en-cola', 'convirtiendo', 'armando', 'recibiendo'].includes(st.estado)) { pasaDesdeForma(vid, x); return false; }
   if (st.estado === 'sin-indice' && legible) {   // aun no se proceso: se pide ahora
     try { await api('/api/modelos/' + PID + '/' + vid + '/procesar', { method: 'POST' }); st = { estado: 'en-cola' }; } catch (e) { caja.textContent = 'Este modelo aún no se ha procesado y tu nivel de acceso no permite procesarlo: pídeselo a quien lo cargó.'; return false; }
   }

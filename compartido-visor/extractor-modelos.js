@@ -192,7 +192,8 @@ class Resumen {
       while (p && tope++ < 40) { if (this.esElem.has(p)) { parte = true; break; } p = this.ix.padre.get(p); }
       // v1.373: una PARTE hereda la clasificacion de su elemento (anc: el indice la copia al cerrar); un contenedor sin categoria declarada queda "(sin categoria)"
       if (parte) { this.partes++; return { clase: 2, c: this.clasifica(id, pares, true), anc: p }; }
-      const declara = pares.some(([k, v]) => claseDe(k) === 'cat' && String(v).trim());
+      // v0.25.9: en un RVT, «Revit Document / Category / Family / Family Type» son la estructura del archivo, no una categoría: no hacen elemento
+      const declara = pares.some(([k, v]) => claseDe(k) === 'cat' && String(v).trim() && (this.formato !== 'rvt' || (this.cl.norm('Categoria', String(v).trim()) && !(/^(rvt links|v[ií]nculos (de )?rvt)$/i.test(this.cl.norm('Categoria', String(v).trim())) && (this.ix.hijos.get(id) || 0) > 0))));
       if (!declara && (this.ix.hijos.get(id) || 0) > 0) return { clase: 0, c: this.clasifica(id, pares, true) };   // contenedor (archivo, nivel, categoria, familia, tipo)
     }
     this.esElem.add(id);
@@ -470,6 +471,14 @@ function leeBaseSdb(archivo, cl, formato, avance, indice) {
     const sPadre = new Set(aPadre), sHijo = new Set(aHijo), sInst = new Set(aInst), sNombre = new Set(aNombre), sVis = new Set(aVis);
     const declIds = new Set();
     /*
+     * v0.25.9 — RVT traducido por Autodesk: la raíz declara «Revit Document», y sus categorías, familias y tipos «Revit Category»,
+     * «Revit Family» y «Revit Family Type». Con la regla «el primero que declara categoría es el elemento», la raíz se quedaba con
+     * TODO el modelo como un solo elemento sin categoría (y la geometría, como una sola caja). Esos valores no son categorías (el
+     * visor ya los descarta al normalizar): en un RVT solo declara quien trae una categoría de verdad (sus ejemplares).
+     */
+    const catRealCache = new Map(), catReal = (vid) => { let x = catRealCache.get(vid); if (x === undefined) { const nm = cl.norm('Categoria', valDe(vid).trim()); x = !!nm && !/^(rvt links|v[ií]nculos (de )?rvt)$/i.test(nm);   // un vínculo RVT agrupa los elementos del modelo vinculado: no es el elemento
+      catRealCache.set(vid, x); } return x; };
+    /*
      * v1.375 — DIAGNOSTICO DEL MODELO (para comparar con el visor con datos REALES): de una muestra fija de entidades
      * repartidas por todo el modelo se guardan TODAS sus propiedades crudas (tambien las pestanas internas) y su
      * cadena de antecesores. Se baja desde la pagina ("Diagnostico del modelo") y permite ajustar la clasificacion
@@ -489,7 +498,7 @@ function leeBaseSdb(archivo, cl, formato, avance, indice) {
       if (sNombre.has(a)) { if (!vNom[e]) vNom[e] = Number(r.v); continue; }
       if (sVis.has(a)) conProps[e] = 1;
       const c = claseAttr.get(a);
-      if (c) { const arr = porClase[c]; if (!arr[e]) arr[e] = Number(r.v); if (c === 'cat') { decl[e] = 1; declIds.add(Number(r.v)); } }
+      if (c) { const arr = porClase[c]; if (!arr[e]) arr[e] = Number(r.v); if (c === 'cat' && (formato !== 'rvt' || catReal(Number(r.v)))) { decl[e] = 1; declIds.add(Number(r.v)); } }
       if ((++leidas & 0xfffff) === 0) avance && avance('Leyendo la base de propiedades del modelo: ' + leidas.toLocaleString('es-PE') + ' valores...', 0);
     }
     const declNombres = new Set(); for (const id of declIds) { const v = valDe(id).trim(); if (v) declNombres.add(cl.norm('Categoria', v)); }
