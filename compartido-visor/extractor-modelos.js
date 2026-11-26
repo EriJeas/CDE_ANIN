@@ -10,6 +10,7 @@
  * valores mas frecuentes, numeros), por categoria, familia, tipo y nivel, y una muestra de elementos.
  */
 'use strict';
+const { recorre, recorreSt } = require('./recorre');   // v0.25.6: recorrido sin «statement has been finalized» (Node 22.13)
 const vm = require('vm');
 
 const MAX_VALORES = 60;        // valores distintos que se cuentan por parametro (el resto: "otros")
@@ -399,7 +400,7 @@ class Indice {
     const hueco = llenHuecoVisor();
     this.db.exec('BEGIN');
     const ins = this.db.prepare('INSERT OR REPLACE INTO valh VALUES (?,?)');
-    for (const r of this.db.prepare('SELECT id, v FROM val').iterate()) {
+    for (const r of recorre(this.db, 'SELECT id, v FROM val')) {
       const v = r.v == null ? '' : String(r.v);
       if (hueco(v, false)) ins.run(Number(r.id), 0); else if (hueco(v, true)) ins.run(Number(r.id), 1);
     }
@@ -478,7 +479,7 @@ function leeBaseSdb(archivo, cl, formato, avance, indice) {
     const diagFilas = new Map();   // e -> [[attrId, valId]]
     let leidas = 0;
     avance && avance('Leyendo la base de propiedades del modelo (un barrido)...', 0);
-    for (const r of db.prepare(sel).iterate()) {
+    for (const r of recorre(db, sel)) {
       const e = Number(r.e), a = Number(r.a); if (e <= 0 || e >= N) continue;
       if (diagIds.has(e)) { let l = diagFilas.get(e); if (!l) { l = []; diagFilas.set(e, l); } if (l.length < 400) l.push([a, Number(r.v)]); }
       existe[e] = 1;

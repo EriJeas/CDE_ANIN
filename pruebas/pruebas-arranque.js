@@ -1106,6 +1106,21 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
     r = await pide('/api/modelos/' + pn + '/lista'); const mIfc = (r.j.modelos || []).find(m => m.vid === vIfc), mNwd = (r.j.modelos || []).find(m => m.vid === vNwd);
     ok(r.status === 200 && mIfc && mIfc.carpeta === WN && mIfc.indice.estado === 'listo' && mIfc.indice.elementos === 116 && mNwd && mNwd.indice.estado === 'no-legible', 'el visor lista los modelos de cualquier carpeta (aquí WIP), con su estado');
         r = await pide('/api/modelos/' + pn + '/' + vIfc + '/procesar', { method: 'POST' }); ok(r.status === 200, 'se puede volver a procesar a mano (' + r.status + ')'); st = await espera(vIfc, 90000); ok(st.estado === 'listo', 'y vuelve a quedar listo');
+    { // v0.25.6: el recorrido de consultas no se corta en Node 22.13 («statement has been finalized») y un armado fallido se rehace sin releer el modelo
+      const raiz = path.join(__dirname, '..'), conIt = ['lib', 'compartido-visor'].flatMap(d => fs.readdirSync(path.join(raiz, d)).filter(x => /\.js$/.test(x)).map(x => path.join(raiz, d, x))).filter(x => /\.iterate\(/.test(fs.readFileSync(x, 'utf8')) && !/recorre\.js$/.test(x));
+      ok(!conIt.length, 'ninguna consulta recorre una sentencia sin retenerla (.iterate directo): ' + (conIt.map(x => path.basename(x)).join(', ') || 'ninguna'));
+      const { DatabaseSync } = require('node:sqlite'), RC = require('../compartido-visor/recorre'), dbT = new DatabaseSync(':memory:'); dbT.exec('CREATE TABLE t (a INTEGER PRIMARY KEY, b TEXT); BEGIN'); const iT = dbT.prepare('INSERT INTO t VALUES (?,?)'); for (let k = 1; k <= 60000; k++) iT.run(k, 'valor ' + k); dbT.exec('COMMIT');
+      let nT = 0, basura = []; for (const x of RC.recorre(dbT, 'SELECT a, b FROM t WHERE a > ?', 10)) { nT++; basura.push(String(x.b).repeat(20)); if (basura.length > 2000) basura = []; } const stT = dbT.prepare('SELECT a FROM t WHERE a <= ?'); let mT = 0; for (const x of RC.recorreSt(stT, 500)) mT++; dbT.close();
+      ok(nT === 59990 && mT === 500, 'el recorrido con la sentencia retenida lee las 59 990 filas bajo presión de memoria (Node ' + process.version + ')');
+      // se simula «el modelo se leyó pero falló armar el índice»: los trozos quedan en su carpeta y el estado en error
+      const BDm = require('../lib/bd'), IFCm = require('../lib/lector-ifc'), dirI = path.join(process.env.DATOS_DIR, 'indices'), dT = path.join(dirI, vIfc.replace(/[^A-Za-z0-9_-]/g, '_') + '.trozos');
+      const filaI = BDm.q.uno('SELECT * FROM indices_modelo WHERE version_id = ?', vIfc), geoAntes = fs.statSync(filaI.ruta_geometria).mtimeMs;
+      fs.rmSync(dT, { recursive: true, force: true }); await IFCm.convierte(path.join(__dirname, 'muestras', 'ejemplo.ifc'), { modelo: 'MODELO-ESTRUCTURAS-001.ifc', dirSalida: dT, alAvanzar: () => {}, herramienta: 'prueba' }); try { fs.unlinkSync(path.join(dT, 'geometria.cdeg')); } catch (e) {}
+      const nTz = fs.readdirSync(dT).filter(x => /^\d+\.json\.gz$/.test(x)).length;
+      BDm.q.corre("UPDATE indices_modelo SET estado = 'error', error = 'statement has been finalized', trozos = ? WHERE version_id = ?", nTz, vIfc);
+      r = await pide('/api/modelos/' + pn + '/' + vIfc + '/procesar', { method: 'POST' }); const eRe = r.j.estado; st = await espera(vIfc, 90000);
+      r = await pide('/api/modelos/' + pn + '/' + vIfc + '/elementos');
+      ok(eRe === 'armando' && st.estado === 'listo' && st.geometria && r.j.columnas.e.length === 116 && fs.statSync(filaI.ruta_geometria).mtimeMs === geoAntes && !fs.existsSync(dT) && !!BDm.q.uno("SELECT 1 FROM auditoria WHERE accion = 'modelo.rearma' AND objeto = ?", vIfc), '«Volver a procesar» tras un fallo al armar el índice lo rearma con lo ya leído (estado ' + eRe + ', sin leer el modelo otra vez) y queda listo con sus 116 elementos'); }
 
     console.log('13. Proyecto nuevo desde la web: nomenclatura DOCPG002 (libreria maestra de la ANIN)');
     galleta = ''; await pide('/api/acceso/local', { json: { email: 'admin@anin.gob.pe', clave: 'prueba' } });

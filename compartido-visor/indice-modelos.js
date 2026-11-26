@@ -10,6 +10,7 @@
  *    ("NO CORRESPONDE") si hay valor real al lado, como invColumn (INV_RELLENO del visor).
  */
 'use strict';
+const { recorre, recorreSt } = require('./recorre');   // v0.25.6: recorrido sin «statement has been finalized» (Node 22.13)
 const fs = require('fs'), path = require('path'), crypto = require('crypto'), vm = require('vm');
 
 const ABIERTOS = new Map();   // ruta -> { db, t }
@@ -250,10 +251,10 @@ function resumenDesdeIndice(ruta, cats) {
     const catsL = (cats || []).slice(0, 40), posCat = new Map(catsL.map((c, i) => [c, i]));
     const P = new Map();
     const fila = (a) => { let p = P.get(a); if (!p) { p = { k: nombres.get(a) || ('#' + a), llenos: 0, vacios: 0, distintos: 0, otros: 0, valores: [], num: null, porCat: catsL.map(() => 0) }; P.set(a, p); } return p; };
-    for (const r of db.prepare('SELECT eav.a AS a, el.cat AS cat, COUNT(DISTINCT eav.e) AS n FROM eav JOIN elem el ON el.e = eav.e WHERE el.clase = 1 GROUP BY eav.a, el.cat').iterate()) {
+    for (const r of recorre(db, 'SELECT eav.a AS a, el.cat AS cat, COUNT(DISTINCT eav.e) AS n FROM eav JOIN elem el ON el.e = eav.e WHERE el.clase = 1 GROUP BY eav.a, el.cat')) {
       const p = fila(Number(r.a)), n = Number(r.n); p.llenos += n; const i = posCat.get(String(r.cat)); if (i != null) p.porCat[i] = n;
     }
-    for (const r of db.prepare('SELECT eav.a AS a, COUNT(DISTINCT eav.v) AS n FROM eav JOIN elem el ON el.e = eav.e WHERE el.clase = 1 GROUP BY eav.a').iterate()) fila(Number(r.a)).distintos = Number(r.n);
+    for (const r of recorre(db, 'SELECT eav.a AS a, COUNT(DISTINCT eav.v) AS n FROM eav JOIN elem el ON el.e = eav.e WHERE el.clase = 1 GROUP BY eav.a')) fila(Number(r.a)).distintos = Number(r.n);
     const tops = db.prepare('SELECT a, v, n FROM (SELECT eav.a AS a, eav.v AS v, COUNT(DISTINCT eav.e) AS n, ROW_NUMBER() OVER (PARTITION BY eav.a ORDER BY COUNT(DISTINCT eav.e) DESC, eav.v) AS rn FROM eav JOIN elem el ON el.e = eav.e WHERE el.clase = 1 GROUP BY eav.a, eav.v) WHERE rn <= 60').all();
     const vids = [...new Set(tops.map(t => Number(t.v)))], vals = new Map();
     for (let i = 0; i < vids.length; i += 900) for (const r of db.prepare('SELECT id, v FROM val WHERE id IN (' + vids.slice(i, i + 900).join(',') + ')').all()) vals.set(Number(r.id), String(r.v == null ? '' : r.v));
@@ -266,7 +267,7 @@ function resumenDesdeIndice(ruta, cats) {
     const filas = db.prepare('SELECT e, nombre, cat, fam, tip, niv, modelo FROM (SELECT e, nombre, cat, fam, tip, niv, modelo, ROW_NUMBER() OVER (ORDER BY e) AS rn FROM elem WHERE clase = 1) WHERE (rn - 1) % ? = 0 LIMIT 1500').all(paso)
       .map(r => ({ n: String(r.nombre || ''), id: Number(r.e), c: String(r.cat || ''), f: String(r.fam || ''), t: String(r.tip || ''), v: String(r.niv || ''), a: String(r.modelo || ''), p: {} }));
     const porE = new Map(filas.map(f => [f.id, f])), indice = [], posParam = new Map(), ids = filas.map(f => f.id);
-    for (let i = 0; i < ids.length; i += 900) for (const r of db.prepare('SELECT eav.e AS e, eav.a AS a, val.v AS v FROM eav JOIN val ON val.id = eav.v WHERE eav.e IN (' + ids.slice(i, i + 900).join(',') + ')').iterate()) {
+    for (let i = 0; i < ids.length; i += 900) for (const r of recorre(db, 'SELECT eav.e AS e, eav.a AS a, val.v AS v FROM eav JOIN val ON val.id = eav.v WHERE eav.e IN (' + ids.slice(i, i + 900).join(',') + ')')) {
       const f = porE.get(Number(r.e)); if (!f) continue; const a = Number(r.a), k = nombres.get(a) || ('#' + a);
       let j = posParam.get(k); if (j == null) { j = indice.length; indice.push(k); posParam.set(k, j); }
       if (!(j in f.p)) f.p[j] = String(r.v == null ? '' : r.v).slice(0, 200);
