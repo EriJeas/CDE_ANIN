@@ -12,6 +12,10 @@
   const Q = new URLSearchParams(location.search), PID = Q.get('pid') || '', VID = Q.get('vid') || '';
   const F = '/api/proyectos/' + encodeURIComponent(PID) + '/forma', C = window.CDEG;
   const TOPE = Number(Q.get('tope')) || 0;   // tope de triangulos distinto del de siempre (pruebas y diagnostico)
+  // v0.26.0 · nivel de detalle que elige quien prepara el modelo: normal (4 M de triángulos de objetivo, 10 M de límite), alto (10 M / 25 M)
+  // o máximo (nada se simplifica; solo irían como caja los elementos que pasen de 60 M). En alto y máximo también se dibujan las líneas auxiliares.
+  const DETALLE = ['alto', 'maximo'].includes(Q.get('detalle')) ? Q.get('detalle') : 'normal';
+  const OP_DETALLE = { normal: {}, alto: { tope: 10000000, topeSeguro: 25000000 }, maximo: { tope: 1000000000, topeSeguro: 60000000, topePieza: 1000000000 } }[DETALLE];
   const duerme = (ms) => new Promise((ok) => setTimeout(ok, ms));
   let parar = false, visor = null;
   const avisa = (m) => { try { if (parent !== window) parent.postMessage(Object.assign({ cdePaso: true, vid: VID }, m), location.origin); } catch (e) {} };
@@ -200,7 +204,7 @@
     // 3) plan (criterio del complemento de Navisworks: acero solo con propiedades, aligerado con 1 cm de tolerancia) y armado
     //    por trozos, de los elementos mas grandes a los mas chicos
     paso('armar', 'va', '', 0);
-    const plan = C.planifica(L, (f) => acero.has(G.deFid[f]), TOPE ? { tope: TOPE, topeSeguro: Math.max(TOPE * 2.5, 1000) } : {}), K = plan.cifras;
+    const plan = C.planifica(L, (f) => acero.has(G.deFid[f]), TOPE ? { tope: TOPE, topeSeguro: Math.max(TOPE * 2.5, 1000) } : OP_DETALLE), K = plan.cifras;
     nota('plan', K);
     // de lo que mas se ve a lo que menos; primero se mide cuanto queda cada elemento ya aligerado y con esas cifras se decide
     // que va completo y que como caja (sin pasar del limite del navegador); luego se escribe
@@ -212,7 +216,7 @@
     while (hechos < lista.length) { corta(); const t0 = Date.now(); while (hechos < lista.length && Date.now() - t0 < 150) { C.arma(L, plan, lista, W, hechos, hechos + 20); hechos = Math.min(lista.length, hechos + 20); } paso('armar', 'va', num(W.nI / 3) + ' triángulos' + (W.aligeradas ? ' · ' + num(W.aligeradas) + ' piezas aligeradas' : ''), 0.5 + 0.5 * hechos / lista.length); await duerme(0); }
     // los dibujos en lineas (arboles CAD 3D, escudos), con su color; no las auxiliares (ejes, lineas de centro)
     paso('armar', 'va', 'Dibujos en líneas…', 1); await duerme(0);
-    const LN = C.armaLineas(L, G.lineas || [], W, aux, 3000000);
+    const LN = C.armaLineas(L, G.lineas || [], W, DETALLE === 'normal' ? aux : new Set(), DETALLE === 'normal' ? 3000000 : 12000000);
     nota('lineas', { segmentos: LN.nS, elementos: LN.filas.length / 4, auxiliares: LN.aux, omitidas: LN.omitidas, sinElemento: G.lineasSinElemento || 0 });
     const aligerado = K.pasaDelTope || K.nAcero > 0 || W.aligeradas > 0 || W.enCaja > 0;
     const cm = (x) => (x * 100).toLocaleString('es-PE', { maximumFractionDigits: 1 }) + ' cm';
@@ -224,7 +228,10 @@
     if (LN.aux + (G.lineasSinElemento || 0)) avisos.push(num(LN.aux + (G.lineasSinElemento || 0)) + ' pieza(s) de líneas auxiliares (ejes, líneas de centro) no se dibujan, como en el complemento de Navisworks.');
     if (LN.omitidas) avisos.push(num(LN.omitidas) + ' pieza(s) de líneas no se dibujan para no pasar de 3.000.000 de segmentos.');
     if (G.sinElemento) avisos.push(num(G.sinElemento) + ' pieza(s) sin elemento en el índice.');
-    const out = C.cierraEscritor(W, L.origen, { modelo: pr.archivo, herramienta: 'Traducción de Autodesk Forma (visor de Autodesk) → CDE', forma: { version: pr.version }, aligerado: aligerado ? { criterio: 'complemento de Navisworks (medio)', triangulosEntrada: K.triEntrada, triangulos: Math.round(W.nI / 3), tope: K.tope, tolerancia: K.tolerancia, piezasAligeradas: W.aligeradas, mallasReutilizadas: W.reusadas, acero: K.nAcero, enCaja: W.enCaja, topeSeguro: K.topeSeguro } : null });
+    const out = C.cierraEscritor(W, L.origen, { modelo: pr.archivo, herramienta: 'Traducción de Autodesk Forma (visor de Autodesk) → CDE', forma: { version: pr.version },
+      // v0.26.0: qué tan fiel es esta geometría a la de Autodesk; el visor lo muestra siempre (nada se quita en silencio)
+      fidelidad: { detalle: DETALLE, triangulosEntrada: K.triEntrada, triangulos: Math.round(W.nI / 3), piezas: K.piezas, piezasAligeradas: W.aligeradas, triAntes: W.triAntes, triDespues: W.triDespues, tolerancia: K.tolerancia, enCaja: W.enCaja, topeSeguro: K.topeSeguro, acero: K.nAcero, triAcero: K.triAcero, lineasDibujadas: LN.filas.length / 4, lineasAuxiliares: LN.aux, lineasOmitidas: LN.omitidas, lineasSinElemento: G.lineasSinElemento || 0, piezasSinElemento: G.sinElemento || 0 },
+      aligerado: aligerado ? { criterio: 'complemento de Navisworks (medio)', triangulosEntrada: K.triEntrada, triangulos: Math.round(W.nI / 3), tope: K.tope, tolerancia: K.tolerancia, piezasAligeradas: W.aligeradas, mallasReutilizadas: W.reusadas, acero: K.nAcero, enCaja: W.enCaja, topeSeguro: K.topeSeguro } : null });
     const blob = new Blob(out.partes, { type: 'application/octet-stream' });
     nota('armado', { bytes: blob.size, elementos: out.nElem, vertices: out.nVert, triangulos: Math.round(out.nIdx / 3), vaciadas: L.vaciadas || 0, aligeradas: W.aligeradas, triAntes: W.triAntes, triDespues: W.triDespues, reusadas: W.reusadas, enCaja: W.enCaja, triEnCaja: W.triEnCaja, aristas: out.nAristas });
     paso('armar', 'ok', num(out.nElem) + ' elementos · ' + num(Math.round(out.nIdx / 3)) + ' triángulos' + (aligerado ? ' (aligerada)' : ''));

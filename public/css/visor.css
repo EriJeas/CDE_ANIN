@@ -150,3 +150,8 @@ body.visor .kpi .n { color: var(--er-orc); } body.visor .kpi .t { color: var(--e
 #estadoCarga .fpaso i { font-style: normal; display: inline-block; width: 16px; text-align: center; }
 #estadoCarga .fpaso.ok i { color: #8fd18f; } #estadoCarga .fpaso.mal i { color: #e8a49a; } #estadoCarga .fpaso.va i { color: var(--er-or); }
 #estadoCarga .fpaso small { opacity: .75; }
+/* v0.26.0 · fidelidad de la geometría (completa / aligerada) */
+.vtop .fidelidad { font: 600 11.5px var(--er-s, sans-serif); padding: 4px 10px; border-radius: 3px; border: 1px solid #4f7a4a; background: rgba(79, 122, 74, .18); color: #a9d6a2; cursor: pointer; white-space: nowrap; }
+.vtop .fidelidad.reducida { border-color: #b98a2a; background: rgba(185, 138, 42, .2); color: #f0cf7a; }
+.vtop .fidelidad.oculto { display: none; }
+.tfid { border-collapse: collapse; margin: 6px 0; width: 100%; } .tfid td { padding: 4px 6px; border-bottom: 1px solid rgba(255, 255, 255, .08); vertical-align: top; } .tfid td.n { text-align: right; font-family: var(--er-m, monospace); white-space: nowrap; width: 1%; } .tfid tr.fmal td.n { color: #f0cf7a; font-weight: 700; }

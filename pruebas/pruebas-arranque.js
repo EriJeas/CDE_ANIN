@@ -1106,6 +1106,8 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
       ok(/esc\(x\.contenedor\) \+ esc\(extDe\(x\)\)/.test(vj), 'la lista de modelos del visor muestra la extensión del archivo (.rvt, .nwd, .ifc)');
       const vh = fs.readFileSync(path.join(__dirname, '..', 'public', 'visor.html'), 'utf8');
       ok(/MIDDLE: THREE\.MOUSE\.PAN, RIGHT: THREE\.MOUSE\.PAN/.test(vj) && /data-h="mover"/.test(vh) && /h === 'mover'\) \{ ponMover/.test(vj) && /ArrowLeft/.test(vj) && /zoomToCursor = true/.test(vj), 'el visor desplaza (paneo) con el botón central o derecho, con la herramienta «Mover», con Shift y con las flechas; la rueda acerca hacia el cursor');
+      const fpj = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'forma-paso.js'), 'utf8');
+      ok(/fidelidad: \{ detalle: DETALLE, triangulosEntrada/.test(fpj) && /alto: \{ tope: 10000000, topeSeguro: 25000000 \}/.test(fpj) && /maximo: \{ tope: 1000000000/.test(fpj) && /function pintaFidelidad/.test(vj) && /id="fidelidad"/.test(vh) && /'&detalle=' \+ encodeURIComponent\(detalle\)/.test(vj), 'la geometría de un modelo de Forma guarda su informe de fidelidad (cajas, acero, simplificadas, líneas no dibujadas), el visor lo muestra y deja prepararla de nuevo en detalle normal, alto o máximo');
       ok(/const relleno = new THREE\.DirectionalLight/.test(vj) && /elev: THREE\.MathUtils\.degToRad\(38\)/.test(vj), 'la iluminación del visor lleva luz de relleno y el sol más alto (colores vivos en cubiertas y caras sin sol)'); }
     if (RVT.disponible()) {
       r = await subeArch('MODELO-MINIMO-2023.rvt', fs.readFileSync(path.join(__dirname, 'muestras', 'minimo-2023.rvt'))); const vRvt = r.j.version_id || r.j.version;

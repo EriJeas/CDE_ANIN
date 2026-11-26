@@ -316,7 +316,7 @@ function paraFormaPaso() {
   if (!FPASO.fin) api('/api/proyectos/' + PID + '/forma/modelos/' + FPASO.vid + '/cancelar', { json: {} }).catch(() => {});
   window.removeEventListener('message', FPASO.oye); FPASO.ifr.remove(); FPASO = null; $('estadoCarga').classList.remove('lado');
 }
-function pasaDesdeForma(vid, x) {
+function pasaDesdeForma(vid, x, detalle) {
   const caja = $('estadoCarga');
   if (FPASO && FPASO.vid === vid && !FPASO.fin) return;   // ya se esta preparando
   paraFormaPaso();
@@ -340,7 +340,7 @@ function pasaDesdeForma(vid, x) {
   };
   window.addEventListener('message', P.oye);
   P.ifr = document.createElement('iframe'); P.ifr.id = 'fpaso'; P.ifr.title = 'Visor de Autodesk (preparando el modelo de Forma)';
-  P.ifr.src = 'forma-paso.html?pid=' + encodeURIComponent(PID) + '&vid=' + encodeURIComponent(vid);
+  P.ifr.src = 'forma-paso.html?pid=' + encodeURIComponent(PID) + '&vid=' + encodeURIComponent(vid) + (detalle ? '&detalle=' + encodeURIComponent(detalle) : '');
   document.body.appendChild(P.ifr); FPASO = P; pinta();
 }
 /** Antes de bajar la geometria: ¿el CDE ya termino de leer este modelo? Si lo esta leyendo, muestra el avance y espera. */
@@ -400,6 +400,7 @@ async function cargaModelo() {
   G = Object.assign(D, { geoOp, geoTr, mallaOp, mallaTr, mallaLin, colores: col, caja, sombra, aristas: null, pos });
   encuadra();
   $('cifras').textContent = num(D.nElem) + ' elementos · ' + num(D.nIdx / 3) + ' triángulos' + (mallaLin ? ' · ' + num(D.lineas.nS) + ' líneas' : '') + ' · ' + (D.meta.modelo || '');
+  pintaFidelidad(D.meta);
   $('estadoCarga').textContent = 'Leyendo el índice…';
   EL = await api('/api/modelos/' + PID + '/' + VID + '/elementos');
   EL.idx = new Map(EL.columnas.e.map((e, i) => [e, i]));
@@ -652,6 +653,45 @@ async function selectorParametro(ancla, alElegir) {
 // ---------- paneles y modulos ----------
 let MODULO = '';
 const herr = (k) => document.querySelector('.herramientas button[data-h="' + k + '"]');
+/**
+ * v0.26.0 · FIDELIDAD DE LA GEOMETRÍA. Un modelo de Forma muy pesado no entra completo en el navegador: al prepararlo, el CDE simplifica
+ * piezas, deja el acero de refuerzo solo con propiedades y, pasado el límite, dibuja elementos como su caja. Eso ya no pasa en silencio:
+ * el botón de la barra superior dice si la geometría va completa o aligerada, con las cifras, y deja volver a prepararla con más detalle.
+ */
+function fidelidadDe(meta) {
+  const f = meta && meta.fidelidad, a = meta && meta.aligerado;
+  if (f) return f;
+  if (a) return { detalle: 'normal', triangulosEntrada: a.triangulosEntrada, triangulos: a.triangulos, piezasAligeradas: a.piezasAligeradas, tolerancia: a.tolerancia, enCaja: a.enCaja, topeSeguro: a.topeSeguro, acero: a.acero, antigua: true };
+  return null;
+}
+function pintaFidelidad(meta) {
+  const b = $('fidelidad'); if (!b) return;
+  const f = fidelidadDe(meta), deForma = /Autodesk Forma/.test((meta && meta.herramienta) || '');
+  if (!f && !deForma) { b.classList.add('oculto'); return; }
+  const reducida = !!f && ((f.piezasAligeradas || 0) + (f.enCaja || 0) + (f.acero || 0) + (f.lineasAuxiliares || 0) + (f.lineasOmitidas || 0) + (f.lineasSinElemento || 0) + (f.piezasSinElemento || 0) > 0);
+  b.classList.remove('oculto'); b.classList.toggle('reducida', reducida);
+  b.textContent = !f ? 'Geometría: sin informe' : reducida ? '⚠ Geometría aligerada' : '✓ Geometría completa';
+  b.title = 'Qué tan fiel es esta geometría a la de Autodesk Forma (clic para ver el detalle)';
+  b.onclick = () => {
+    const fila = (n, t, mal) => '<tr' + (mal && n ? ' class="fmal"' : '') + '><td class="n">' + num(n || 0) + '</td><td>' + t + '</td></tr>';
+    const cm = f && f.tolerancia ? (f.tolerancia * 100).toLocaleString('es-PE', { maximumFractionDigits: 1 }) + ' cm' : '1 cm';
+    const NOM = { normal: 'Normal (4 M de triángulos de objetivo)', alto: 'Alto (10 M de objetivo, 25 M de límite)', maximo: 'Máximo (sin simplificar)' };
+    const x = LISTA.find(z => z.vid === VID);
+    const c = panel('Fidelidad de la geometría', !f ? '<p>Este modelo se preparó con una versión anterior del CDE y no guardó su informe. Vuelve a prepararlo para tenerlo.</p>' :
+      '<p>Triángulos en Autodesk Forma: <b>' + num(f.triangulosEntrada || 0) + '</b> · en el CDE: <b>' + num(f.triangulos || 0) + '</b>' + (f.triangulosEntrada ? ' (' + Math.round(100 * (f.triangulos || 0) / f.triangulosEntrada) + ' %)' : '') + '<br>Nivel de detalle con que se preparó: <b>' + (NOM[f.detalle] || NOM.normal) + '</b></p>' +
+      '<table class="tfid">' +
+      fila(f.enCaja, 'elemento(s) dibujados como su <b>caja</b> (no con su forma) por pasar de ' + num(f.topeSeguro || 0) + ' triángulos', true) +
+      fila(f.acero, 'pieza(s) de <b>acero de refuerzo</b> sin geometría (solo propiedades)', true) +
+      fila(f.piezasAligeradas, 'pieza(s) <b>simplificadas</b> sin mover su superficie más de ' + cm + (f.triAntes ? ' (' + num(f.triAntes) + ' → ' + num(f.triDespues) + ' triángulos)' : ''), false) +
+      fila(f.lineasAuxiliares, 'pieza(s) de <b>líneas auxiliares</b> (ejes, líneas de modelo, líneas de centro) no dibujadas', true) +
+      fila((f.lineasOmitidas || 0) + (f.lineasSinElemento || 0), 'pieza(s) de líneas no dibujadas (límite de segmentos o sin elemento en el índice)', true) +
+      fila(f.piezasSinElemento, 'pieza(s) con geometría <b>sin elemento</b> en el índice (no se dibujan)', true) +
+      '</table>' + (reducida ? '<p class="pista">Las propiedades de todos los elementos están completas en cualquier caso: lo que cambia es el dibujo.</p>' : '<p>Nada se simplificó ni se dejó fuera.</p>')
+      + (x && x.origen === 'forma' ? '<p style="margin-top:10px"><b>Volver a preparar con más detalle</b><br><span class="pista">Lo hace tu navegador con tu cuenta de Autodesk y reemplaza la geometría para todos. A más detalle, más memoria y tiempo: «Máximo» pide un equipo con 16 GB o más y puede cerrar la pestaña en modelos muy grandes.</span></p>' +
+        '<p><button class="mini" data-det="normal">Normal</button> <button class="mini" data-det="alto">Alto</button> <button class="mini" data-det="maximo">Máximo</button></p>' : ''));
+    c.querySelectorAll('[data-det]').forEach(bt => bt.onclick = () => { $('panel').classList.add('oculto'); pasaDesdeForma(VID, x, bt.dataset.det); });
+  };
+}
 function panel(titulo, html) { $('ptitulo').textContent = titulo; $('pcuerpo').innerHTML = html; $('panel').classList.remove('oculto'); return $('pcuerpo'); }
 function cierraPanel() { $('panel').classList.add('oculto'); MODULO = ''; document.querySelectorAll('.carril .mod').forEach(m => m.classList.remove('activo')); }
 $('pcerrar').onclick = cierraPanel;
@@ -999,7 +1039,7 @@ const V = { trozosDe,
   // v0.6.2: lo que necesita visor-puente.js para correr los modulos del Visor BIM Federado tal cual
   alRecalcular: [], alPintarFiltros: [], alAbrirFiltros: [], anadeFiltro, quitaFiltro, pintaFiltros, pintaEstadoFiltros, get MODULO() { return MODULO; }, get OCULTOS() { return OCULTOS; }, COLOR_SEL, srgbLin
 };
-window.VISOR = V; window.V = V;   // para depurar desde la consola del navegador y para visor-puente.js
+V.pintaFidelidad = pintaFidelidad; window.VISOR = V; window.V = V;   // para depurar desde la consola del navegador y para visor-puente.js
 import('./visor-modulos.js?v=108').then(m => m.monta(V)).catch(e => console.error('visor-modulos', e));
 import('./visor-ambientes.js').then(m => m.monta(V)).catch(e => console.error('visor-ambientes', e));
 
