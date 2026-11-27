@@ -354,7 +354,7 @@ async function modeloListo(vid) {
   // precalculadas) o de la v0.13.9 (lo que va completo elegido por el largo, cajas sin orientar) se rehace solo; reutiliza el
   // indice que ya tiene el CDE
   // v0.25.9: un RVT de Forma armado antes de esta versión (todo el modelo como un solo elemento: una caja) también se rehace solo
-  const rsF = st.resumen || {}, rvtForma = !!x && x.origen === 'forma' && /\.rvt$/i.test(x.archivo || ''), formaSinIds = (esForma(x) || rvtForma) && st.estado === 'listo' && st.geometria && rsF.origen === 'Traducción de Autodesk Forma' && !(rsF.ids && (rsF.arbol === 'navisworks-3' || rsF.arbol === 'no-aplica') && rsF.aristas && rsF.criterio === 'cdeg-4' && (!rvtForma || rsF.reglaElem === 2));
+  const rsF = st.resumen || {}, rvtForma = !!x && x.origen === 'forma' && /\.rvt$/i.test(x.archivo || ''), formaSinIds = (esForma(x) || rvtForma) && st.estado === 'listo' && st.geometria && rsF.origen === 'Traducción de Autodesk Forma' && !(rsF.ids && (rsF.arbol === 'navisworks-3' || rsF.arbol === 'navisworks-4' || rsF.arbol === 'no-aplica') && rsF.aristas && rsF.criterio === 'cdeg-4' && (!rvtForma || rsF.reglaElem === 2));
   if (st.estado === 'listo' && st.geometria && !formaSinIds) return true;
   caja.classList.remove('oculto');
   if ((esForma(x) || formaSinIds) && !['en-cola', 'convirtiendo', 'armando', 'recibiendo'].includes(st.estado)) { pasaDesdeForma(vid, x); return false; }

@@ -72,7 +72,7 @@
   function preparaIndice() {
     return new Promise((ok, mal) => {
       const caja = $('estadoCarga'), pasos = {}, x = LISTA.find(l => l.vid === VID) || {};
-      const pinta = (extra) => { caja.classList.remove('oculto'); caja.classList.add('lado'); caja.innerHTML = '<b>' + esc(x.contenedor || x.archivo || 'Modelo') + '</b><br><small>Primera vez que se abre: el CDE arma su índice de parámetros con la base de propiedades de Autodesk (no se arma geometría). Tarda unos minutos; después abre directo.</small><div class="fpasos">' + PASOS.map(([k, t]) => { const s = pasos[k] || {}; return '<div class="fpaso ' + (s.e || '') + '"><i>' + (s.e === 'ok' ? '✓' : s.e === 'mal' ? '✗' : s.e === 'va' ? '…' : '·') + '</i> ' + t + (s.t ? ' <small>' + esc(s.t) + '</small>' : '') + (s.e === 'va' && typeof s.p === 'number' ? ' <small>' + Math.round(s.p * 100) + ' %</small>' : '') + '</div>'; }).join('') + '</div>' + (extra || ''); };
+      const pinta = (extra) => { caja.classList.remove('oculto'); caja.classList.add('lado'); caja.innerHTML = '<b>' + esc(x.contenedor || x.archivo || 'Modelo') + '</b><br><small>' + (INFO && INFO.reordenar ? 'El índice de este modelo se ordenó con una regla anterior: el CDE lo vuelve a ordenar (las líneas de centro pasan a ser elementos, como en Forma). No se arma geometría. Tarda unos minutos, una sola vez.' : 'Primera vez que se abre: el CDE arma su índice de parámetros con la base de propiedades de Autodesk (no se arma geometría). Tarda unos minutos; después abre directo.') + '</small><div class="fpasos">' + PASOS.map(([k, t]) => { const s = pasos[k] || {}; return '<div class="fpaso ' + (s.e || '') + '"><i>' + (s.e === 'ok' ? '✓' : s.e === 'mal' ? '✗' : s.e === 'va' ? '…' : '·') + '</i> ' + t + (s.t ? ' <small>' + esc(s.t) + '</small>' : '') + (s.e === 'va' && typeof s.p === 'number' ? ' <small>' + Math.round(s.p * 100) + ' %</small>' : '') + '</div>'; }).join('') + '</div>' + (extra || ''); };
       const ifr = document.createElement('iframe'); ifr.id = 'fpaso'; ifr.title = 'Preparando el índice del modelo';
       const oye = (ev) => {
         const m = ev.data; if (ev.origin !== location.origin || !m || !m.cdePaso || m.vid !== VID) return;
@@ -98,7 +98,7 @@
     if (!INFO.indice) { await preparaIndice(); INFO = await api(F + '/modelos/' + encodeURIComponent(VID) + '/visor-forma'); }
     caja.classList.remove('lado'); caja.textContent = 'Abriendo el visualizador de Autodesk…';
     const ifr = document.createElement('iframe'); ifr.id = 'lienzoForma'; ifr.title = 'Visualizador de Autodesk';
-    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=282'; document.body.appendChild(ifr); });
+    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=290'; document.body.appendChild(ifr); });
     LZ = ifr.contentWindow.LIENZO; if (!LZ) throw new Error('El lienzo no se inició.');
     LZ.alGeometria = () => { GEO = 1; pintaCifras(); };
     LZ.alAvance = (p) => { if (GEO < 1) { GEO = Math.min(0.99, p); pintaCifras(); } if (!caja.classList.contains('oculto') && caja.dataset.fase === 'geo') caja.textContent = 'Autodesk entrega la geometría… ' + Math.round(p * 100) + ' %'; };
