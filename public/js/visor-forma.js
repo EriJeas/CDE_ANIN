@@ -98,7 +98,7 @@
     if (!INFO.indice) { await preparaIndice(); INFO = await api(F + '/modelos/' + encodeURIComponent(VID) + '/visor-forma'); }
     caja.classList.remove('lado'); caja.textContent = 'Abriendo el visualizador de Autodesk…';
     const ifr = document.createElement('iframe'); ifr.id = 'lienzoForma'; ifr.title = 'Visualizador de Autodesk';
-    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=292'; document.body.appendChild(ifr); });
+    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=293'; document.body.appendChild(ifr); });
     LZ = ifr.contentWindow.LIENZO; if (!LZ) throw new Error('El lienzo no se inició.');
     LZ.alGeometria = () => { GEO = 1; pintaCifras(); };
     LZ.alAvance = (p) => { if (GEO < 1) { GEO = Math.min(0.99, p); pintaCifras(); } if (!caja.classList.contains('oculto') && caja.dataset.fase === 'geo') caja.textContent = 'Autodesk entrega la geometría… ' + Math.round(p * 100) + ' %'; };
@@ -122,7 +122,7 @@
       INFO.ids = VI;
     }
     if (EL) {
-      G = { elem: EL.columnas.e.map(e => ({ e })), porE: new Map(EL.columnas.e.map((e, i) => [e, i])), nElem: EL.columnas.e.length };
+      G = { elem: EL.columnas.e.map(e => ({ e })), porE: new Map(EL.columnas.e.map((e, i) => [e, i])), nElem: EL.columnas.e.length, posiciones: [], meta: { modelo: INFO.archivo || '' } };
       // el vínculo: de una muestra de piezas con geometría, cuántas llegan (ellas o un antecesor) a un elemento del índice
       let con = 0; const sin = [], sinIds = [];
       for (const d of P.muestra) { if (elementoDePieza(d) != null) con++; else { if (sin.length < 12) sin.push(LZ.nombreDe(d) || ('id ' + d)); sinIds.push(d); } }
@@ -342,9 +342,93 @@
   MODULOS.ayuda = () => panel('Ayuda', '<div class="grupo"><h4>Qué es este visor</h4><p>El modelo lo dibuja el <b>visualizador de Autodesk</b> con la traducción que Forma ya tiene del archivo: la geometría es la de Forma, completa. Las funciones de la izquierda son las del visor del CDE y trabajan con el índice de parámetros del CDE.</p></div>' +
     '<div class="grupo"><h4>Dónde está cada cosa</h4><p><b>Izquierda:</b> módulos del CDE (filtros, sectores, inventario, planos, tableros, elemento). <b>Abajo a la izquierda:</b> Encuadrar, Aislar, Ocultar, Mostrar todo y Silueta. <b>Abajo al centro</b> (barra de Autodesk): órbita, encuadre, medir, sección, explosión, navegador del modelo, propiedades de Autodesk y ajustes. <b>Arriba a la derecha:</b> el cubo de vistas.</p></div>' +
     '<div class="grupo"><h4>Ratón</h4><p>Arrastrar: girar · Rueda: acercar · Botón central o derecho: desplazar · Clic: seleccionar (abre «Elemento») · Doble clic: acercar al elemento.</p></div>' +
-    '<div class="grupo"><h4>Aún solo en el Visor GIS/BIM</h4><p>Niveles / Ambientes, Conjuntos e interferencias, Comparar versiones, Flujos hospitalarios e Incidencias necesitan la geometría propia del CDE. El botón <b>Visor GIS/BIM</b> de la cabecera abre este mismo modelo allí.</p></div>');
-  for (const [k, t] of [['ambientes', 'Niveles / Ambientes'], ['conjuntos', 'Conjuntos e interferencias'], ['comparar', 'Comparar versiones'], ['flujos', 'Flujos hospitalarios'], ['incidencias', 'Incidencias']])
+    '<div class="grupo"><h4>Aún solo en el Visor GIS/BIM</h4><p>Niveles / Ambientes, Comparar versiones y Flujos hospitalarios dibujan sobre la geometría propia del CDE (cortes en planta, rutas, la otra versión) y están en adaptación. El botón <b>Visor GIS/BIM</b> de la cabecera abre este mismo modelo allí.</p></div>');
+  for (const [k, t] of [['ambientes', 'Niveles / Ambientes'], ['comparar', 'Comparar versiones'], ['flujos', 'Flujos hospitalarios']])
     MODULOS[k] = () => { const c = panel(t, '<p class="pista">Este módulo trabaja con la geometría propia del CDE y por ahora solo está en el <b>Visor GIS/BIM</b>. Se irá incorporando aquí.</p><div class="filab"><button id="vfPropio">Abrir este modelo en el Visor GIS/BIM</button></div>'); c.querySelector('#vfPropio').onclick = () => $('btnPropio').click(); };
+
+
+  // ---------- v0.29.3 · la geometría del visualizador, para los módulos que calculan con ella ----------
+  // El censo de piezas (cajas en metros, Z arriba: las coordenadas del .cdeg del visor propio) se hace una vez por modelo, cuando un módulo lo pide.
+  let CENSO = null, PIEZAS = null;   // PIEZAS: e -> [fid…] (solo mallas)
+  async function censo(alAvance) {
+    if (CENSO) return CENSO; if (!LZ || !G) throw new Error('El modelo aún no está listo.');
+    const c = await LZ.censo(alAvance), porDb = new Map(), cajas = new Map(); PIEZAS = new Map();
+    for (let f = 0; f < c.n; f++) {
+      if (c.tipo[f] !== 1) continue; const d = c.db(f); let e = porDb.get(d); if (e === undefined) { e = elementoDePieza(d); porDb.set(d, e); } if (e == null) continue;
+      let l = PIEZAS.get(e); if (!l) { l = []; PIEZAS.set(e, l); } l.push(f);
+      const o = f * 6; let b = cajas.get(e); if (!b) cajas.set(e, [c.caja[o], c.caja[o + 1], c.caja[o + 2], c.caja[o + 3], c.caja[o + 4], c.caja[o + 5]]); else { for (let k = 0; k < 3; k++) { if (c.caja[o + k] < b[k]) b[k] = c.caja[o + k]; if (c.caja[o + 3 + k] > b[3 + k]) b[3 + k] = c.caja[o + 3 + k]; } }
+    }
+    G.cajas = cajas; CENSO = c; return c;
+  }
+  /** Las cajas [x1,y1,z1,x2,y2,z2] por elemento (como V.cajasDe del visor propio). Sin censo aún: vacío. */
+  function cajasDe(D) { return (D && D.cajas) || (G && G.cajas) || new Map(); }
+  /** Los triángulos de un elemento, como los pide visor-modulos.js: [[índices, desde, cuántos]] sobre G.posiciones. Se leen del visualizador la primera vez. */
+  const TRIS = new Map();
+  function trozosDe(x, D) {
+    D = D || G; if (!D || !PIEZAS || !LZ) return [];
+    if (D.posiciones.length > 24e6) { D.posiciones.length = 0; TRIS.clear(); }   // el depósito de vértices se vacía si crece demasiado (se vuelve a leer lo que haga falta)
+    let t = TRIS.get(x.e);
+    if (!t) { const P = LZ.triangulos(PIEZAS.get(x.e) || [], 0), base = D.posiciones.length / 3, nv = P ? P.length / 3 : 0; if (P) for (let k = 0; k < P.length; k++) D.posiciones.push(P[k]); const src = new Uint32Array(nv); for (let k = 0; k < nv; k++) src[k] = base + k; t = { src, n: nv - nv % 3 }; TRIS.set(x.e, t); }
+    return [[t.src, 0, t.n, false]];
+  }
+  /** Asegura el censo antes de abrir un módulo que calcula con geometría, avisando mientras tanto. */
+  async function conGeometria(titulo, abre) {
+    if (!G) { panel(titulo, sinDatos()); return; }
+    if (!CENSO) { const c = panel(titulo, '<p class="pista" id="vfCenso">⏳ Midiendo las piezas del modelo… Solo la primera vez que se usa en este modelo.</p>'); try { await censo((p) => { const el = c.querySelector('#vfCenso'); if (el) el.textContent = '⏳ Midiendo las piezas del modelo… ' + Math.round(p * 100) + ' %'; }); } catch (e) { const el = c.querySelector('#vfCenso'); if (el) el.textContent = 'No se pudo medir el modelo: ' + e.message; return; } }
+    abre();
+  }
+
+  // ---------- v0.29.3 · incidencias (las mismas del visor propio: mismas rutas y misma ficha; la cámara es la del visualizador de Autodesk) ----------
+  async function abreIncidencia(iid) {
+    const i = await api('/api/proyectos/' + PID + '/incidencias/' + iid);
+    const propios = EL ? (i.elementos || []).map(el => (el.e != null && EL.idx.has(Number(el.e)) ? Number(el.e) : null)).filter(x => x != null) : [];
+    if (propios.length) { selecciona({ e: propios[0] }, true); if (LZ && I) LZ.selecciona(idsV(propios)); }
+    const c = i.camara || {};
+    if (c.pos && c.dir && LZ) {
+      let ob = null; const C = cajasDe(G), bs = propios.map(e => C.get(e)).filter(Boolean);
+      if (bs.length) { const m = [Infinity, Infinity, Infinity], M = [-Infinity, -Infinity, -Infinity]; for (const b of bs) for (let k = 0; k < 3; k++) { if (b[k] < m[k]) m[k] = b[k]; if (b[3 + k] > M[k]) M[k] = b[3 + k]; } ob = [(m[0] + M[0]) / 2, (m[1] + M[1]) / 2, (m[2] + M[2]) / 2]; }
+      LZ.ponCamara(c, ob);
+    } else if (propios.length) encuadra(cajaDe(new Set(propios)));
+    const lista = (i.elementos || []).map(el => (el.e != null ? 'id ' + el.e : '') + (el.uid ? ' · ' + el.uid.slice(0, 14) + '…' : '') + (el.modelo ? ' · ' + el.modelo : '')).join('<br>');
+    const v = ventana(i.codigo || ('#' + i.numero), '<b>' + esc(i.titulo) + '</b> <span class="estado ' + esc(i.estado) + '">' + esc(i.estado) + '</span> · ' + esc(i.tipo) + ' · ' + esc(i.prioridad) + (i.contractual ? ' · <span class="estado COMPARTIDO">contractual</span>' : '') +
+      '<p>' + esc(i.descripcion || '') + '</p><div class="pista">' + [i.disciplina && 'Disciplina ' + i.disciplina, i.etapa && 'Etapa / RIBA ' + i.etapa, i.tipo_revision && 'Revisión ' + i.tipo_revision, i.entregable && 'Entregable ' + i.entregable, i.asignado && 'Asignada a ' + i.asignado, i.inicio && 'Inicio ' + i.inicio].filter(Boolean).map(esc).join(' · ') + '</div>' +
+      '<div class="pista" style="margin-top:6px">' + propios.length + ' de ' + (i.elementos || []).length + ' elemento(s) encontrados en esta versión' + (lista ? ':<br>' + lista : '') + '</div>' +
+      '<div class="filab"><button id="incEnc">Encuadrar</button><button id="incAis">Aislar</button><a class="boton" href="index.html#/p/' + PID + '/incidencias/' + i.id + '" target="_blank">Ficha completa</a></div>', { x: window.innerWidth - 420, y: 70, ancho: 390, alto: 340 });
+    v.querySelector('#incEnc').onclick = () => propios.length && encuadra(cajaDe(new Set(propios)));
+    v.querySelector('#incAis').onclick = () => propios.length && muestraSolo(new Set(propios), true);
+  }
+  /** Crear una incidencia con la camara actual y los elementos dados (ids e). */
+  function nuevaIncidencia(es, prellenado) {
+    if (!G) return;
+    if (!LZ) return; const cam = LZ.camara();   // la cámara del visualizador de Autodesk, en las coordenadas del CDE (las mismas del visor propio)
+    const TIPOS = ['observacion', 'interferencia', 'consulta', 'no-conformidad', 'cambio-de-diseno', 'mejora'], IMP = ['plazo', 'costo', 'calidad', 'seguridad', 'alcance'];
+    const info = (e) => { if (!EL || !EL.idx.has(e)) return { nombre: 'id ' + e, cat: '', niv: '' }; const i = EL.idx.get(e), D = EL.diccionarios, C = EL.columnas; return { nombre: C.nombre[i], cat: D.cat[C.cat[i]], niv: D.niv[C.niv[i]] }; };
+    const i0 = es.length ? info(es[0]) : { nombre: '', cat: '', niv: '' }, pre = prellenado || {};
+    const c = ventana('Incidencia' + (es.length ? ' · ' + es.length + ' elemento(s)' : ''), '<label>Título</label><input id="iT" value="' + esc(pre.titulo || ((i0.cat ? i0.cat + ' · ' : '') + i0.nombre + (es.length ? ': ' : ''))) + '"><label>Descripción</label><textarea id="iD">' + esc(pre.descripcion || '') + '</textarea>' +
+      '<div class="fila"><div style="flex:1"><label>Tipo</label><select id="iTipo">' + TIPOS.map(t => '<option' + (t === (pre.tipo || 'observacion') ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></div><div style="flex:1"><label>Prioridad</label><select id="iP"><option>baja</option><option selected>media</option><option>alta</option><option>critica</option></select></div></div>' +
+      '<div class="fila"><div style="flex:1"><label>Disciplina</label><input id="iDis"></div><div style="flex:1"><label>Etapa / RIBA</label><input id="iEt" placeholder="E3 · RIBA 04"></div></div>' +
+      '<div class="fila"><div style="flex:1"><label>Tipo de revisión</label><input id="iTR" placeholder="Avance"></div><div style="flex:1"><label>N.º entregable</label><input id="iEn" placeholder="E3 - Presentación 4 (P4)"></div></div>' +
+      '<label>Impacto</label><div>' + IMP.map(x => '<label style="display:inline-block;margin-right:10px"><input type="checkbox" class="iImp" value="' + x + '" style="width:auto"> ' + x + '</label>').join('') + '</div>' +
+      '<label><input type="checkbox" id="iC" style="width:auto"> Contractual (alto impacto)</label><div style="margin-top:10px"><button class="primario" id="iOk">Crear</button></div><div id="iMsg"></div>', { ancho: 560, alto: 560 });
+    c.querySelector('#iOk').onclick = async () => {
+      try {
+        const r = await api('/api/proyectos/' + PID + '/incidencias', { json: { titulo: c.querySelector('#iT').value, descripcion: c.querySelector('#iD').value, tipo: c.querySelector('#iTipo').value, prioridad: c.querySelector('#iP').value, disciplina: c.querySelector('#iDis').value, etapa: c.querySelector('#iEt').value, tipo_revision: c.querySelector('#iTR').value, entregable: c.querySelector('#iEn').value, nivel: i0.niv || '', impacto: [...c.querySelectorAll('.iImp:checked')].map(x => x.value), origen: 'auditoria-modelo', contractual: c.querySelector('#iC').checked, version_id: VID, elementos: es.map(e => ({ e, uid: (SEL && SEL.e === e && SEL.uid) || '', modelo: (INFO || {}).archivo || '' })), camara: cam } });
+        c.querySelector('#iMsg').innerHTML = '<div class="aviso verde">Creada la incidencia ' + esc(r.codigo || ('#' + r.numero)) + '.</div>'; 
+      } catch (e) { c.querySelector('#iMsg').innerHTML = '<div class="aviso rojo">' + esc(/failed to fetch|networkerror|load failed/i.test(e.message) ? 'No hubo respuesta del servidor del CDE (¿se está reiniciando o se cerró su ventana?). La incidencia NO se creó: comprueba que el servidor esté arrancado y pulsa Crear otra vez.' : e.message) + '</div>'; }
+    };
+  }
+  MODULOS.incidencias = async () => {
+    const c = panel('Incidencias', '<div class="filab"><input id="incQ" placeholder="Buscar…"><select id="incE" style="width:120px"><option value="">Todas</option><option>abierta</option><option>en-curso</option><option>respondida</option><option>cerrada</option></select><button class="primario" id="incNueva" title="Nueva incidencia con la selección">+ Nueva</button></div><div id="incLista" class="pista">Cargando…</div>');
+    c.querySelector('#incNueva').onclick = () => nuevaIncidencia(SEL ? [SEL.e] : []);
+    let d; try { d = await api('/api/proyectos/' + PID + '/incidencias'); } catch (e) { c.querySelector('#incLista').textContent = e.message; return; }
+    const pinta = () => {
+      const q = c.querySelector('#incQ').value.toLowerCase(), est = c.querySelector('#incE').value;
+      const L = d.incidencias.filter(i => (!est || i.estado === est) && (!q || (i.titulo + ' ' + (i.codigo || '') + ' ' + (i.descripcion || '')).toLowerCase().includes(q)));
+      c.querySelector('#incLista').innerHTML = L.map(i => '<div class="filtro" style="cursor:pointer" data-i="' + i.id + '"><div class="ft"><b>' + esc(i.codigo || '#' + i.numero) + ' · ' + esc(i.titulo) + '</b><span class="estado ' + esc(i.estado) + '">' + esc(i.estado) + '</span></div><div class="pista">' + esc(i.tipo) + ' · ' + esc(i.prioridad) + (i.nivel ? ' · ' + esc(i.nivel) : '') + ' · ' + (i.elementos || []).length + ' elem.' + (i.version_id === VID ? ' · esta versión' : i.version_id ? ' · otra versión' : '') + '</div></div>').join('') || '<p class="pista">Sin incidencias.</p>';
+      c.querySelectorAll('[data-i]').forEach(x => x.onclick = () => abreIncidencia(x.dataset.i).catch(e => alert(e.message)));
+    };
+    c.querySelector('#incQ').oninput = pinta; c.querySelector('#incE').onchange = pinta; pinta();
+  };
 
   // ---------- herramientas ----------
   document.querySelectorAll('.herramientas button[data-h]').forEach(b => b.onclick = () => {
@@ -354,6 +438,7 @@
     if (!G) return;
     if (h === 'aislar' && SEL) muestraSolo(new Set([SEL.e]), true);
     if (h === 'ocultar' && SEL) { OCULTOS.add(SEL.e); selecciona(null); recalcula(false); }
+    if (h === 'incidencia' && SEL) nuevaIncidencia([SEL.e]);
     if (h === 'todo') { FILTROS.length = 0; OCULTOS = new Set(); V.alMostrarTodo.forEach(f => { try { f(); } catch (e) {} }); BASE = null; recalcula(false); aplicaVis(); encuadra(); }
   });
 
@@ -362,7 +447,7 @@
   function selecciona(x, sinPanel, deVisor) {
     SEL = x ? { e: x.e, idx: G ? G.porE.get(x.e) : undefined } : null; if (x) SUELTO = null;
     if (LZ && I && !deVisor) LZ.selecciona(x ? idsV([x.e]) : []);
-    for (const k of ['aislar', 'ocultar']) { const b = herr(k); if (b) b.disabled = !x; }
+    for (const k of ['aislar', 'ocultar', 'incidencia']) { const b = herr(k); if (b) b.disabled = !x; }
     if (x && EL && EL.idx.has(x.e)) { const i = EL.idx.get(x.e), D = EL.diccionarios, C = EL.columnas; SEL.nombre = C.nombre[i]; SEL.cat = D.cat[C.cat[i]]; SEL.niv = D.niv[C.niv[i]]; SEL.fam = D.fam[C.fam[i]]; SEL.tip = D.tip[C.tip[i]]; }
     if (!sinPanel && (x || SUELTO) && MODULO !== 'elemento' && MODULO !== 'inventario') abreModulo('elemento', true);
     pintaElemento();
@@ -398,19 +483,18 @@
 
   // ---------- V: lo que esperan visor-modulos.js y visor-puente.js del visor (misma forma que en visor.js) ----------
   class Vector4 { constructor(x, y, z, w) { this.x = x || 0; this.y = y || 0; this.z = z || 0; this.w = w == null ? 1 : w; } }
-  const noAqui = () => alert('Las incidencias sobre el modelo aún se crean desde el Visor GIS/BIM (botón «Visor GIS/BIM» de la cabecera).');
   const V = {
     THREE: { Vector4 }, PID, api, esc, num, ventana, barras, panel, abreModulo, MODULOS, DIMS, PALETA, hexLin, f3, FORMA: true,
     get VID() { return VID; }, get G() { return G; }, get EL() { return EL; }, get VIS() { return VIS; }, get SEL() { return SEL; }, get LISTA() { return LISTA; }, get FILTROS() { return FILTROS; }, get TINTES() { return TINTES; }, set TINTES(t) { TINTES = t; },
     get QUIEN() { return QUIEN; }, get PROY() { return PROY; }, get MODULO() { return MODULO; }, get OCULTOS() { return OCULTOS; }, get LIENZO() { return LZ; }, get INFO() { return INFO; }, get VINCULO() { return VINC; },
     cajaDe, encuadra, dibuja: () => {}, muestraSolo, recalcula, selecciona, aplicaTintes, pasanTodos, cuentaDim, anadeFiltro, quitaFiltro, pintaFiltros, pintaEstadoFiltros, elementoDePieza, idsV,
-    nuevaIncidencia: noAqui, abreIncidencia: noAqui,
+    nuevaIncidencia, abreIncidencia, cajasDe, trozosDe, censo,
     info: (e) => { if (!EL || !EL.idx.has(e)) return null; const i = EL.idx.get(e), D = EL.diccionarios, C = EL.columnas; return { e, nombre: C.nombre[i], modelo: D.modelo[C.modelo[i]], cat: D.cat[C.cat[i]], fam: D.fam[C.fam[i]], tip: D.tip[C.tip[i]], niv: D.niv[C.niv[i]] }; },
     alCargarModelo: [], alCambiarModelo: [], alSeleccionar: [], alMostrarTodo: [], alClicFantasma: [], extraRaycast: [], alRecalcular: [], alPintarFiltros: [], alAbrirFiltros: [], COLOR_SEL, srgbLin
   };
   window.VISOR = V; window.V = V;
-  // Inventario y Planos (PDF): los de visor-modulos.js. Sus otros dos módulos (conjuntos, comparar) usan la geometría propia: se dejan con el aviso de arriba.
-  import('./visor-modulos.js?v=108').then(m => { const antes = { conjuntos: MODULOS.conjuntos, comparar: MODULOS.comparar }; m.monta(V); MODULOS.conjuntos = antes.conjuntos; MODULOS.comparar = antes.comparar; }).catch(e => console.error('visor-modulos', e));
+  // Inventario, Planos (PDF) y Conjuntos e interferencias: los de visor-modulos.js. Comparar versiones dibuja la otra versión con la geometría propia: queda con el aviso.
+  import('./visor-modulos.js?v=293').then(m => { const antes = { conjuntos: MODULOS.conjuntos, comparar: MODULOS.comparar }; m.monta(V); const cj = MODULOS.conjuntos; MODULOS.conjuntos = () => conGeometria('Conjuntos', cj); MODULOS.comparar = antes.comparar; })   // v0.29.3: Conjuntos e interferencias, el de visor-modulos.js, con las cajas y triángulos del visualizador.catch(e => console.error('visor-modulos', e));
 
   cargaLista().catch(e => { $('estadoCarga').textContent = 'No se pudo cargar: ' + e.message; });
 })();

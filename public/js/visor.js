@@ -1105,7 +1105,7 @@ const V = { trozosDe,
   alRecalcular: [], alPintarFiltros: [], alAbrirFiltros: [], anadeFiltro, quitaFiltro, pintaFiltros, pintaEstadoFiltros, get MODULO() { return MODULO; }, get OCULTOS() { return OCULTOS; }, COLOR_SEL, srgbLin
 };
 V.pintaFidelidad = pintaFidelidad; V.partes = () => PARTES; window.VISOR = V; window.V = V;   // para depurar desde la consola del navegador y para visor-puente.js
-import('./visor-modulos.js?v=108').then(m => m.monta(V)).catch(e => console.error('visor-modulos', e));
+import('./visor-modulos.js?v=293').then(m => m.monta(V)).catch(e => console.error('visor-modulos', e));
 import('./visor-ambientes.js').then(m => m.monta(V)).catch(e => console.error('visor-ambientes', e));
 
 if (!PID) $('estadoCarga').textContent = 'Falta el proyecto (?pid=).'; else cargaLista().catch(e => { $('estadoCarga').textContent = e.message; });

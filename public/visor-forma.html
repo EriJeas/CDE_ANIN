@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Visor de Autodesk Forma · CDE ANIN</title>
 <link rel="stylesheet" href="css/cde.css?v=108">
-<link rel="stylesheet" href="css/visor.css?v=292">
+<link rel="stylesheet" href="css/visor.css?v=293">
 <link rel="stylesheet" href="css/visor-origen.css">
 </head>
 <body class="visor vforma">
@@ -29,14 +29,14 @@
   <div class="mod" data-m="modplanos" title="Modelos / Planos: los planos del nivel elegido, por especialidad"><span class="ico">▥</span><span class="t">Modelos / Planos</span></div>
   <div class="mod" data-m="mbim" title="Métricas BIM del modelo cargado"><span class="ico">◧</span><span class="t">Tablero (métricas BIM)</span></div>
   <div class="mod" data-m="cobie" title="Mantenimiento - COBie: parámetros COBie y Uniclass del índice, con % de llenado por categoría y tipo"><span class="ico">⚙</span><span class="t">COBie / Uniclass</span></div>
+  <div class="mod" data-m="conjuntos"><span class="ico">◈</span><span class="t">Conjuntos e interferencias</span></div>
+  <div class="mod" data-m="incidencias"><span class="ico">⚑</span><span class="t">Incidencias</span></div>
   <div class="sep"></div>
   <div class="mod" data-m="elemento"><span class="ico">◇</span><span class="t">Elemento</span></div>
   <div class="sep"></div>
   <div class="mod prox" data-m="ambientes" title="Aún solo en el Visor GIS/BIM"><span class="ico">⌂</span><span class="t">Niveles / Ambientes</span></div>
-  <div class="mod prox" data-m="conjuntos" title="Aún solo en el Visor GIS/BIM"><span class="ico">◈</span><span class="t">Conjuntos e interferencias</span></div>
   <div class="mod prox" data-m="comparar" title="Aún solo en el Visor GIS/BIM"><span class="ico">⇄</span><span class="t">Comparar versiones</span></div>
   <div class="mod prox" data-m="flujos" title="Aún solo en el Visor GIS/BIM"><span class="ico">⇶</span><span class="t">Flujos hospitalarios</span></div>
-  <div class="mod prox" data-m="incidencias" title="Aún solo en el Visor GIS/BIM"><span class="ico">⚑</span><span class="t">Incidencias</span></div>
   <div class="abajo"><div class="sep"></div><div class="mod" data-m="ayuda"><span class="ico">?</span><span class="t">Ayuda</span></div></div>
 </nav>
 <div class="panelmod oculto" id="panel"><div class="pcab" id="pcab"><span id="ptitulo">Filtros</span><button class="cerrar" id="pcerrar" title="Cerrar panel">✕</button><div class="linea"></div></div><div class="pcuerpo" id="pcuerpo"></div></div>
@@ -45,6 +45,7 @@
   <button data-h="aislar" title="Aislar la selección" disabled><span class="ico">◎</span>Aislar</button>
   <button data-h="ocultar" title="Ocultar la selección" disabled><span class="ico">◌</span>Ocultar</button>
   <button data-h="todo" title="Mostrar todo y quitar filtros"><span class="ico">▦</span>Mostrar todo</button>
+  <button data-h="incidencia" title="Nueva incidencia con la selección y la vista actual" disabled><span class="ico">⚑</span>Incidencia</button>
   <button data-h="fantasma" title="Al aislar, dejar el resto del modelo como silueta transparente"><span class="ico">◐</span>Silueta</button>
 </div>
 <div id="estadoCarga">Cargando…</div>
@@ -100,13 +101,13 @@
 </div>
 <div id="ventanas"></div>
 <script src="js/comun.js"></script>
-<script src="js/visor-puente.js?v=292"></script>
+<script src="js/visor-puente.js?v=293"></script>
 <script src="js/visor-origen/ventanas.js"></script>
 <script src="js/visor-origen/sectores.js"></script>
 <script src="js/visor-origen/metricas-cobie.js"></script>
 <script src="js/visor-origen/modelos-planos.js"></script>
 <script src="vendor/xlsx.full.min.js" defer></script>
 <script src="vendor/pdf.min.js" defer></script>
-<script src="js/visor-forma.js?v=292"></script>
+<script src="js/visor-forma.js?v=293"></script>
 </body>
 </html>

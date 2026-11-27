@@ -106,6 +106,41 @@
     },
     selecciona(ids) { if (!visor || !modelo) return; callado = true; try { visor.select(ids || [], modelo); } finally { callado = false; } },
     encuadra(ids) { if (!visor) return; if (ids && ids.length) visor.fitToView(ids, modelo); else visor.fitToView(); },
+    // ----- v0.29.3 · la geometría, para los módulos que calculan con ella (interferencias, incidencias con cámara). Coordenadas del CDE:
+    //       metros y Z arriba, las mismas del .cdeg del visor propio (CDEG.censa: la receta del paso de Forma, ya probada). -----
+    /** Censo de piezas: { n, db(f) -> id del visualizador, caja Float32Array(6 por pieza), tipo (1 malla, 2 líneas) }. Se hace una vez. */
+    async censo(alAvance) {
+      if (L._censo) return L._censo; if (!modelo || !window.CDEG) throw new Error('El modelo aún no está listo.');
+      const C = window.CDEG, Lc = C.censa(modelo, { visor, Matriz: THREE.Matrix4, Caja: THREE.Box3 }), TRAMO = 4000;
+      for (let i = 0; i < Lc.n; i += TRAMO) { C.censaTramo(Lc, i, i + TRAMO); if (alAvance) try { alAvance(Math.min(1, (i + TRAMO) / Lc.n)); } catch (e) {} await duerme(0); }
+      L._L = Lc; L._censo = { n: Lc.n, db: (f) => Lc.dbDe(f), caja: Lc.caja, tipo: Lc.tipo, escala: Lc.escala }; return L._censo;
+    },
+    /** Los triángulos de unas piezas, ya en coordenadas del CDE: Float32Array de 9 números por triángulo (tope de triángulos; null si se pasa). */
+    triangulos(fids, tope) {
+      const Lc = L._L; if (!Lc) return null; const C = window.CDEG, s = Lc.escala; let total = 0; const partes = [];
+      for (const f of fids) {
+        if (Lc.tipo[f] !== 1) continue; const d = C.geomPieza(modelo, visor, f, THREE.Matrix4); if (!d || !d.ib || d.lineas) continue;
+        total += d.ib.length / 3; if (tope && total > tope) return null;
+        const e = d.M, out = new Float32Array(d.ib.length * 3);
+        for (let k = 0; k < d.ib.length; k++) { const q = d.ib[k] * d.paso + d.des, X = d.pos[q], Y = d.pos[q + 1], Z = d.pos[q + 2]; const w = Lc.aZ((e[0] * X + e[4] * Y + e[8] * Z + e[12]) * s, (e[1] * X + e[5] * Y + e[9] * Z + e[13]) * s, (e[2] * X + e[6] * Y + e[10] * Z + e[14]) * s); out[k * 3] = w[0]; out[k * 3 + 1] = w[1]; out[k * 3 + 2] = w[2]; }
+        partes.push(out);
+      }
+      let n = 0; for (const p of partes) n += p.length; const todo = new Float32Array(n); let o = 0; for (const p of partes) { todo.set(p, o); o += p.length; } return todo;
+    },
+    /** La cámara, en coordenadas del CDE (las que guarda una incidencia): { pos, dir, up, fov }. */
+    camara() {
+      const Lc = L._L || window.CDEG.prepara(modelo, {}), s = Lc.escala, nav = visor.navigation, p = nav.getPosition(), t = nav.getTarget();
+      const pos = Lc.aZ(p.x * s, p.y * s, p.z * s), ob = Lc.aZ(t.x * s, t.y * s, t.z * s), d = [ob[0] - pos[0], ob[1] - pos[1], ob[2] - pos[2]], m = Math.hypot(d[0], d[1], d[2]) || 1;
+      let fov = 45; try { fov = nav.getVerticalFov(); } catch (e) {}
+      return { pos, dir: [d[0] / m, d[1] / m, d[2] / m], up: [0, 0, 1], fov };
+    },
+    /** Lleva la cámara a una guardada. objetivo: punto del CDE al que mirar (o null: 20 m hacia delante). */
+    ponCamara(c, objetivo) {
+      const Lc = L._L || window.CDEG.prepara(modelo, {}), s = Lc.escala || 1, inv = (v) => (Lc.yArriba ? [v[0], v[2], -v[1]] : [v[0], v[1], v[2]]);
+      const ob = objetivo || [c.pos[0] + c.dir[0] * 20, c.pos[1] + c.dir[1] * 20, c.pos[2] + c.dir[2] * 20], a = inv(c.pos), b = inv(ob), arr = inv([0, 0, 1]);
+      const V3 = THREE.Vector3; visor.navigation.setView(new V3(a[0] / s, a[1] / s, a[2] / s), new V3(b[0] / s, b[1] / s, b[2] / s));
+      try { visor.navigation.setCameraUpVector(new V3(arr[0], arr[1], arr[2])); if (c.fov) visor.navigation.setVerticalFov(c.fov, true); } catch (e) {}
+    },
     cierra() { try { if (visor) visor.finish(); } catch (e) {} visor = null; modelo = null; it = null; }
   };
 })();

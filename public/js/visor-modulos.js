@@ -46,7 +46,9 @@ export function monta(V) {
     w.querySelector('#invAislar').onclick = () => { const L = filasInv(); V.muestraSolo(new Set(L.map(x => x.e)), true); };
     w.querySelector('#invCsv').onclick = () => descarga('inventario-' + (actual() ? actual().contenedor : 'modelo') + '.csv', csvDe(tablaInv()));
     w.querySelector('#invXls').onclick = () => excel([['Inventario', tablaInv()]], 'inventario-' + (actual() ? actual().contenedor : 'modelo') + '.xlsx');
-    await cargaInv(); pintaInv();
+    // v0.29.3: mientras llega la tabla se dice, y si el servidor falla se muestra por qué (antes la ventana quedaba vacía sin explicación)
+    const pie = w.querySelector('#invPie'); pie.textContent = '⏳ Cargando la tabla de elementos…';
+    try { await cargaInv(); pintaInv(); } catch (e) { pie.innerHTML = '<span style="color:#e07a6a">No se pudo cargar el inventario: ' + esc(e.message) + '</span>'; }
   }
   async function cargaInv() {
     const qs = new URLSearchParams({ cols: INV.cols.join(',') });
