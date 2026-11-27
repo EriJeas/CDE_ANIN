@@ -1474,6 +1474,22 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
         r = await pide(F + '/modelos/no-existe/preparar', { json: {} }); ok(r.status === 404, 'una versión que no existe no se prepara');
         r = await pide('/api/forma/token-visor'); ok(r.status === 200 && /^A\d+$/.test(r.j.access_token) && r.j.expires_in > 0, 'el navegador recibe el acceso de Autodesk del usuario (solo lectura) para abrir la traducción');
         let rt = await fetch(B + '/api/forma/token-visor'); ok(rt.status === 401, 'sin sesión no se entrega el acceso de Autodesk');
+        { // v0.28.0 · Visor de Autodesk Forma: qué abrir, el índice sin geometría y la comprobación de identificadores contra el índice instalado
+          const pidF = decodeURIComponent(F.split('/')[3]);
+          let rv = await pide(F + '/modelos/' + mM.vid + '/visor-forma');
+          ok(rv.status === 200 && rv.j.region === 'US' && rv.j.version === 1 && /^[A-Za-z0-9_-]+$/.test(rv.j.urn) && rv.j.indice === false, 'v0.28.0: el Visor de Autodesk Forma recibe qué abrir (urn y región) y sabe que el índice aún no está en el CDE ' + JSON.stringify(rv.j).slice(0, 160));
+          let ri = await pide(F + '/modelos/' + mM.vid + '/instalar-indice', { json: {} }); ok(ri.status === 409, 'v0.28.0: sin un índice armado no hay nada que instalar');
+          ri = await pide(F + '/modelos/' + vPdf.id + '/visor-forma'); ok(ri.status === 409 && ri.j.error === 'no-modelo', 'v0.28.0: un PDF no se abre en el Visor de Autodesk Forma');
+          await pide(F + '/modelos/' + mM.vid + '/preparar', { json: {} });
+          let tI = null; for (let i = 0; i < 100; i++) { tI = (await pide(F + '/modelos/' + mM.vid + '/estado')).j.trabajo; if (tI && tI.indice.estado !== 'leyendo') break; await duerme(100); }
+          ri = await pide(F + '/modelos/' + mM.vid + '/instalar-indice', { json: {} });
+          rv = await pide(F + '/modelos/' + mM.vid + '/visor-forma');
+          const elF = await pide('/api/modelos/' + pidF + '/' + mM.vid + '/elementos'), esF = await pide('/api/modelos/' + pidF + '/' + mM.vid + '/estado');
+          ok(ri.status === 200 && ri.j.ok && ri.j.elementos === 2 && rv.j.indice === true && elF.status === 200 && elF.j.n === 2 && esF.j.estado === 'listo' && esF.j.geometria === false && esF.j.resumen.soloIndice === true, 'v0.28.0: el índice queda en el CDE SIN geometría propia (2 elementos consultables); el dibujo lo pone Autodesk ' + JSON.stringify([ri.j, elF.j.n, esF.j.geometria]));
+          const vi = await pide(F + '/modelos/' + mM.vid + '/visor-ids', { json: { pares: [[3, 'Muro básico'], [99, 'Solid', 6, 'Puerta simple'], [96, 'Solid']] } }), viMal = await pide(F + '/modelos/' + mM.vid + '/visor-ids', { json: { pares: [[3, 'Puerta simple'], [6, 'Muro básico']] } });
+          ok(vi.j.total === 2 && vi.j.coinciden === 2 && vi.j.sinFicha === 1 && viMal.j.coinciden === 0 && viMal.j.ejemplos.length === 2, 'v0.28.0: los identificadores del visualizador se comprueban por nombre contra el índice instalado (una pieza sin ficha se comprueba con su antecesor) ' + JSON.stringify(vi.j));
+        }
+        // (lo que sigue es el paso al visor propio: reutiliza el índice recién instalado y le añade su geometría)
         r = await pide(F + '/modelos/' + mM.vid + '/preparar', { json: {} });
         ok(r.status === 200 && r.j.urn === Buffer.from('urn:v:M?version=1').toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_') && r.j.region === 'US' && r.j.version === 1, 'preparar da la traducción del archivo en Autodesk (urn de la versión de Forma) y su región ' + JSON.stringify(r.j).slice(0, 200));
         let tM = null; for (let i = 0; i < 100; i++) { tM = (await pide(F + '/modelos/' + mM.vid + '/estado')).j.trabajo; if (tM && (tM.indice.estado !== 'leyendo')) break; await duerme(100); }
@@ -1700,6 +1716,16 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
           const bitA = require('fs').readFileSync(require('path').join(process.env.DATOS_DIR, 'forma-visor.log'), 'utf8').trim().split('\n').map(x => JSON.parse(x)).filter(x => x.vid === mM.vid);
           ok(rb.status === 400 && bitA.some(x => x.evento === 'arbol' && x.r && x.r.aplicado) && bitA.some(x => x.evento === 'arbol-recibido' && x.bytes === 8 + 8 * 5), 'un árbol incompleto se rechaza y la bitácora guarda cómo quedó el índice');
           await pide(F + '/modelos/' + mM.vid + '/cancelar', { json: { borrar: true } });
+        }
+        { // v0.28.0 · con el modelo ya en el visor propio, «instalar-indice» no toca su geometría
+          await pide(F + '/modelos/' + mM.vid + '/preparar', { json: {} }); let tI = null; for (let i = 0; i < 100; i++) { tI = (await pide(F + '/modelos/' + mM.vid + '/estado')).j.trabajo; if (tI && tI.indice.estado !== 'leyendo') break; await duerme(100); }
+          const ry = await pide(F + '/modelos/' + mM.vid + '/instalar-indice', { json: {} }), ey = (await pide(F + '/modelos/' + mM.vid + '/estado')).j; await pide(F + '/modelos/' + mM.vid + '/cancelar', { json: {} });
+          ok(ry.status === 200 && ry.j.ya === true && ey.enVisor === true, 'v0.28.0: si el modelo ya tiene geometría en el visor propio, instalar el índice del Visor de Autodesk Forma no la pisa ' + JSON.stringify(ry.j));
+          const fs2 = require('fs'), path2 = require('path'), R = (x) => fs2.readFileSync(path2.join(__dirname, '..', 'public', x), 'utf8');
+          const hv = R('visor-forma.html'), jv = R('js/visor-forma.js'), jl = R('js/forma-lienzo.js'), nu = R('js/nucleo.js'), fp2 = R('js/forma-paso.js');
+          ok(/Visor de Autodesk Forma/.test(nu) && /visor-forma\.html\?pid=/.test(nu) && nu.indexOf('Visor GIS/BIM</span></a><a href="visor-forma.html') > 0, 'v0.28.0: «Visor de Autodesk Forma» está en el menú del proyecto, justo debajo de «Visor GIS/BIM»');
+          ok(/visor-puente\.js/.test(hv) && /visor-origen\/sectores\.js/.test(hv) && /visor-forma\.js/.test(hv) && /visor-modulos\.js/.test(jv) && /forma-lienzo\.html/.test(jv) && /GuiViewer3D/.test(jl) && /needsDbIdRemap/.test(jl) && !/three\.module/.test(hv + jv), 'v0.28.0: el visor nuevo dibuja con el visualizador de Autodesk (en un marco aparte) y reutiliza los módulos del visor del CDE (puente, origen, inventario)');
+          ok(/SOLO_INDICE/.test(fp2) && /instalar-indice/.test(fp2) && /solo=indice/.test(jv) && /visor-ids/.test(jv) && /elementoDePieza/.test(jv), 'v0.28.0: la primera vez prepara solo el índice (sin armar geometría), comprueba los identificadores y vincula cada pieza con su elemento');
         }
         // rehacer y cancelar: el modelo instalado se queda
         r = await pide(F + '/modelos/' + mM.vid + '/preparar', { json: {} }); r = await pide(F + '/modelos/' + mM.vid + '/cancelar', { json: {} }); const tras = (await pide(F + '/modelos/' + mM.vid + '/estado')).j;

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visor de Autodesk Forma · CDE ANIN</title>
+<link rel="stylesheet" href="css/cde.css?v=108">
+<link rel="stylesheet" href="css/visor.css?v=280">
+<link rel="stylesheet" href="css/visor-origen.css">
+</head>
+<body class="visor vforma">
+<div class="vtop">
+  <a class="marca" href="index.html">CDE ANIN<small>visor · Autodesk Forma</small></a>
+  <span class="pastilla" id="proyectoNombre">…</span>
+  <select id="selModelo"><option value="">Elige un modelo…</option></select>
+  <div class="crece"></div>
+  <button class="fidelidad oculto" id="vinculo"></button>
+  <span class="cifras" id="cifras"></span>
+  <span class="quien" id="quien"></span>
+  <button id="btnPropio" title="Abrir este mismo modelo en el Visor GIS/BIM del CDE (geometría propia)">Visor GIS/BIM</button>
+  <button id="btnVolver" title="Volver a la ficha del contenedor en el CDE">Volver al CDE</button>
+</div>
+<div id="lienzo" class="lzforma"></div>
+<nav class="carril" id="carril">
+  <div class="mod" data-m="filtros"><span class="ico">▣</span><span class="t">Visor con filtros</span></div>
+  <div class="mod" data-m="sectores" title="Filtro Sectores: el mismo panel de filtros con acceso directo a Sector y Zona"><span class="ico">▦</span><span class="t">Filtro con sectores</span></div>
+  <div class="mod" data-m="inventario"><span class="ico">☰</span><span class="t">Inventario</span></div>
+  <div class="mod" data-m="planos"><span class="ico">▤</span><span class="t">Planos (PDF)</span></div>
+  <div class="mod" data-m="modplanos" title="Modelos / Planos: los planos del nivel elegido, por especialidad"><span class="ico">▥</span><span class="t">Modelos / Planos</span></div>
+  <div class="mod" data-m="mbim" title="Métricas BIM del modelo cargado"><span class="ico">◧</span><span class="t">Tablero (métricas BIM)</span></div>
+  <div class="mod" data-m="cobie" title="Mantenimiento - COBie: parámetros COBie y Uniclass del índice, con % de llenado por categoría y tipo"><span class="ico">⚙</span><span class="t">COBie / Uniclass</span></div>
+  <div class="sep"></div>
+  <div class="mod" data-m="elemento"><span class="ico">◇</span><span class="t">Elemento</span></div>
+  <div class="sep"></div>
+  <div class="mod prox" data-m="ambientes" title="Aún solo en el Visor GIS/BIM"><span class="ico">⌂</span><span class="t">Niveles / Ambientes</span></div>
+  <div class="mod prox" data-m="conjuntos" title="Aún solo en el Visor GIS/BIM"><span class="ico">◈</span><span class="t">Conjuntos e interferencias</span></div>
+  <div class="mod prox" data-m="comparar" title="Aún solo en el Visor GIS/BIM"><span class="ico">⇄</span><span class="t">Comparar versiones</span></div>
+  <div class="mod prox" data-m="flujos" title="Aún solo en el Visor GIS/BIM"><span class="ico">⇶</span><span class="t">Flujos hospitalarios</span></div>
+  <div class="mod prox" data-m="incidencias" title="Aún solo en el Visor GIS/BIM"><span class="ico">⚑</span><span class="t">Incidencias</span></div>
+  <div class="abajo"><div class="sep"></div><div class="mod" data-m="ayuda"><span class="ico">?</span><span class="t">Ayuda</span></div></div>
+</nav>
+<div class="panelmod oculto" id="panel"><div class="pcab" id="pcab"><span id="ptitulo">Filtros</span><button class="cerrar" id="pcerrar" title="Cerrar panel">✕</button><div class="linea"></div></div><div class="pcuerpo" id="pcuerpo"></div></div>
+<div class="herramientas" id="herr">
+  <button data-h="encuadrar" title="Encuadrar lo visible (o la selección)"><span class="ico">⛶</span>Encuadrar</button>
+  <button data-h="aislar" title="Aislar la selección" disabled><span class="ico">◎</span>Aislar</button>
+  <button data-h="ocultar" title="Ocultar la selección" disabled><span class="ico">◌</span>Ocultar</button>
+  <button data-h="todo" title="Mostrar todo y quitar filtros"><span class="ico">▦</span>Mostrar todo</button>
+  <button data-h="fantasma" title="Al aislar, dejar el resto del modelo como silueta transparente"><span class="ico">◐</span>Silueta</button>
+</div>
+<div id="estadoCarga">Cargando…</div>
+<!-- ===== Paneles de ORIGEN (Visor BIM Federado, public/index.html, tal cual): los usan visor-origen/*.js ===== -->
+  <aside id="mbPanel" class="hidden" style="position:fixed;right:12px;top:56px;width:600px;
+    max-height:84vh;overflow:auto;background:#10161c;border:1px solid #232c34;
+    border-radius:8px;z-index:60;padding:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <b>Metricas BIM del modelo cargado</b>
+      <span id="mbCerrar" style="cursor:pointer;font-size:18px">&times;</span>
+    </div>
+    <div class="hint">Parametros obligatorios del PEB (separados por coma):</div>
+    <input id="mbProps" type="text" style="width:100%"
+      value="C&#243;digo de partida, Nombre de partida, Sector, Zona">
+    <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap">
+      <button id="mbAnaliza" class="sm">Analizar modelos cargados</button>
+      <button id="mbFotoBtn" class="sm">Guardar foto (para el delta)</button>
+      <button id="mbTodoBtn" class="sm">Mostrar todo</button>
+    </div>
+    <div id="mbInfo" class="hint"></div>
+    <div id="mbZona"></div>
+  </aside>
+  <aside id="cbPanel" class="hidden" style="position:fixed;right:12px;top:56px;width:780px;
+    max-height:84vh;overflow:auto;background:#10161c;border:1px solid #232c34;
+    border-radius:8px;z-index:60;padding:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <b>Mantenimiento - COBIE</b>
+      <span id="cbCerrar" style="cursor:pointer;font-size:18px">&times;</span>
+    </div>
+    <div id="cbInfo" class="hint"></div>
+    <div id="cbGruposZona" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div id="cbParamsZona"></div>
+      <div id="cbTableroZona"></div>
+    </div>
+  </aside>
+<div id="tsWin" class="flota chico redim hidden">
+  <div class="fbar"><span>Sectores por fecha</span>
+    <span id="tsAparte" class="fx" title="Abrir en una ventana aparte (para llevarla a otra pantalla)">&#10697;</span>
+    <span id="tsClose" class="fx">&times;</span></div>
+  <div class="fbody col">
+    <div class="ftools">
+      <div class="frow">
+        <span id="tsInfo" class="hint"></span>
+        <button id="tsCsv" class="sm" title="Descargar la tabla tal como se ve">CSV</button>
+      </div>
+      <div id="tsMando" class="tsmando"></div>
+      <div class="hint">Pulsa una celda para ir a esos elementos en el modelo. La tabla se
+        rehace sola al mover las barras de fecha o cambiar de sector.</div>
+    </div>
+    <div id="tsLienzo" class="fscroll"><table id="tsTabla" class="tstabla"></table></div>
+  </div>
+</div>
+<div id="ventanas"></div>
+<script src="js/comun.js"></script>
+<script src="js/visor-puente.js"></script>
+<script src="js/visor-origen/ventanas.js"></script>
+<script src="js/visor-origen/sectores.js"></script>
+<script src="js/visor-origen/metricas-cobie.js"></script>
+<script src="js/visor-origen/modelos-planos.js"></script>
+<script src="vendor/xlsx.full.min.js" defer></script>
+<script src="vendor/pdf.min.js" defer></script>
+<script src="js/visor-forma.js?v=280"></script>
+</body>
+</html>

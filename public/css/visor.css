@@ -159,3 +159,11 @@ body.visor .kpi .n { color: var(--er-orc); } body.visor .kpi .t { color: var(--e
 .vtop #partes { border-color: #4a6f8f; background: rgba(74, 111, 143, .2); color: #a9cdea; } .vtop #partes.parcial { border-color: #b98a2a; background: rgba(185, 138, 42, .2); color: #f0cf7a; }
 .ptlista { max-height: 46vh; overflow: auto; border: 1px solid rgba(255, 255, 255, .1); padding: 6px 8px; } .ptgrupo { padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, .06); } .ptgrupo label { display: block; cursor: pointer; } .ptgrupo .ptsec { padding-left: 22px; font-size: 12px; }
 .ptgrupo label { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; } .ptgrupo input[type=checkbox] { width: auto; margin: 0; flex: none; position: relative; top: 2px; }
+
+/* ===== v0.28.0 · Visor de Autodesk Forma (visor-forma.html): el dibujo va en un marco aparte con el visualizador de Autodesk ===== */
+#lienzoForma { position: fixed; left: 196px; top: 48px; width: calc(100% - 196px); height: calc(100% - 48px); border: 0; z-index: 1; background: #dfe3e8; }
+body.vforma #lienzo.lzforma { left: 196px; background: #dfe3e8; }
+body.vforma .herramientas { left: 206px; transform: none; bottom: 12px; }
+body.vforma .carril .mod.prox { opacity: .45; }
+body.vforma .carril .mod.prox:hover { opacity: .8; }
+@media (max-width: 1100px) { #lienzoForma { left: 56px; width: calc(100% - 56px); } body.vforma #lienzo.lzforma { left: 56px; } body.vforma .herramientas { left: 66px; } }

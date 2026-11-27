@@ -79,7 +79,7 @@
   /** Abre una opción del proyecto en su primer módulo. */
   N.irOpcion = (pid, id) => { const o = N.OPCIONES.find(x => x.id === id) || N.OPCIONES[0], h = '#/p/' + pid + o.inicio; memOp(pid, o.id); if (location.hash === h) N.ruta(); else location.hash = h; };
   /** Nombres de los módulos de una opción, en el orden del lateral. */
-  N.modulosDe = (o) => N.MODULOS.filter(x => !x.oculto && !x.abajo && o.mods.includes(x.r)).map(x => x.nombre).concat(o.visor ? ['Visor GIS/BIM'] : []);
+  N.modulosDe = (o) => N.MODULOS.filter(x => !x.oculto && !x.abajo && o.mods.includes(x.r)).map(x => x.nombre).concat(o.visor ? ['Visor GIS/BIM', 'Visor de Autodesk Forma'] : []);
 
   ICO.contrato = '<svg viewBox="0 0 24 24"><path d="M3 12h18"/><circle cx="6" cy="12" r="2"/><circle cx="13" cy="12" r="2"/><path d="M19 9l2 3-2 3"/><path d="M6 10V5M13 14v5"/></svg>';
   ICO.tableros = '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>';
@@ -120,7 +120,7 @@
       '<div class="crece"></div>' + (op ? '<button class="irA" id="irA" title="Pasar a otra opción del proyecto">Ir a <i>▾</i></button>' : '') + N.botonTema() + '<a class="redondo" href="docs/README.html" target="_blank" title="Ayuda" onclick="return false">' + ICO.ayuda + '</a><button class="redondo usuario" id="menuUsuario" title="' + esc(yo.email || '') + '">' + N.circulo(yo.email, yo.foto) + ' <i>▾</i></button></header>';
     const ub = p && p.ubicacion, donde = p ? '<a class="donde" href="#/p/' + p.id + '/inicio" title="Opciones del proyecto"><small>' + esc(ub ? ub.direccion : 'Sin dirección') + '</small><small class="n2">' + esc(ub ? ub.subNombre : 'Sin subdirección') + '</small><b>' + esc(p.nombre) + '</b></a>' : '';
     const navOp = !p ? '' : op ? '<div class="lopcion" title="Opción del proyecto que tienes abierta">' + esc(op.nombre) + '</div><nav>' + N.MODULOS.filter(x => !x.abajo && !x.oculto && op.mods.includes(x.r)).map(x => '<a class="' + (x.r === modulo ? 'activo' : '') + '" href="#/p/' + p.id + x.r + '">' + ICO[x.ico] + '<span>' + x.nombre + '</span></a>').join('') +
-        (op.visor ? '<a href="visor.html?pid=' + p.id + '" target="_blank">' + ICO.visor + '<span>Visor GIS/BIM</span></a>' : '') + '</nav>'
+        (op.visor ? '<a href="visor.html?pid=' + p.id + '" target="_blank">' + ICO.visor + '<span>Visor GIS/BIM</span></a><a href="visor-forma.html?pid=' + p.id + '" target="_blank" title="Los modelos traídos de Autodesk Forma, dibujados por el visualizador de Autodesk, con las funciones del visor del CDE">' + ICO.visor + '<span>Visor de Autodesk Forma</span></a>' : '') + '</nav>'
       : '<div class="lopcion">Opciones del proyecto</div><nav>' + N.OPCIONES.map(o => '<a href="#/p/' + p.id + o.inicio + '" data-lop="' + o.id + '">' + ICO[o.ico] + '<span>' + esc(o.nombre) + '</span></a>').join('') + '</nav>';
     const lateral = '<aside class="lateral">' + (p ? donde + navOp + '<div class="crece"></div><nav class="abajo">' + N.MODULOS.filter(x => x.abajo).map(x => '<a class="' + (x.r === modulo ? 'activo' : '') + '" href="#/p/' + p.id + x.r + '">' + ICO[x.ico] + '<span>' + x.nombre + '</span></a>').join('') + '</nav>' : '<nav><a class="activo" href="#/">' + ICO.proyectos + '<span>Direcciones ejecutoras</span></a></nav><div class="crece"></div>') +
       '<button class="plegar" id="plegar" title="Contraer el panel">|←</button></aside>';

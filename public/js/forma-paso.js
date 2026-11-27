@@ -11,6 +11,7 @@
   'use strict';
   const Q = new URLSearchParams(location.search), PID = Q.get('pid') || '', VID = Q.get('vid') || '';
   const F = '/api/proyectos/' + encodeURIComponent(PID) + '/forma', C = window.CDEG;
+  const SOLO_INDICE = Q.get('solo') === 'indice';   // v0.28.0 · para el Visor de Autodesk Forma: solo se deja el índice en el CDE (no se arma geometría propia)
   const TOPE = Number(Q.get('tope')) || 0;   // tope de triangulos distinto del de siempre (pruebas y diagnostico)
   // v0.26.0 · nivel de detalle que elige quien prepara el modelo: normal (4 M de triángulos de objetivo, 10 M de límite), alto (10 M / 25 M)
   // o máximo (nada se simplifica; solo irían como caja los elementos que pasen de 60 M). En alto y máximo también se dibujan las líneas auxiliares.
@@ -197,6 +198,7 @@
       if (a && a.estado === 'listo') { const r = a.r || {}; paso('indice', 'ok', num(r.elementos || (t.indice.resumen || {}).elementos) + ' elementos' + (r.aplicado ? ' (como Navisworks)' : '')); break; }
       paso('indice', 'va', (a && a.texto) || 'Ordenando el índice como Navisworks…'); await duerme(1500); corta();
     }
+    if (SOLO_INDICE) { const ri = await api(F + '/modelos/' + encodeURIComponent(VID) + '/instalar-indice', { json: {} }); nota('indice-solo', { elementos: ri.elementos }); try { visor.finish(); } catch (e) {} return { elementos: ri.elementos || 0, soloIndice: true }; }
     const EI = await api(F + '/modelos/' + encodeURIComponent(VID) + '/elementos-indice'), ids = new Set(EI.e), acero = new Set(EI.acero || []), aux = new Set(EI.aux || []);
     const G = C.elementosDe(L, (d) => ids.has(d), (d) => (padres.has(d) ? padres.get(d) : null), { lineasSueltas: DETALLE !== 'normal' });   // en alto y máximo ninguna línea se deja fuera por no tener elemento
     /*
