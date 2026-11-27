@@ -98,7 +98,7 @@
     if (!INFO.indice) { await preparaIndice(); INFO = await api(F + '/modelos/' + encodeURIComponent(VID) + '/visor-forma'); }
     caja.classList.remove('lado'); caja.textContent = 'Abriendo el visualizador de Autodesk…';
     const ifr = document.createElement('iframe'); ifr.id = 'lienzoForma'; ifr.title = 'Visualizador de Autodesk';
-    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=281'; document.body.appendChild(ifr); });
+    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=282'; document.body.appendChild(ifr); });
     LZ = ifr.contentWindow.LIENZO; if (!LZ) throw new Error('El lienzo no se inició.');
     LZ.alGeometria = () => { GEO = 1; pintaCifras(); };
     LZ.alAvance = (p) => { if (GEO < 1) { GEO = Math.min(0.99, p); pintaCifras(); } if (!caja.classList.contains('oculto') && caja.dataset.fase === 'geo') caja.textContent = 'Autodesk entrega la geometría… ' + Math.round(p * 100) + ' %'; };
@@ -126,7 +126,14 @@
       // el vínculo: de una muestra de piezas con geometría, cuántas llegan (ellas o un antecesor) a un elemento del índice
       let con = 0; const sin = [], sinIds = [];
       for (const d of P.muestra) { if (elementoDePieza(d) != null) con++; else { if (sin.length < 12) sin.push(LZ.nombreDe(d) || ('id ' + d)); sinIds.push(d); } }
-      VINC = { piezas: P.total, muestra: P.muestra.length, con, sin, sinIds };
+      VINC = { piezas: P.total, muestra: P.muestra.length, con, sin, sinIds, aux: 0, cats: [] };
+      // v0.28.2 · de las piezas sin elemento, cuáles son líneas auxiliares (ejes, líneas de centro): el índice las deja fuera a propósito y no cuentan como fallo del vínculo
+      if (sinIds.length) try {
+        const R = await api(F + '/modelos/' + encodeURIComponent(VID) + '/visor-diagnostico', { json: { ids: sinIds.map(d => I.v1(d)).filter(x => x > 0) } }), cats = new Map();
+        const de = new Map((R.filas || []).map(x => [x.e, x])), queda = [], quedaIds = [];
+        for (const d of sinIds) { const r = de.get(I.v1(d)); if (r && r.aux) { VINC.aux++; cats.set(r.cat, (cats.get(r.cat) || 0) + 1); } else { quedaIds.push(d); if (queda.length < 12) queda.push((LZ.nombreDe(d) || ('id ' + d)) + (r && r.cat ? ' (' + r.cat + ')' : '')); } }
+        VINC.sin = queda; VINC.sinIds = quedaIds; VINC.cats = [...cats];
+      } catch (e) { console.warn('diagnóstico del vínculo', e); }
     } else { G = null; VINC = null; }
     CIFRAS = (EL ? num(EL.columnas.e.length) + ' elementos en el índice · ' : '') + num(P.total) + ' piezas con geometría · ' + (INFO.archivo || '') + ' · v' + (INFO.version || '?') + ' de Forma'; pintaCifras();
     pintaVinculo(aviso);
@@ -156,14 +163,14 @@
   }
   function pintaVinculo(aviso) {
     const b = $('vinculo'); b.classList.remove('oculto');
-    const pct = VINC && VINC.muestra ? Math.round(100 * VINC.con / VINC.muestra) : 0, bien = !aviso && VINC && pct >= 98;
+    const base = VINC ? VINC.muestra - (VINC.aux || 0) : 0, pct = VINC && base ? Math.round(100 * VINC.con / base) : (VINC && VINC.muestra ? 100 : 0), bien = !aviso && VINC && pct >= 98;
     b.classList.toggle('reducida', !bien);
     b.textContent = aviso ? '⚠ Sin vínculo con el índice' : (bien ? '✓ ' : '⚠ ') + 'Vínculo con el índice: ' + pct + ' %';
     b.title = 'Geometría: la de Autodesk Forma, completa. Datos: el índice de parámetros del CDE. Pulsa para ver el detalle.';
     b.onclick = () => {
       const fila = (a, t) => '<tr><td style="text-align:right;padding-right:8px;white-space:nowrap"><b>' + a + '</b></td><td>' + t + '</td></tr>';
       ventana('Geometría y datos de este modelo', '<div class="tfid"><p><b>Geometría:</b> la dibuja el visualizador de Autodesk con la traducción de Forma (versión ' + esc(String((INFO || {}).version || '?')) + '). El CDE no arma, simplifica ni omite nada.</p><p><b>Datos:</b> el índice de parámetros del CDE.</p>' +
-        (aviso ? '<div class="aviso ambar">' + esc(aviso) + '</div>' : '<table>' + fila(num(EL.columnas.e.length), 'elementos en el índice del CDE') + fila(num(VINC.piezas), 'piezas con geometría en el modelo de Autodesk') + fila(num(VINC.con) + ' de ' + num(VINC.muestra), 'piezas de la muestra que llegan a un elemento del índice (<b>' + pct + ' %</b>)') +
+        (aviso ? '<div class="aviso ambar">' + esc(aviso) + '</div>' : '<table>' + fila(num(EL.columnas.e.length), 'elementos en el índice del CDE') + fila(num(VINC.piezas), 'piezas con geometría en el modelo de Autodesk') + fila(num(VINC.con) + ' de ' + num(base), 'piezas de la muestra que llegan a un elemento del índice (<b>' + pct + ' %</b>)') + (VINC.aux ? fila(num(VINC.aux) + ' de ' + num(VINC.muestra), 'piezas de la muestra que son <b>líneas auxiliares</b> (' + VINC.cats.map(c => esc(c[0]) + ': ' + c[1]).join(', ') + '). Por regla del índice no son elementos, igual que en el complemento de Navisworks: se dibujan, pero no entran en filtros ni conteos') : '') +
           (INFO.ids ? fila(INFO.ids.coinciden + ' de ' + INFO.ids.total, 'nombres que coinciden entre el visualizador y el índice (comprobación de identificadores, ' + esc(I.tipo) + ')') : '') + '</table>' +
           (VINC.sin.length ? '<p class="pista" style="margin-top:8px">Piezas de la muestra sin elemento en el índice (se ven, pero no responden a los filtros; al pulsarlas se muestran las propiedades de Autodesk): ' + VINC.sin.map(esc).join(' · ') + '</p>' : '<p class="pista" style="margin-top:8px">Todas las piezas de la muestra están vinculadas a su elemento.</p>') + (VINC.sinIds.length ? '<p style="margin-top:8px"><button class="mini" id="vdHaz">Diagnóstico de las piezas sin vincular</button> <button class="mini oculto" id="vdCopia">Copiar</button></p><textarea id="vdTxt" class="oculto" readonly style="width:100%;height:150px;font:11px monospace"></textarea>' : '')) + '</div>', { ancho: 620, alto: 460 });
       const bh = document.getElementById('vdHaz'); if (bh) bh.onclick = async () => { const t = document.getElementById('vdTxt'), bc = document.getElementById('vdCopia'); bh.disabled = true; t.classList.remove('oculto'); t.value = 'Consultando…'; try { t.value = await diagnosticoVinculo(); bc.classList.remove('oculto'); bc.onclick = () => { t.select(); try { navigator.clipboard.writeText(t.value); } catch (e) { document.execCommand('copy'); } bc.textContent = 'Copiado'; }; } catch (e) { t.value = 'No se pudo armar: ' + e.message; } bh.disabled = false; };
