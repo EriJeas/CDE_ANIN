@@ -167,3 +167,14 @@ body.vforma .herramientas { left: 206px; transform: none; bottom: 12px; }
 body.vforma .carril .mod.prox { opacity: .45; }
 body.vforma .carril .mod.prox:hover { opacity: .8; }
 @media (max-width: 1100px) { #lienzoForma { left: 56px; width: calc(100% - 56px); } body.vforma #lienzo.lzforma { left: 56px; } body.vforma .herramientas { left: 66px; } }
+
+/* ===== v0.32.0 · Tablas de planificación ===== */
+.tped label { display: block; margin: 10px 0 4px; } .tpfila { display: flex; gap: 6px; align-items: center; margin: 3px 0; } .tpfila i { width: 18px; text-align: center; color: var(--er-or); font-style: normal; }
+.tpcampo { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 4px 8px; border: 1px solid var(--borde); border-radius: 3px; background: rgba(200, 162, 74, .08); font-size: 12px; }
+.tpv { display: flex; flex-direction: column; height: 100%; } .tpcuerpo { flex: 1; overflow: auto; border: 1px solid var(--borde); }
+.tppes { display: flex; gap: 2px; overflow-x: auto; margin-bottom: 4px; } .tppes button { white-space: nowrap; border-radius: 3px 3px 0 0; opacity: .7; } .tppes button.activa { opacity: 1; border-bottom: 2px solid var(--er-or); color: var(--er-or); }
+.tptabla { width: 100%; border-collapse: collapse; font-size: 12px; } .tptabla th { position: sticky; top: 0; background: #1b1710; text-align: left; padding: 5px 6px; font-weight: 400; color: var(--er-or); font-variant: small-caps; letter-spacing: .06em; z-index: 1; }
+.tptabla td { padding: 3px 6px; border-bottom: 1px solid rgba(58, 49, 34, .6); } .tptabla td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tptabla tr.clic { cursor: pointer; } .tptabla tr.clic:hover { background: rgba(200, 162, 74, .1); } .tptabla tr.sel { background: rgba(200, 162, 74, .22); }
+.tptabla tr.n0 td:first-child { font-weight: 600; } .tptabla tr.tptotal td { border-top: 2px solid var(--er-or); font-weight: 600; position: sticky; bottom: 0; background: #1b1710; }
+.tpmas { display: inline-block; width: 14px; text-align: center; color: var(--er-or); font-weight: 700; } .tpids { margin-top: 4px; padding: 6px 8px; border: 1px solid var(--borde); max-height: 70px; overflow: auto; font-size: 11px; }

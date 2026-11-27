@@ -98,7 +98,7 @@
     if (!INFO.indice) { await preparaIndice(); INFO = await api(F + '/modelos/' + encodeURIComponent(VID) + '/visor-forma'); }
     caja.classList.remove('lado'); caja.textContent = 'Abriendo el visualizador de Autodesk…';
     const ifr = document.createElement('iframe'); ifr.id = 'lienzoForma'; ifr.title = 'Visualizador de Autodesk';
-    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=310'; document.body.appendChild(ifr); });
+    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=320'; document.body.appendChild(ifr); });
     LZ = ifr.contentWindow.LIENZO; if (!LZ) throw new Error('El lienzo no se inició.');
     LZ.alGeometria = () => { GEO = 1; pintaCifras(); };
     LZ.alAvance = (p) => { if (GEO < 1) { GEO = Math.min(0.99, p); pintaCifras(); } if (!caja.classList.contains('oculto') && caja.dataset.fase === 'geo') caja.textContent = 'Autodesk entrega la geometría… ' + Math.round(p * 100) + ' %'; };
@@ -517,10 +517,13 @@
   };
   window.VISOR = V; window.V = V;
   // Inventario, Planos (PDF) y Conjuntos e interferencias: los de visor-modulos.js. Comparar versiones dibuja la otra versión con la geometría propia: queda con el aviso.
-  import('./visor-modulos.js?v=310').then(m => { const antes = { conjuntos: MODULOS.conjuntos, comparar: MODULOS.comparar }; m.monta(V); const cj = MODULOS.conjuntos, cv = MODULOS.comparar; MODULOS.conjuntos = () => conGeometria('Conjuntos', cj); MODULOS.comparar = () => conGeometria('Comparar versiones', cv); })   // v0.29.3: Conjuntos e interferencias, el de visor-modulos.js, con las cajas y triángulos del visualizador.catch(e => console.error('visor-modulos', e));
+  import('./visor-modulos.js?v=320').then(m => { const antes = { conjuntos: MODULOS.conjuntos, comparar: MODULOS.comparar }; m.monta(V); const cj = MODULOS.conjuntos, cv = MODULOS.comparar; MODULOS.conjuntos = () => conGeometria('Conjuntos', cj); MODULOS.comparar = () => conGeometria('Comparar versiones', cv); })   // v0.29.3: Conjuntos e interferencias, el de visor-modulos.js, con las cajas y triángulos del visualizador.catch(e => console.error('visor-modulos', e));
 
   // v0.30.0 · Niveles / Ambientes y Flujos hospitalarios: los de visor-ambientes.js, tal cual, con las cajas, triángulos, rutas y cortes del visualizador
-  import('./visor-ambientes.js?v=310').then(m => { m.monta(V); const am = MODULOS.ambientes, fl = MODULOS.flujos; MODULOS.ambientes = () => conGeometria('Niveles / Ambientes', am); MODULOS.flujos = () => conGeometria('Flujos hospitalarios', fl); }).catch(e => console.error('visor-ambientes', e));
+  import('./visor-ambientes.js?v=320').then(m => { m.monta(V); const am = MODULOS.ambientes, fl = MODULOS.flujos; MODULOS.ambientes = () => conGeometria('Niveles / Ambientes', am); MODULOS.flujos = () => conGeometria('Flujos hospitalarios', fl); }).catch(e => console.error('visor-ambientes', e));
+
+  // v0.32.0 · Tablas de planificación (metrados por agrupación de parámetros, guardadas en el proyecto)
+  import('./visor-tablas.js?v=320').then(m => m.monta(V)).catch(e => console.error('visor-tablas', e));
 
   cargaLista().catch(e => { $('estadoCarga').textContent = 'No se pudo cargar: ' + e.message; });
 })();
