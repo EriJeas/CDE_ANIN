@@ -1491,6 +1491,16 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
         }
         { const dg = await pide(F + '/modelos/' + mM.vid + '/visor-diagnostico', { json: { ids: [3, 6, 99] } }), f3 = dg.j.filas.find(x => x.e === 3), f99 = dg.j.filas.find(x => x.e === 99);
           ok(dg.status === 200 && f3 && f3.clase === 1 && f99 && f99.falta === true && dg.j.clases['clase 1'] === 2 && dg.j.soloIndice === true && f3.aux === false && require('../lib/arbol-navisworks').lineaAuxiliar('Center line') && !require('../lib/arbol-navisworks').lineaAuxiliar('Walls'), 'v0.28.1: el diagnóstico del vínculo dice, de cada id, su fila del índice (clase, categoría, icono) o que no está ' + JSON.stringify(dg.j).slice(0, 260)); }
+        { // v0.30.1 · traspaso de archivos grandes: al disco y del disco a /subir (sin acumular en memoria), y el índice entero en un hilo aparte
+          const TRp = require('../lib/traspaso'), fsT = require('fs'), osT = require('os'), pT = require('path'), httpT = require('http'), dT = fsT.mkdtempSync(pT.join(osT.tmpdir(), 'cde-tr-'));
+          const srv = httpT.createServer((q2, r2) => { if (q2.method === 'GET') { const b = Buffer.alloc(1 << 20, 5); let n = 24; const da = () => { while (n > 0) { n--; if (!r2.write(b)) return r2.once('drain', da); } r2.end(); }; da(); } else { let t = 0; q2.on('data', (d) => { t += d.length; }); q2.on('end', () => { r2.setHeader('content-type', 'application/json'); r2.end(JSON.stringify({ recibido: t, nombre: q2.headers['x-nombre'] })); }); } });
+          await new Promise(o => srv.listen(0, o)); const pt = srv.address().port;
+          const tmpT = await TRp.baja(await fetch('http://127.0.0.1:' + pt + '/'), dT), tamT = fsT.statSync(tmpT).size, rT = await TRp.sube(pt, '/x', { 'x-nombre': 'modelo.nwd' }, tmpT);
+          TRp.limpia(dT); srv.close();
+          ok(tamT === 24 * 1048576 && rT.ok && rT.j.recibido === tamT && rT.j.nombre === 'modelo.nwd' && !fsT.existsSync(tmpT), 'v0.30.1: un archivo grande se baja a un temporal y se sube desde ahí (24 MB íntegros); los temporales se limpian');
+          const cf2 = fsT.readFileSync(pT.join(__dirname, '..', 'lib', 'conector-forma.js'), 'utf8'), mo2 = fsT.readFileSync(pT.join(__dirname, '..', 'lib', 'modelos.js'), 'utf8'), vf3 = fsT.readFileSync(pT.join(__dirname, '..', 'public', 'js', 'visor-forma.js'), 'utf8');
+          ok(/TR\.baja\(archivo, dirTmp\)/.test(cf2) && !/Readable\.fromWeb\(archivo\.body\), duplex/.test(cf2) && /trabajador-props\.js/.test(mo2) && /PROPS_EN_CURSO/.test(mo2) && !/PUENTE\.cargaProps\(\)\.catch/.test(vf3), 'v0.30.1: el conector de Forma ya no encadena descarga y subida en memoria; el índice entero se arma en un hilo aparte y no se pide solo al abrir un modelo');
+        }
         { // v0.29.2 · el índice entero (lo que piden Filtro con sectores, Tablero y COBie) se arma una vez y después sale del disco, idéntico
           const pidP = decodeURIComponent(F.split('/')[3]), u = B + '/api/modelos/' + pidP + '/' + mM.vid + '/props', h = { headers: { cookie: galleta } };
           const p1 = await fetch(u, h), t1 = await p1.text(), p2 = await fetch(u, h), t2 = await p2.text(), j1 = JSON.parse(t1);

@@ -98,7 +98,7 @@
     if (!INFO.indice) { await preparaIndice(); INFO = await api(F + '/modelos/' + encodeURIComponent(VID) + '/visor-forma'); }
     caja.classList.remove('lado'); caja.textContent = 'Abriendo el visualizador de Autodesk…';
     const ifr = document.createElement('iframe'); ifr.id = 'lienzoForma'; ifr.title = 'Visualizador de Autodesk';
-    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=300'; document.body.appendChild(ifr); });
+    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=301'; document.body.appendChild(ifr); });
     LZ = ifr.contentWindow.LIENZO; if (!LZ) throw new Error('El lienzo no se inició.');
     LZ.alGeometria = () => { GEO = 1; pintaCifras(); };
     LZ.alAvance = (p) => { if (GEO < 1) { GEO = Math.min(0.99, p); pintaCifras(); } if (!caja.classList.contains('oculto') && caja.dataset.fase === 'geo') caja.textContent = 'Autodesk entrega la geometría… ' + Math.round(p * 100) + ' %'; };
@@ -143,7 +143,7 @@
     FILTROS.length = 0; PARAMS = null; selecciona(null, true);
     abreModulo(MODULO && MODULOS[MODULO] ? MODULO : 'filtros', true);
     V.alCargarModelo.forEach(f => { try { f(); } catch (e) { console.warn(e); } });
-    if (EL) setTimeout(() => { try { if (window.PUENTE && window.PUENTE.cargaProps) window.PUENTE.cargaProps().catch(() => {}); } catch (e) {} }, 800);   // v0.29.2: el índice entero se adelanta en segundo plano
+    // v0.30.1: el índice entero YA NO se adelanta al abrir el modelo (en un modelo grande cargaba al servidor sin que nadie lo hubiera pedido): se pide al abrir un módulo que lo use
   }
   // v0.28.1 · mientras Autodesk sigue entregando geometría (las líneas y los vidrios llegan al final) la cabecera lo dice: el modelo aún no está completo
   let CIFRAS = '', GEO = 0;
@@ -517,10 +517,10 @@
   };
   window.VISOR = V; window.V = V;
   // Inventario, Planos (PDF) y Conjuntos e interferencias: los de visor-modulos.js. Comparar versiones dibuja la otra versión con la geometría propia: queda con el aviso.
-  import('./visor-modulos.js?v=300').then(m => { const antes = { conjuntos: MODULOS.conjuntos, comparar: MODULOS.comparar }; m.monta(V); const cj = MODULOS.conjuntos, cv = MODULOS.comparar; MODULOS.conjuntos = () => conGeometria('Conjuntos', cj); MODULOS.comparar = () => conGeometria('Comparar versiones', cv); })   // v0.29.3: Conjuntos e interferencias, el de visor-modulos.js, con las cajas y triángulos del visualizador.catch(e => console.error('visor-modulos', e));
+  import('./visor-modulos.js?v=301').then(m => { const antes = { conjuntos: MODULOS.conjuntos, comparar: MODULOS.comparar }; m.monta(V); const cj = MODULOS.conjuntos, cv = MODULOS.comparar; MODULOS.conjuntos = () => conGeometria('Conjuntos', cj); MODULOS.comparar = () => conGeometria('Comparar versiones', cv); })   // v0.29.3: Conjuntos e interferencias, el de visor-modulos.js, con las cajas y triángulos del visualizador.catch(e => console.error('visor-modulos', e));
 
   // v0.30.0 · Niveles / Ambientes y Flujos hospitalarios: los de visor-ambientes.js, tal cual, con las cajas, triángulos, rutas y cortes del visualizador
-  import('./visor-ambientes.js?v=300').then(m => { m.monta(V); const am = MODULOS.ambientes, fl = MODULOS.flujos; MODULOS.ambientes = () => conGeometria('Niveles / Ambientes', am); MODULOS.flujos = () => conGeometria('Flujos hospitalarios', fl); }).catch(e => console.error('visor-ambientes', e));
+  import('./visor-ambientes.js?v=301').then(m => { m.monta(V); const am = MODULOS.ambientes, fl = MODULOS.flujos; MODULOS.ambientes = () => conGeometria('Niveles / Ambientes', am); MODULOS.flujos = () => conGeometria('Flujos hospitalarios', fl); }).catch(e => console.error('visor-ambientes', e));
 
   cargaLista().catch(e => { $('estadoCarga').textContent = 'No se pudo cargar: ' + e.message; });
 })();
