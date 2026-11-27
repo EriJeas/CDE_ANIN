@@ -178,3 +178,5 @@ body.vforma .carril .mod.prox:hover { opacity: .8; }
 .tptabla tr.clic { cursor: pointer; } .tptabla tr.clic:hover { background: rgba(200, 162, 74, .1); } .tptabla tr.sel { background: rgba(200, 162, 74, .22); }
 .tptabla tr.n0 td:first-child { font-weight: 600; } .tptabla tr.tptotal td { border-top: 2px solid var(--er-or); font-weight: 600; position: sticky; bottom: 0; background: #1b1710; }
 .tpmas { display: inline-block; width: 14px; text-align: center; color: var(--er-or); font-weight: 700; } .tpids { margin-top: 4px; padding: 6px 8px; border: 1px solid var(--borde); max-height: 70px; overflow: auto; font-size: 11px; }
+
+.tppest { align-self: center; min-width: 90px; white-space: nowrap; margin-right: 4px; }
