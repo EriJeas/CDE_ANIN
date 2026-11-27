@@ -10,6 +10,7 @@
 const fs = require('fs'), path = require('path'), os = require('os'), zlib = require('zlib');
 const DATOS = fs.mkdtempSync(path.join(os.tmpdir(), 'cde-prueba-'));
 Object.assign(process.env, { DATOS_DIR: DATOS, MODO_ACCESO: 'local', ACCESO_CLAVE: 'prueba', ADMIN_EMAILS: 'admin@anin.gob.pe', SESSION_SECRET: 'secreto-de-prueba', PORT: '0' });
+process.env.FORMA_PREINDICE = '0';   // el índice por adelantado se prueba aparte (adelantar-indice): que las sincronizaciones de la batería no lo lancen solas
 const { app } = require('../servidor');
 
 let fallos = 0, n = 0;
@@ -1480,8 +1481,12 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
           ok(rv.status === 200 && rv.j.region === 'US' && rv.j.version === 1 && /^[A-Za-z0-9_-]+$/.test(rv.j.urn) && rv.j.indice === false, 'v0.28.0: el Visor de Autodesk Forma recibe qué abrir (urn y región) y sabe que el índice aún no está en el CDE ' + JSON.stringify(rv.j).slice(0, 160));
           let ri = await pide(F + '/modelos/' + mM.vid + '/instalar-indice', { json: {} }); ok(ri.status === 409, 'v0.28.0: sin un índice armado no hay nada que instalar');
           ri = await pide(F + '/modelos/' + vPdf.id + '/visor-forma'); ok(ri.status === 409 && ri.j.error === 'no-modelo', 'v0.28.0: un PDF no se abre en el Visor de Autodesk Forma');
-          await pide(F + '/modelos/' + mM.vid + '/preparar', { json: {} });
-          let tI = null; for (let i = 0; i < 100; i++) { tI = (await pide(F + '/modelos/' + mM.vid + '/estado')).j.trabajo; if (tI && tI.indice.estado !== 'leyendo') break; await duerme(100); }
+          // v0.31.0 · el índice por adelantado: se arma sin navegador, queda en el disco con su ficha y «preparar» lo encuentra hecho
+          const ad = await pide(F + '/modelos/' + mM.vid + '/adelantar-indice', { json: {} });
+          let tI = null; for (let i = 0; i < 150; i++) { tI = (await pide(F + '/modelos/' + mM.vid + '/estado')).j.trabajo; if (tI && tI.indice.estado !== 'leyendo') break; await duerme(100); }
+          const dirI = require('path').join(process.env.DATOS_DIR, 'indices'), fichas = require('fs').readdirSync(dirI).filter(n => /\.forma\.json$/.test(n)), ad2 = await pide(F + '/modelos/' + mM.vid + '/adelantar-indice', { json: {} }), p0b = MDX.pedidos.length;
+          const prp = await pide(F + '/modelos/' + mM.vid + '/preparar', { json: {} });
+          ok(ad.status === 200 && ad.j.encolado === true && tI && tI.indice.estado === 'listo' && tI.indice.resumen.elementos === 2 && fichas.length === 1 && (ad2.j.enCurso === true || ad2.j.listo === true) && prp.j.trabajo.indice.estado === 'listo' && MDX.pedidos.length === p0b, 'v0.31.0: el índice de un modelo traído de Forma se arma por adelantado, sin abrirlo; queda en el disco con su ficha y al abrir el modelo no se vuelve a pedir nada a Autodesk ' + JSON.stringify([ad.j, tI && tI.indice.estado, fichas.length, ad2.j]));
           ri = await pide(F + '/modelos/' + mM.vid + '/instalar-indice', { json: {} });
           rv = await pide(F + '/modelos/' + mM.vid + '/visor-forma');
           const elF = await pide('/api/modelos/' + pidF + '/' + mM.vid + '/elementos'), esF = await pide('/api/modelos/' + pidF + '/' + mM.vid + '/estado');
