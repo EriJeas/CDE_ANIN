@@ -98,11 +98,13 @@
     if (!INFO.indice) { await preparaIndice(); INFO = await api(F + '/modelos/' + encodeURIComponent(VID) + '/visor-forma'); }
     caja.classList.remove('lado'); caja.textContent = 'Abriendo el visualizador de Autodesk…';
     const ifr = document.createElement('iframe'); ifr.id = 'lienzoForma'; ifr.title = 'Visualizador de Autodesk';
-    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=280'; document.body.appendChild(ifr); });
+    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=281'; document.body.appendChild(ifr); });
     LZ = ifr.contentWindow.LIENZO; if (!LZ) throw new Error('El lienzo no se inició.');
-    LZ.alAvance = (p) => { if (!caja.classList.contains('oculto') && caja.dataset.fase === 'geo') caja.textContent = 'Autodesk entrega la geometría… ' + Math.round(p * 100) + ' %'; };
+    LZ.alGeometria = () => { GEO = 1; pintaCifras(); };
+    LZ.alAvance = (p) => { if (GEO < 1) { GEO = Math.min(0.99, p); pintaCifras(); } if (!caja.classList.contains('oculto') && caja.dataset.fase === 'geo') caja.textContent = 'Autodesk entrega la geometría… ' + Math.round(p * 100) + ' %'; };
     caja.dataset.fase = 'geo'; caja.textContent = 'Autodesk entrega el modelo…';
     const r = await LZ.abre({ urn: INFO.urn, region: INFO.region });
+    try { if (LZ.modelo && LZ.modelo.isLoadDone && LZ.modelo.isLoadDone()) GEO = 1; } catch (e) {}
     caja.dataset.fase = ''; caja.textContent = 'Leyendo el índice del CDE…';
     if (INFO.indice) { try { EL = await api('/api/modelos/' + PID + '/' + VID + '/elementos'); EL.idx = new Map(EL.columnas.e.map((e, i) => [e, i])); } catch (e) { EL = null; } }
     // los ids: se elige la lectura de la correspondencia que coincide con los nombres del índice; si ninguna coincide, no se vincula
@@ -122,17 +124,29 @@
     if (EL) {
       G = { elem: EL.columnas.e.map(e => ({ e })), porE: new Map(EL.columnas.e.map((e, i) => [e, i])), nElem: EL.columnas.e.length };
       // el vínculo: de una muestra de piezas con geometría, cuántas llegan (ellas o un antecesor) a un elemento del índice
-      let con = 0; const sin = [];
-      for (const d of P.muestra) { if (elementoDePieza(d) != null) con++; else if (sin.length < 12) sin.push(LZ.nombreDe(d) || ('id ' + d)); }
-      VINC = { piezas: P.total, muestra: P.muestra.length, con, sin };
+      let con = 0; const sin = [], sinIds = [];
+      for (const d of P.muestra) { if (elementoDePieza(d) != null) con++; else { if (sin.length < 12) sin.push(LZ.nombreDe(d) || ('id ' + d)); sinIds.push(d); } }
+      VINC = { piezas: P.total, muestra: P.muestra.length, con, sin, sinIds };
     } else { G = null; VINC = null; }
-    $('cifras').textContent = (EL ? num(EL.columnas.e.length) + ' elementos en el índice · ' : '') + num(P.total) + ' piezas con geometría · ' + (INFO.archivo || '') + ' · v' + (INFO.version || '?') + ' de Forma';
+    CIFRAS = (EL ? num(EL.columnas.e.length) + ' elementos en el índice · ' : '') + num(P.total) + ' piezas con geometría · ' + (INFO.archivo || '') + ' · v' + (INFO.version || '?') + ' de Forma'; pintaCifras();
     pintaVinculo(aviso);
     if (aviso) { caja.classList.add('lado'); caja.innerHTML = esc(aviso) + '<br><button id="vfCierra" class="mini" style="margin-top:8px">Entendido</button>'; $('vfCierra').onclick = () => caja.classList.add('oculto'); } else caja.classList.add('oculto');
     LZ.alSeleccionar = alSeleccionarEnVisor;
     FILTROS.length = 0; PARAMS = null; selecciona(null, true);
     abreModulo(MODULO && MODULOS[MODULO] ? MODULO : 'filtros', true);
     V.alCargarModelo.forEach(f => { try { f(); } catch (e) { console.warn(e); } });
+  }
+  // v0.28.1 · mientras Autodesk sigue entregando geometría (las líneas y los vidrios llegan al final) la cabecera lo dice: el modelo aún no está completo
+  let CIFRAS = '', GEO = 0;
+  function pintaCifras() { const c = $('cifras'); if (!c) return; c.innerHTML = (GEO < 1 ? '<b style="color:#f0b640">⏳ Autodesk sigue entregando geometría… ' + Math.round(GEO * 100) + ' %</b> · ' : '<span style="color:#8fd18f">✓ geometría completa</span> · ') + esc(CIFRAS); }
+  /** v0.28.1 · De las piezas de la muestra sin elemento: su cadena de antecesores y lo que el índice dice de cada uno (texto para copiar). */
+  async function diagnosticoVinculo() {
+    const cad = VINC.sinIds.slice(0, 10).map(d => { const c = []; let p = d; for (let k = 0; k < 9 && p > 0; k++) { c.push([p, I.v1(p), LZ.nombreDe(p).slice(0, 36)]); p = LZ.padreDe(p); } return c; });
+    const pedir = [...new Set(cad.flatMap(c => c.map(x => x[1])).filter(x => x > 0))];
+    const R = await api(F + '/modelos/' + encodeURIComponent(VID) + '/visor-diagnostico', { json: { ids: pedir } }), de = new Map((R.filas || []).map(x => [x.e, x]));
+    return ['Visor de Autodesk Forma · ' + (INFO.archivo || '') + ' · v' + INFO.version + ' de Forma · ids ' + I.tipo + ' · árbol ' + (R.arbol || '-') + ' · regla ' + (R.reglaElem || '-') + (R.soloIndice ? ' · solo índice' : ''),
+      'Índice: ' + JSON.stringify(R.clases || {}) + ' · elementos ' + EL.columnas.e.length + ' · piezas ' + VINC.piezas + ' · muestra ' + VINC.con + ' de ' + VINC.muestra + ' vinculadas',
+      ...cad.map((c, i) => (i + 1) + ') ' + c.map(x => { const r = de.get(x[1]); return '[' + x[0] + '→' + x[1] + ' «' + x[2] + '» ' + (x[1] <= 0 ? 'SIN CORRESPONDENCIA' : !r || r.falta ? 'NO ESTÁ' : 'clase ' + r.clase + (r.icono ? ' icono «' + r.icono + '»' : '') + ' cat «' + r.cat + '»' + (r.anc ? ' anc ' + r.anc : '')) + ']'; }).join(' ← '))].join('\n');
   }
   /** De una pieza del visualizador (id SVF2) a su elemento del índice: ella misma o su primer antecesor que lo sea. null si ninguno. */
   function elementoDePieza(d) {
@@ -151,7 +165,8 @@
       ventana('Geometría y datos de este modelo', '<div class="tfid"><p><b>Geometría:</b> la dibuja el visualizador de Autodesk con la traducción de Forma (versión ' + esc(String((INFO || {}).version || '?')) + '). El CDE no arma, simplifica ni omite nada.</p><p><b>Datos:</b> el índice de parámetros del CDE.</p>' +
         (aviso ? '<div class="aviso ambar">' + esc(aviso) + '</div>' : '<table>' + fila(num(EL.columnas.e.length), 'elementos en el índice del CDE') + fila(num(VINC.piezas), 'piezas con geometría en el modelo de Autodesk') + fila(num(VINC.con) + ' de ' + num(VINC.muestra), 'piezas de la muestra que llegan a un elemento del índice (<b>' + pct + ' %</b>)') +
           (INFO.ids ? fila(INFO.ids.coinciden + ' de ' + INFO.ids.total, 'nombres que coinciden entre el visualizador y el índice (comprobación de identificadores, ' + esc(I.tipo) + ')') : '') + '</table>' +
-          (VINC.sin.length ? '<p class="pista" style="margin-top:8px">Piezas de la muestra sin elemento en el índice (se ven, pero no responden a los filtros; al pulsarlas se muestran las propiedades de Autodesk): ' + VINC.sin.map(esc).join(' · ') + '</p>' : '<p class="pista" style="margin-top:8px">Todas las piezas de la muestra están vinculadas a su elemento.</p>')) + '</div>', { ancho: 560, alto: 380 });
+          (VINC.sin.length ? '<p class="pista" style="margin-top:8px">Piezas de la muestra sin elemento en el índice (se ven, pero no responden a los filtros; al pulsarlas se muestran las propiedades de Autodesk): ' + VINC.sin.map(esc).join(' · ') + '</p>' : '<p class="pista" style="margin-top:8px">Todas las piezas de la muestra están vinculadas a su elemento.</p>') + (VINC.sinIds.length ? '<p style="margin-top:8px"><button class="mini" id="vdHaz">Diagnóstico de las piezas sin vincular</button> <button class="mini oculto" id="vdCopia">Copiar</button></p><textarea id="vdTxt" class="oculto" readonly style="width:100%;height:150px;font:11px monospace"></textarea>' : '')) + '</div>', { ancho: 620, alto: 460 });
+      const bh = document.getElementById('vdHaz'); if (bh) bh.onclick = async () => { const t = document.getElementById('vdTxt'), bc = document.getElementById('vdCopia'); bh.disabled = true; t.classList.remove('oculto'); t.value = 'Consultando…'; try { t.value = await diagnosticoVinculo(); bc.classList.remove('oculto'); bc.onclick = () => { t.select(); try { navigator.clipboard.writeText(t.value); } catch (e) { document.execCommand('copy'); } bc.textContent = 'Copiado'; }; } catch (e) { t.value = 'No se pudo armar: ' + e.message; } bh.disabled = false; };
     };
   }
 

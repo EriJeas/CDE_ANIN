@@ -1489,6 +1489,8 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
           const vi = await pide(F + '/modelos/' + mM.vid + '/visor-ids', { json: { pares: [[3, 'Muro básico'], [99, 'Solid', 6, 'Puerta simple'], [96, 'Solid']] } }), viMal = await pide(F + '/modelos/' + mM.vid + '/visor-ids', { json: { pares: [[3, 'Puerta simple'], [6, 'Muro básico']] } });
           ok(vi.j.total === 2 && vi.j.coinciden === 2 && vi.j.sinFicha === 1 && viMal.j.coinciden === 0 && viMal.j.ejemplos.length === 2, 'v0.28.0: los identificadores del visualizador se comprueban por nombre contra el índice instalado (una pieza sin ficha se comprueba con su antecesor) ' + JSON.stringify(vi.j));
         }
+        { const dg = await pide(F + '/modelos/' + mM.vid + '/visor-diagnostico', { json: { ids: [3, 6, 99] } }), f3 = dg.j.filas.find(x => x.e === 3), f99 = dg.j.filas.find(x => x.e === 99);
+          ok(dg.status === 200 && f3 && f3.clase === 1 && f99 && f99.falta === true && dg.j.clases['clase 1'] === 2 && dg.j.soloIndice === true, 'v0.28.1: el diagnóstico del vínculo dice, de cada id, su fila del índice (clase, categoría, icono) o que no está ' + JSON.stringify(dg.j).slice(0, 260)); }
         // (lo que sigue es el paso al visor propio: reutiliza el índice recién instalado y le añade su geometría)
         r = await pide(F + '/modelos/' + mM.vid + '/preparar', { json: {} });
         ok(r.status === 200 && r.j.urn === Buffer.from('urn:v:M?version=1').toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_') && r.j.region === 'US' && r.j.version === 1, 'preparar da la traducción del archivo en Autodesk (urn de la versión de Forma) y su región ' + JSON.stringify(r.j).slice(0, 200));
