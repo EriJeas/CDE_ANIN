@@ -98,7 +98,7 @@
     if (!INFO.indice) { await preparaIndice(); INFO = await api(F + '/modelos/' + encodeURIComponent(VID) + '/visor-forma'); }
     caja.classList.remove('lado'); caja.textContent = 'Abriendo el visualizador de Autodesk…';
     const ifr = document.createElement('iframe'); ifr.id = 'lienzoForma'; ifr.title = 'Visualizador de Autodesk';
-    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=293'; document.body.appendChild(ifr); });
+    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=300'; document.body.appendChild(ifr); });
     LZ = ifr.contentWindow.LIENZO; if (!LZ) throw new Error('El lienzo no se inició.');
     LZ.alGeometria = () => { GEO = 1; pintaCifras(); };
     LZ.alAvance = (p) => { if (GEO < 1) { GEO = Math.min(0.99, p); pintaCifras(); } if (!caja.classList.contains('oculto') && caja.dataset.fase === 'geo') caja.textContent = 'Autodesk entrega la geometría… ' + Math.round(p * 100) + ' %'; };
@@ -122,7 +122,8 @@
       INFO.ids = VI;
     }
     if (EL) {
-      G = { elem: EL.columnas.e.map(e => ({ e })), porE: new Map(EL.columnas.e.map((e, i) => [e, i])), nElem: EL.columnas.e.length, posiciones: [], meta: { modelo: INFO.archivo || '' } };
+      G = { elem: EL.columnas.e.map(e => ({ e })), porE: new Map(EL.columnas.e.map((e, i) => [e, i])), nElem: EL.columnas.e.length, posiciones: [], meta: { modelo: INFO.archivo || '' }, ambientes: new Set() };
+      { const C = EL.columnas, D = EL.diccionarios; for (let i = 0; i < C.e.length; i++) if (ROOM_RE.test(String(D.cat[C.cat[i]] || '').trim())) G.ambientes.add(C.e[i]); }
       // el vínculo: de una muestra de piezas con geometría, cuántas llegan (ellas o un antecesor) a un elemento del índice
       let con = 0; const sin = [], sinIds = [];
       for (const d of P.muestra) { if (elementoDePieza(d) != null) con++; else { if (sin.length < 12) sin.push(LZ.nombreDe(d) || ('id ' + d)); sinIds.push(d); } }
@@ -180,6 +181,7 @@
 
   // ---------- visibilidad y colores (sobre el visualizador de Autodesk) ----------
   function aplicaVis() {
+    if (LZ && I && G && G.ambientes && G.ambientes.size) { const fuera = []; if (!MOSTRAR_AMB) for (const e of G.ambientes) if (!BASE || !BASE.has(e)) fuera.push(e); if (fuera.length || AMB_FUERA) { AMB_FUERA = fuera.length; setTimeout(() => { try { LZ.ocultaAparte(idsV(fuera)); } catch (e) {} }, 0); } }
     VIS = BASE ? new Set(BASE) : null;
     if (OCULTOS.size && G) { VIS = VIS || new Set(EL.columnas.e); for (const e of OCULTOS) VIS.delete(e); }
     if (LZ && I) LZ.visibles(BASE ? idsV(BASE) : null, OCULTOS.size ? idsV(OCULTOS) : null);
@@ -188,6 +190,7 @@
   /** En este visor no hay cajas propias: «la caja de un conjunto» es el conjunto mismo, y encuadrar se lo pide al visualizador. */
   function cajaDe(set) { const ids = [...(set || [])], cero = { x: 0, y: 0, z: 0, length: () => 0 }; return { __ids: ids, isEmpty: () => !ids.length, getSize: () => cero, getCenter: () => cero }; }
   function encuadra(caja) { if (!LZ || !I) return; if (caja && caja.__ids) LZ.encuadra(idsV(caja.__ids)); else LZ.encuadra(null); }
+  let AMB_FUERA = 0;
   let TINTES = new Map();   // e -> rgb lineal (igual que en visor.js: lo que escriben «colorear por» y los módulos)
   let rafT = 0;
   function aplicaTintes() {
@@ -342,8 +345,8 @@
   MODULOS.ayuda = () => panel('Ayuda', '<div class="grupo"><h4>Qué es este visor</h4><p>El modelo lo dibuja el <b>visualizador de Autodesk</b> con la traducción que Forma ya tiene del archivo: la geometría es la de Forma, completa. Las funciones de la izquierda son las del visor del CDE y trabajan con el índice de parámetros del CDE.</p></div>' +
     '<div class="grupo"><h4>Dónde está cada cosa</h4><p><b>Izquierda:</b> módulos del CDE (filtros, sectores, inventario, planos, tableros, elemento). <b>Abajo a la izquierda:</b> Encuadrar, Aislar, Ocultar, Mostrar todo y Silueta. <b>Abajo al centro</b> (barra de Autodesk): órbita, encuadre, medir, sección, explosión, navegador del modelo, propiedades de Autodesk y ajustes. <b>Arriba a la derecha:</b> el cubo de vistas.</p></div>' +
     '<div class="grupo"><h4>Ratón</h4><p>Arrastrar: girar · Rueda: acercar · Botón central o derecho: desplazar · Clic: seleccionar (abre «Elemento») · Doble clic: acercar al elemento.</p></div>' +
-    '<div class="grupo"><h4>Aún solo en el Visor GIS/BIM</h4><p>Niveles / Ambientes, Comparar versiones y Flujos hospitalarios dibujan sobre la geometría propia del CDE (cortes en planta, rutas, la otra versión) y están en adaptación. El botón <b>Visor GIS/BIM</b> de la cabecera abre este mismo modelo allí.</p></div>');
-  for (const [k, t] of [['ambientes', 'Niveles / Ambientes'], ['comparar', 'Comparar versiones'], ['flujos', 'Flujos hospitalarios']])
+    '<div class="grupo"><h4>Módulos con geometría</h4><p>Conjuntos e interferencias, Niveles / Ambientes, Flujos hospitalarios, Comparar versiones e Incidencias leen las cajas, los triángulos y la cámara del visualizador de Autodesk. La primera vez que se abre uno en un modelo se miden sus piezas (unos segundos). En Comparar versiones se comparan los parámetros y se pintan los elementos nuevos y modificados; el desplazamiento geométrico y los eliminados en rojo se ven en el Visor GIS/BIM.</p></div>');
+  for (const [k, t] of [])
     MODULOS[k] = () => { const c = panel(t, '<p class="pista">Este módulo trabaja con la geometría propia del CDE y por ahora solo está en el <b>Visor GIS/BIM</b>. Se irá incorporando aquí.</p><div class="filab"><button id="vfPropio">Abrir este modelo en el Visor GIS/BIM</button></div>'); c.querySelector('#vfPropio').onclick = () => $('btnPropio').click(); };
 
 
@@ -356,7 +359,9 @@
     for (let f = 0; f < c.n; f++) {
       if (c.tipo[f] !== 1) continue; const d = c.db(f); let e = porDb.get(d); if (e === undefined) { e = elementoDePieza(d); porDb.set(d, e); } if (e == null) continue;
       let l = PIEZAS.get(e); if (!l) { l = []; PIEZAS.set(e, l); } l.push(f);
-      const o = f * 6; let b = cajas.get(e); if (!b) cajas.set(e, [c.caja[o], c.caja[o + 1], c.caja[o + 2], c.caja[o + 3], c.caja[o + 4], c.caja[o + 5]]); else { for (let k = 0; k < 3; k++) { if (c.caja[o + k] < b[k]) b[k] = c.caja[o + k]; if (c.caja[o + 3 + k] > b[3 + k]) b[3 + k] = c.caja[o + 3 + k]; } }
+      // el censo viene en coordenadas del CDE (Z arriba); los módulos del visor propio trabajan en su escena (Y arriba): (x, y, z) -> (x, z, -y)
+      const o = f * 6, q = [c.caja[o], c.caja[o + 2], -c.caja[o + 4], c.caja[o + 3], c.caja[o + 5], -c.caja[o + 1]]; let b = cajas.get(e);
+      if (!b) cajas.set(e, q); else { for (let k = 0; k < 3; k++) { if (q[k] < b[k]) b[k] = q[k]; if (q[3 + k] > b[3 + k]) b[3 + k] = q[3 + k]; } }
     }
     G.cajas = cajas; CENSO = c; return c;
   }
@@ -368,9 +373,26 @@
     D = D || G; if (!D || !PIEZAS || !LZ) return [];
     if (D.posiciones.length > 24e6) { D.posiciones.length = 0; TRIS.clear(); }   // el depósito de vértices se vacía si crece demasiado (se vuelve a leer lo que haga falta)
     let t = TRIS.get(x.e);
-    if (!t) { const P = LZ.triangulos(PIEZAS.get(x.e) || [], 0), base = D.posiciones.length / 3, nv = P ? P.length / 3 : 0; if (P) for (let k = 0; k < P.length; k++) D.posiciones.push(P[k]); const src = new Uint32Array(nv); for (let k = 0; k < nv; k++) src[k] = base + k; t = { src, n: nv - nv % 3 }; TRIS.set(x.e, t); }
+    if (!t) { const P = LZ.triangulos(PIEZAS.get(x.e) || [], 0), base = D.posiciones.length / 3, nv = P ? P.length / 3 : 0; if (P) for (let k = 0; k < P.length; k += 3) D.posiciones.push(P[k], P[k + 2], -P[k + 1]); /* a la escena (Y arriba) */ const src = new Uint32Array(nv); for (let k = 0; k < nv; k++) src[k] = base + k; t = { src, n: nv - nv % 3 }; TRIS.set(x.e, t); }
     return [[t.src, 0, t.n, false]];
   }
+  // ----- v0.30.0 · lo que piden Niveles / Ambientes y Flujos hospitalarios (visor-ambientes.js), sobre el visualizador de Autodesk -----
+  // Los módulos hablan en la escena del visor propio (Y arriba); el lienzo, en coordenadas del CDE (Z arriba): escena (x, y, z) = CDE (x, -z, y).
+  const aCde = (p) => [p.x, -p.z, p.y];
+  class Vector3 { constructor(x, y, z) { this.x = x || 0; this.y = y || 0; this.z = z || 0; } clone() { return new Vector3(this.x, this.y, this.z); } copy(v) { this.x = v.x; this.y = v.y; this.z = v.z; return this; } add(v) { this.x += v.x; this.y += v.y; this.z += v.z; return this; } sub(v) { this.x -= v.x; this.y -= v.y; this.z -= v.z; return this; } multiplyScalar(k) { this.x *= k; this.y *= k; this.z *= k; return this; } length() { return Math.hypot(this.x, this.y, this.z); } distanceTo(v) { return Math.hypot(this.x - v.x, this.y - v.y, this.z - v.z); } normalize() { const l = this.length() || 1; return this.multiplyScalar(1 / l); } set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } }
+  class Box3 { constructor() { this.min = new Vector3(Infinity, Infinity, Infinity); this.max = new Vector3(-Infinity, -Infinity, -Infinity); } expandByPoint(p) { for (const k of ['x', 'y', 'z']) { if (p[k] < this.min[k]) this.min[k] = p[k]; if (p[k] > this.max[k]) this.max[k] = p[k]; } return this; } expandByScalar(s) { for (const k of ['x', 'y', 'z']) { this.min[k] -= s; this.max[k] += s; } return this; } isEmpty() { return this.max.x < this.min.x; } getCenter(v) { return (v || new Vector3()).set((this.min.x + this.max.x) / 2, (this.min.y + this.max.y) / 2, (this.min.z + this.max.z) / 2); } getSize(v) { return (v || new Vector3()).set(this.max.x - this.min.x, this.max.y - this.min.y, this.max.z - this.min.z); } }
+  const cajaCde = (b) => [b.min.x, -b.max.z, b.min.y, b.max.x, -b.min.z, b.max.y];
+  function limpiaCapa() { if (LZ) LZ.limpiaCapa(); }
+  function dibujaRuta(pts, color, o) { if (LZ) LZ.ruta(pts.map(aCde), color, o); }
+  function vistaPlanta(caja) { if (LZ && caja && !caja.isEmpty()) LZ.planta(cajaCde(caja)); }
+  function cortaPlanta(y, caja) { if (!LZ) return; LZ.corte(y); if (caja) vistaPlanta(caja); }
+  function quitaCortePlanta() { if (LZ) LZ.corte(null); }
+  function cieloAbierto(p, alcance) { return LZ ? LZ.cieloAbierto(aCde(p), alcance) : null; }
+  /** Los triángulos de un elemento [ax,ay,az, bx,by,bz, …] en la escena (como V.triangulosDe del visor propio). */
+  function triangulosDe(x) { const P = (LZ && PIEZAS && LZ.triangulos(PIEZAS.get(x.e) || [], 0)) || new Float32Array(0), out = new Float32Array(P.length); for (let k = 0; k < P.length; k += 3) { out[k] = P[k]; out[k + 1] = P[k + 2]; out[k + 2] = -P[k + 1]; } return out; }
+  // los ambientes (Habitaciones, Rooms, Spaces): la misma expresión del visor propio. Ocultos mientras no se pida verlos o se abra uno.
+  const ROOM_RE = /^(revit\s+)?(rooms?|habitaci[oó]n(es)?|ambientes?|spaces?|espacios?|mep\s*spaces?|ifcspace)$/i;
+  let MOSTRAR_AMB = false;
   /** Asegura el censo antes de abrir un módulo que calcula con geometría, avisando mientras tanto. */
   async function conGeometria(titulo, abre) {
     if (!G) { panel(titulo, sinDatos()); return; }
@@ -386,7 +408,7 @@
     const c = i.camara || {};
     if (c.pos && c.dir && LZ) {
       let ob = null; const C = cajasDe(G), bs = propios.map(e => C.get(e)).filter(Boolean);
-      if (bs.length) { const m = [Infinity, Infinity, Infinity], M = [-Infinity, -Infinity, -Infinity]; for (const b of bs) for (let k = 0; k < 3; k++) { if (b[k] < m[k]) m[k] = b[k]; if (b[3 + k] > M[k]) M[k] = b[3 + k]; } ob = [(m[0] + M[0]) / 2, (m[1] + M[1]) / 2, (m[2] + M[2]) / 2]; }
+      if (bs.length) { const m = [Infinity, Infinity, Infinity], M = [-Infinity, -Infinity, -Infinity]; for (const b of bs) for (let k = 0; k < 3; k++) { if (b[k] < m[k]) m[k] = b[k]; if (b[3 + k] > M[k]) M[k] = b[3 + k]; } ob = aCde({ x: (m[0] + M[0]) / 2, y: (m[1] + M[1]) / 2, z: (m[2] + M[2]) / 2 }); }
       LZ.ponCamara(c, ob);
     } else if (propios.length) encuadra(cajaDe(new Set(propios)));
     const lista = (i.elementos || []).map(el => (el.e != null ? 'id ' + el.e : '') + (el.uid ? ' · ' + el.uid.slice(0, 14) + '…' : '') + (el.modelo ? ' · ' + el.modelo : '')).join('<br>');
@@ -484,17 +506,21 @@
   // ---------- V: lo que esperan visor-modulos.js y visor-puente.js del visor (misma forma que en visor.js) ----------
   class Vector4 { constructor(x, y, z, w) { this.x = x || 0; this.y = y || 0; this.z = z || 0; this.w = w == null ? 1 : w; } }
   const V = {
-    THREE: { Vector4 }, PID, api, esc, num, ventana, barras, panel, abreModulo, MODULOS, DIMS, PALETA, hexLin, f3, FORMA: true,
+    THREE: { Vector4, Vector3, Box3 }, PID, api, esc, num, ventana, barras, panel, abreModulo, MODULOS, DIMS, PALETA, hexLin, f3, FORMA: true,
     get VID() { return VID; }, get G() { return G; }, get EL() { return EL; }, get VIS() { return VIS; }, get SEL() { return SEL; }, get LISTA() { return LISTA; }, get FILTROS() { return FILTROS; }, get TINTES() { return TINTES; }, set TINTES(t) { TINTES = t; },
     get QUIEN() { return QUIEN; }, get PROY() { return PROY; }, get MODULO() { return MODULO; }, get OCULTOS() { return OCULTOS; }, get LIENZO() { return LZ; }, get INFO() { return INFO; }, get VINCULO() { return VINC; },
     cajaDe, encuadra, dibuja: () => {}, muestraSolo, recalcula, selecciona, aplicaTintes, pasanTodos, cuentaDim, anadeFiltro, quitaFiltro, pintaFiltros, pintaEstadoFiltros, elementoDePieza, idsV,
-    nuevaIncidencia, abreIncidencia, cajasDe, trozosDe, censo,
+    nuevaIncidencia, abreIncidencia, cajasDe, trozosDe, censo, limpiaCapa, dibujaRuta, cortaPlanta, quitaCortePlanta, vistaPlanta, triangulosDe, cieloAbierto, ROOM_RE,
+    get MOSTRAR_AMB() { return MOSTRAR_AMB; }, set MOSTRAR_AMB(v) { MOSTRAR_AMB = !!v; aplicaVis(); },
     info: (e) => { if (!EL || !EL.idx.has(e)) return null; const i = EL.idx.get(e), D = EL.diccionarios, C = EL.columnas; return { e, nombre: C.nombre[i], modelo: D.modelo[C.modelo[i]], cat: D.cat[C.cat[i]], fam: D.fam[C.fam[i]], tip: D.tip[C.tip[i]], niv: D.niv[C.niv[i]] }; },
     alCargarModelo: [], alCambiarModelo: [], alSeleccionar: [], alMostrarTodo: [], alClicFantasma: [], extraRaycast: [], alRecalcular: [], alPintarFiltros: [], alAbrirFiltros: [], COLOR_SEL, srgbLin
   };
   window.VISOR = V; window.V = V;
   // Inventario, Planos (PDF) y Conjuntos e interferencias: los de visor-modulos.js. Comparar versiones dibuja la otra versión con la geometría propia: queda con el aviso.
-  import('./visor-modulos.js?v=293').then(m => { const antes = { conjuntos: MODULOS.conjuntos, comparar: MODULOS.comparar }; m.monta(V); const cj = MODULOS.conjuntos; MODULOS.conjuntos = () => conGeometria('Conjuntos', cj); MODULOS.comparar = antes.comparar; })   // v0.29.3: Conjuntos e interferencias, el de visor-modulos.js, con las cajas y triángulos del visualizador.catch(e => console.error('visor-modulos', e));
+  import('./visor-modulos.js?v=300').then(m => { const antes = { conjuntos: MODULOS.conjuntos, comparar: MODULOS.comparar }; m.monta(V); const cj = MODULOS.conjuntos, cv = MODULOS.comparar; MODULOS.conjuntos = () => conGeometria('Conjuntos', cj); MODULOS.comparar = () => conGeometria('Comparar versiones', cv); })   // v0.29.3: Conjuntos e interferencias, el de visor-modulos.js, con las cajas y triángulos del visualizador.catch(e => console.error('visor-modulos', e));
+
+  // v0.30.0 · Niveles / Ambientes y Flujos hospitalarios: los de visor-ambientes.js, tal cual, con las cajas, triángulos, rutas y cortes del visualizador
+  import('./visor-ambientes.js?v=300').then(m => { m.monta(V); const am = MODULOS.ambientes, fl = MODULOS.flujos; MODULOS.ambientes = () => conGeometria('Niveles / Ambientes', am); MODULOS.flujos = () => conGeometria('Flujos hospitalarios', fl); }).catch(e => console.error('visor-ambientes', e));
 
   cargaLista().catch(e => { $('estadoCarga').textContent = 'No se pudo cargar: ' + e.message; });
 })();

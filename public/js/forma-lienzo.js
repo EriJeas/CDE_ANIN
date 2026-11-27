@@ -92,6 +92,8 @@
       if (ids == null) visor.showAll(); else if (!ids.length) { visor.showAll(); visor.hide(it.getRootId(), modelo); } else visor.isolate(ids, modelo);
       if (ocultos && ocultos.length) visor.hide(ocultos, modelo);
     },
+    /** Oculta además estos ids (los ambientes mientras no se pidan), sin tocar lo aislado. */
+    ocultaAparte(ids) { if (!visor || !modelo) return; if (L._aparte && L._aparte.length) visor.show(L._aparte, modelo); L._aparte = ids || []; if (L._aparte.length) visor.hide(L._aparte, modelo); },
     fantasma(si) { if (visor) visor.setGhosting(!!si); },
     /** pares: [[id, [r, g, b] en sRGB 0..1], …]. Sustituye los colores anteriores. Por tandas, para no congelar la página con cientos de miles. */
     async colores(pares) {
@@ -141,6 +143,32 @@
       const V3 = THREE.Vector3; visor.navigation.setView(new V3(a[0] / s, a[1] / s, a[2] / s), new V3(b[0] / s, b[1] / s, b[2] / s));
       try { visor.navigation.setCameraUpVector(new V3(arr[0], arr[1], arr[2])); if (c.fov) visor.navigation.setVerticalFov(c.fov, true); } catch (e) {}
     },
+    // ----- v0.30.0 · dibujar encima y cortar (Flujos hospitalarios, Niveles / Ambientes). Todo entra en coordenadas del CDE (metros, Z arriba). -----
+    _aLmv(p) { const Lc = L._L || (L._P || (L._P = window.CDEG.prepara(modelo, {}))), s = Lc.escala || 1, v = Lc.yArriba ? [p[0], p[2], -p[1]] : p; return new THREE.Vector3(v[0] / s, v[1] / s, v[2] / s); },
+    _dir(d) { const Lc = L._L || (L._P || (L._P = window.CDEG.prepara(modelo, {}))), v = Lc.yArriba ? [d[0], d[2], -d[1]] : d; return new THREE.Vector3(v[0], v[1], v[2]); },
+    _esc() { const Lc = L._L || (L._P || (L._P = window.CDEG.prepara(modelo, {}))); return Lc.escala || 1; },
+    limpiaCapa() { try { if (visor.overlays.hasScene('cde')) visor.overlays.clearScene('cde'); visor.impl.invalidate(false, false, true); } catch (e) {} },
+    /** Una polilínea gruesa (tubos) por puntos del CDE, con esferas en los extremos si se pide (o.inicio / o.fin: color). */
+    ruta(pts, color, o) {
+      o = o || {}; if (!visor.overlays.hasScene('cde')) visor.overlays.addScene('cde');
+      const s = L._esc(), r = (o.radio || 0.09) / s, P = pts.map((p) => L._aLmv(p)), mat = new THREE.MeshBasicMaterial({ color: color || 0xc8a24a, transparent: true, opacity: 0.9, depthTest: false });
+      for (let i = 0; i + 1 < P.length; i++) {
+        const a = P[i], b = P[i + 1], largo = a.distanceTo(b); if (!(largo > 1e-9)) continue;
+        const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, largo, 6, 1), mat); c.position.copy(a).add(b).multiplyScalar(0.5); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize()); visor.overlays.addMesh(c, 'cde');
+      }
+      const bola = (p, col) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r * 3.5, 12, 12), new THREE.MeshBasicMaterial({ color: col, depthTest: false })); m.position.copy(p); visor.overlays.addMesh(m, 'cde'); };
+      if (o.inicio && P.length) bola(P[0], o.inicio); if (o.fin && P.length > 1) bola(P[P.length - 1], o.fin);
+      try { visor.impl.invalidate(false, false, true); } catch (e) {}
+    },
+    /** Corta el modelo por encima de una altura del CDE (corte en planta). null: quita el corte. */
+    corte(z) { if (z == null) { visor.setCutPlanes([]); return; } const u = L._dir([0, 0, 1]); visor.setCutPlanes([new THREE.Vector4(u.x, u.y, u.z, -(z / L._esc()))]); },
+    /** Mira desde arriba la caja [x1,y1,z1,x2,y2,z2] del CDE. */
+    planta(c) {
+      const cx = (c[0] + c[3]) / 2, cy = (c[1] + c[4]) / 2, cz = (c[2] + c[5]) / 2, r = Math.max(4, Math.hypot(c[3] - c[0], c[4] - c[1]) / 2);
+      visor.navigation.setView(L._aLmv([cx, cy, cz + r * 1.9]), L._aLmv([cx, cy, cz])); try { visor.navigation.setCameraUpVector(L._dir([0, 1, 0])); } catch (e) {}
+    },
+    /** Un rayo hacia arriba desde un punto del CDE: true si no toca el modelo en «alcance» metros (cielo abierto); null si no se pudo lanzar. */
+    cieloAbierto(p, alcance) { try { const h = visor.impl.rayIntersect(new THREE.Ray(L._aLmv(p), L._dir([0, 0, 1]).normalize()), true); return !h || h.distance * L._esc() > (alcance || 40); } catch (e) { return null; } },
     cierra() { try { if (visor) visor.finish(); } catch (e) {} visor = null; modelo = null; it = null; }
   };
 })();
