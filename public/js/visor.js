@@ -380,7 +380,9 @@ async function cargaModelo() {
   SEL = null; VIS = null; OCULTOS = new Set(); FILTROS.length = 0; COLOREAR = '';
   if (!(await modeloListo(VID))) return;
   $('estadoCarga').textContent = 'Bajando geometría…';
-  const r = await fetch('/api/modelos/' + PID + '/' + VID + '/geometria', { cache: 'no-store' }); if (!r.ok) { $('estadoCarga').textContent = 'Esta versión no trae geometría.'; return; }
+  // v0.27.0 · un modelo pesado llega por partes (niveles y sectores), completas: se cargan las elegidas o las que entran en el presupuesto
+  const sel = await partesACargar(); if (sel === false) return;
+  const r = await fetch('/api/modelos/' + PID + '/' + VID + '/geometria' + (sel && PARTES && sel.length < PARTES.partes.length ? '?partes=' + sel.join(',') : '')   /* todas las partes = el archivo completo (ya comprimido en el servidor) */, { cache: 'no-store' }); if (!r.ok) { $('estadoCarga').textContent = 'Esta versión no trae geometría.'; return; }
   let D; try { D = parseaCdeg(await r.arrayBuffer()); } catch (e) { $('estadoCarga').textContent = e.message; return; }
   const pos = new THREE.BufferAttribute(D.posiciones, 3), col = new THREE.BufferAttribute(D.colores, 3);
   const geoOp = new THREE.BufferGeometry(); geoOp.setAttribute('position', pos); geoOp.setAttribute('color', col); // las normales se calculan con TODOS los triangulos (opacos y vidrio): si no, el vidrio queda sin normal y se ve negro
@@ -654,6 +656,64 @@ async function selectorParametro(ancla, alElegir) {
 let MODULO = '';
 const herr = (k) => document.querySelector('.herramientas button[data-h="' + k + '"]');
 /**
+ * v0.27.0 · PARTES DEL MODELO. Un modelo pesado no se recorta: el servidor lo sirve por partes (cada nivel y, si es grande, sus
+ * sectores) con todo su detalle, y aquí se elige cuáles cargar. Por defecto, las que entran en el presupuesto de triángulos de este
+ * equipo. El índice (filtros, inventario, propiedades) es siempre el del modelo completo.
+ */
+let PARTES = null;   // { partes, total, sel } del modelo abierto, o null si va entero
+const PRESUP = () => Number(localStorage.getItem('cde-visor-presupuesto')) || 12000000;   // por defecto 12 M: lo que el visor ya abría entero
+async function partesACargar() {
+  PARTES = null; const b = $('partes'); if (b) b.classList.add('oculto');
+  let p;
+  for (let k = 0; ; k++) {
+    try { p = await api('/api/modelos/' + PID + '/' + VID + '/partes'); } catch (e) { return null; }   // sin partes: el modelo entero, como siempre
+    if (!p.aplica) return null;
+    if (p.estado === 'listo') break;
+    if (p.estado === 'error') { $('estadoCarga').textContent = 'No se pudo dividir el modelo en partes: ' + (p.error || ''); return false; }
+    $('estadoCarga').textContent = 'Modelo pesado (' + num(p.triangulos || 0) + ' triángulos): el CDE lo está dividiendo en partes. Solo la primera vez…';
+    if (k > 900) { $('estadoCarga').textContent = 'El CDE no terminó de dividir el modelo.'; return false; }
+    await new Promise(ok => setTimeout(ok, 2000));
+  }
+  let sel = null; try { const g = JSON.parse(localStorage.getItem('cde-visor-partes-' + VID) || 'null'); if (g && g.de === p.partes.length && Array.isArray(g.sel) && g.sel.length) sel = g.sel.filter(n => p.partes[n]); } catch (e) {}
+  if (!sel || !sel.length) { sel = []; let t = 0; for (const x of p.partes) { if (sel.length && t + x.triangulos > PRESUP()) continue; sel.push(x.n); t += x.triangulos; } }
+  PARTES = { partes: p.partes, total: p.total, sel };
+  const tri = sel.reduce((s, n) => s + p.partes[n].triangulos, 0);
+  $('estadoCarga').textContent = 'Bajando ' + sel.length + ' de ' + p.partes.length + ' partes (' + num(tri) + ' triángulos)…';
+  pintaPartes();
+  return sel;
+}
+function pintaPartes() {
+  const b = $('partes'); if (!b || !PARTES) return;
+  const P = PARTES, tri = (l) => l.reduce((s, n) => s + P.partes[n].triangulos, 0), todo = P.sel.length === P.partes.length;
+  b.classList.remove('oculto'); b.classList.toggle('parcial', !todo);
+  b.textContent = todo ? 'Modelo completo · ' + P.partes.length + ' partes' : 'Partes: ' + P.sel.length + ' de ' + P.partes.length + ' · ' + Math.round(100 * tri(P.sel) / Math.max(1, P.total.triangulos)) + ' % del modelo';
+  b.title = 'Este modelo es pesado y se carga por partes (niveles y sectores), cada una completa. Clic para elegir cuáles ver.';
+  b.onclick = () => {
+    const marc = new Set(P.sel), grupos = new Map(); for (const x of P.partes) { if (!grupos.has(x.grupo)) grupos.set(x.grupo, []); grupos.get(x.grupo).push(x); }
+    const c = panel('Partes del modelo', '<p>El modelo tiene <b>' + num(P.total.triangulos) + '</b> triángulos en <b>' + P.partes.length + '</b> partes. Cada parte se carga <b>completa</b>, sin simplificar. Marca las que quieres ver; los filtros y el inventario siguen siendo de todo el modelo.</p>' +
+      '<p class="pista">Presupuesto de este equipo: <select id="ptPres">' + [4, 8, 12, 20, 30].map(m => '<option value="' + m * 1e6 + '"' + (PRESUP() === m * 1e6 ? ' selected' : '') + '>' + m + ' millones de triángulos</option>').join('') + '</select></p>' +
+      '<p><button class="mini" id="ptEntra">Lo que entre en el presupuesto</button> <button class="mini" id="ptNada">Ninguna</button> <button class="mini" id="ptTodo">Todas</button></p>' +
+      '<div class="ptlista">' + [...grupos].map(([g, l]) => '<div class="ptgrupo"><label><input type="checkbox" data-g="' + esc(g) + '"> <b>' + esc(g) + '</b> <span class="pista">' + num(l.reduce((s, x) => s + x.triangulos, 0)) + ' triángulos' + (l.length > 1 ? ' · ' + l.length + ' sectores' : '') + '</span></label>' +
+        (l.length > 1 ? l.map(x => '<label class="ptsec"><input type="checkbox" data-n="' + x.n + '"> ' + esc(x.etiqueta.replace(g + ' · ', '')) + ' <span class="pista">' + num(x.elementos) + ' elem. · ' + num(x.triangulos) + ' tri.</span></label>').join('') : '') + '</div>').join('') + '</div>' +
+      '<p id="ptSuma" style="margin-top:8px"></p><p><button class="mini primario" id="ptCarga">Cargar la selección</button></p>');
+    const refresca = () => {
+      c.querySelectorAll('[data-n]').forEach(i => { i.checked = marc.has(Number(i.dataset.n)); });
+      c.querySelectorAll('[data-g]').forEach(i => { const l = grupos.get(i.dataset.g), k = l.filter(x => marc.has(x.n)).length; i.checked = k === l.length; i.indeterminate = k > 0 && k < l.length; });
+      const t = tri([...marc]), pasa = t > PRESUP();
+      c.querySelector('#ptSuma').innerHTML = '<b>' + marc.size + '</b> partes · <b>' + num(t) + '</b> triángulos (' + Math.round(100 * t / Math.max(1, P.total.triangulos)) + ' % del modelo)' + (pasa ? '<br><span style="color:#f0cf7a">Pasa del presupuesto de este equipo: puede ir lento o cerrar la pestaña.</span>' : '');
+      c.querySelector('#ptCarga').disabled = !marc.size;
+    };
+    c.querySelectorAll('[data-n]').forEach(i => i.onchange = () => { const n = Number(i.dataset.n); if (i.checked) marc.add(n); else marc.delete(n); refresca(); });
+    c.querySelectorAll('[data-g]').forEach(i => i.onchange = () => { for (const x of grupos.get(i.dataset.g)) { if (i.checked) marc.add(x.n); else marc.delete(x.n); } refresca(); });
+    c.querySelector('#ptPres').onchange = (e) => { localStorage.setItem('cde-visor-presupuesto', e.target.value); refresca(); };
+    c.querySelector('#ptEntra').onclick = () => { marc.clear(); let t = 0; for (const x of P.partes) { if (marc.size && t + x.triangulos > PRESUP()) continue; marc.add(x.n); t += x.triangulos; } refresca(); };
+    c.querySelector('#ptNada').onclick = () => { marc.clear(); refresca(); };
+    c.querySelector('#ptTodo').onclick = () => { for (const x of P.partes) marc.add(x.n); refresca(); };
+    c.querySelector('#ptCarga').onclick = () => { localStorage.setItem('cde-visor-partes-' + VID, JSON.stringify({ de: P.partes.length, sel: [...marc].sort((a, b) => a - b) })); $('panel').classList.add('oculto'); cargaModelo(); };
+    refresca();
+  };
+}
+/**
  * v0.26.0 · FIDELIDAD DE LA GEOMETRÍA. Un modelo de Forma muy pesado no entra completo en el navegador: al prepararlo, el CDE simplifica
  * piezas, deja el acero de refuerzo solo con propiedades y, pasado el límite, dibuja elementos como su caja. Eso ya no pasa en silencio:
  * el botón de la barra superior dice si la geometría va completa o aligerada, con las cifras, y deja volver a prepararla con más detalle.
@@ -668,9 +728,10 @@ function pintaFidelidad(meta) {
   const b = $('fidelidad'); if (!b) return;
   const f = fidelidadDe(meta), deForma = /Autodesk Forma/.test((meta && meta.herramienta) || '');
   if (!f && !deForma) { b.classList.add('oculto'); return; }
-  const reducida = !!f && ((f.piezasAligeradas || 0) + (f.enCaja || 0) + (f.acero || 0) + (f.lineasAuxiliares || 0) + (f.lineasOmitidas || 0) + (f.lineasSinElemento || 0) + (f.piezasSinElemento || 0) > 0);
-  b.classList.remove('oculto'); b.classList.toggle('reducida', reducida);
-  b.textContent = !f ? 'Geometría: sin informe' : reducida ? '⚠ Geometría aligerada' : '✓ Geometría completa';
+  const reducida = !!f && ((f.piezasAligeradas || 0) + (f.enCaja || 0) + (f.acero || 0) + (f.lineasAuxiliares || 0) + (f.lineasOmitidas || 0) + (f.lineasSinElemento || 0) > 0);
+  const sueltas = !!f && ((f.piezasSinElemento || 0) + (f.lineasSueltas || 0) > 0);   // v0.27.1: dibujadas, pero sin unir a su elemento del índice
+  b.classList.remove('oculto'); b.classList.toggle('reducida', reducida || sueltas);
+  b.textContent = !f ? 'Geometría: sin informe' : reducida ? '⚠ Geometría aligerada' : sueltas ? '⚠ Geometría completa · piezas sin vincular' : '✓ Geometría completa';
   b.title = 'Qué tan fiel es esta geometría a la de Autodesk Forma (clic para ver el detalle)';
   b.onclick = () => {
     const fila = (n, t, mal) => '<tr' + (mal && n ? ' class="fmal"' : '') + '><td class="n">' + num(n || 0) + '</td><td>' + t + '</td></tr>';
@@ -684,11 +745,14 @@ function pintaFidelidad(meta) {
       fila(f.acero, 'pieza(s) de <b>acero de refuerzo</b> sin geometría (solo propiedades)', true) +
       fila(f.piezasAligeradas, 'pieza(s) <b>simplificadas</b> sin mover su superficie más de ' + cm + (f.triAntes ? ' (' + num(f.triAntes) + ' → ' + num(f.triDespues) + ' triángulos)' : ''), false) +
       fila(f.lineasAuxiliares, 'pieza(s) de <b>líneas auxiliares</b> (ejes, líneas de modelo, líneas de centro) no dibujadas', true) +
-      fila((f.lineasOmitidas || 0) + (f.lineasSinElemento || 0), 'pieza(s) de líneas no dibujadas (límite de segmentos o sin elemento en el índice)', true) +
-      fila(f.piezasSinElemento, 'pieza(s) con geometría <b>sin elemento</b> en el índice (no se dibujan)', true) +
-      '</table>' + (reducida ? '<p class="pista">Las propiedades de todos los elementos están completas en cualquier caso: lo que cambia es el dibujo.</p>' : '<p>Nada se simplificó ni se dejó fuera.</p>')
+      fila(f.lineasOmitidas, 'pieza(s) de líneas no dibujadas por pasar el límite de segmentos', true) +
+      fila(f.lineasSinElemento, 'pieza(s) de líneas no dibujadas por no tener elemento en el índice', true) +
+      fila((f.piezasSinElemento || 0) + (f.lineasSueltas || 0), 'pieza(s) <b>dibujadas pero sin vincular</b> a un elemento del índice (se ven, pero no responden a los filtros ni muestran propiedades)', true) +
+      '</table>' + (reducida ? '<p class="pista">Las propiedades de todos los elementos están completas en cualquier caso: lo que cambia es el dibujo.</p>' : sueltas ? '<p>No se simplificó ni se dejó fuera nada del dibujo, pero hay piezas sin vincular a sus propiedades.</p>' : '<p>Nada se simplificó ni se dejó fuera.</p>') +
+      (f.diagnostico ? '<p style="margin-top:8px"><b>Diagnóstico de las piezas sin vincular</b> <button class="mini" id="fdCopia">Copiar</button></p><textarea id="fdTxt" readonly style="width:100%;height:110px;font:11px monospace">' + esc(f.diagnostico) + '</textarea>' : '')
       + (x && x.origen === 'forma' ? '<p style="margin-top:10px"><b>Volver a preparar con más detalle</b><br><span class="pista">Lo hace tu navegador con tu cuenta de Autodesk y reemplaza la geometría para todos. A más detalle, más memoria y tiempo: «Máximo» pide un equipo con 16 GB o más y puede cerrar la pestaña en modelos muy grandes.</span></p>' +
         '<p><button class="mini" data-det="normal">Normal</button> <button class="mini" data-det="alto">Alto</button> <button class="mini" data-det="maximo">Máximo</button></p>' : ''));
+    { const bc = c.querySelector('#fdCopia'); if (bc) bc.onclick = () => { const t = c.querySelector('#fdTxt'); t.select(); try { navigator.clipboard.writeText(t.value); } catch (e) { document.execCommand('copy'); } bc.textContent = 'Copiado'; }; }
     c.querySelectorAll('[data-det]').forEach(bt => bt.onclick = () => { $('panel').classList.add('oculto'); pasaDesdeForma(VID, x, bt.dataset.det); });
   };
 }
@@ -1039,7 +1103,7 @@ const V = { trozosDe,
   // v0.6.2: lo que necesita visor-puente.js para correr los modulos del Visor BIM Federado tal cual
   alRecalcular: [], alPintarFiltros: [], alAbrirFiltros: [], anadeFiltro, quitaFiltro, pintaFiltros, pintaEstadoFiltros, get MODULO() { return MODULO; }, get OCULTOS() { return OCULTOS; }, COLOR_SEL, srgbLin
 };
-V.pintaFidelidad = pintaFidelidad; window.VISOR = V; window.V = V;   // para depurar desde la consola del navegador y para visor-puente.js
+V.pintaFidelidad = pintaFidelidad; V.partes = () => PARTES; window.VISOR = V; window.V = V;   // para depurar desde la consola del navegador y para visor-puente.js
 import('./visor-modulos.js?v=108').then(m => m.monta(V)).catch(e => console.error('visor-modulos', e));
 import('./visor-ambientes.js').then(m => m.monta(V)).catch(e => console.error('visor-ambientes', e));
 

@@ -155,3 +155,7 @@ body.visor .kpi .n { color: var(--er-orc); } body.visor .kpi .t { color: var(--e
 .vtop .fidelidad.reducida { border-color: #b98a2a; background: rgba(185, 138, 42, .2); color: #f0cf7a; }
 .vtop .fidelidad.oculto { display: none; }
 .tfid { border-collapse: collapse; margin: 6px 0; width: 100%; } .tfid td { padding: 4px 6px; border-bottom: 1px solid rgba(255, 255, 255, .08); vertical-align: top; } .tfid td.n { text-align: right; font-family: var(--er-m, monospace); white-space: nowrap; width: 1%; } .tfid tr.fmal td.n { color: #f0cf7a; font-weight: 700; }
+/* v0.27.0 · partes del modelo */
+.vtop #partes { border-color: #4a6f8f; background: rgba(74, 111, 143, .2); color: #a9cdea; } .vtop #partes.parcial { border-color: #b98a2a; background: rgba(185, 138, 42, .2); color: #f0cf7a; }
+.ptlista { max-height: 46vh; overflow: auto; border: 1px solid rgba(255, 255, 255, .1); padding: 6px 8px; } .ptgrupo { padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, .06); } .ptgrupo label { display: block; cursor: pointer; } .ptgrupo .ptsec { padding-left: 22px; font-size: 12px; }
+.ptgrupo label { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; } .ptgrupo input[type=checkbox] { width: auto; margin: 0; flex: none; position: relative; top: 2px; }

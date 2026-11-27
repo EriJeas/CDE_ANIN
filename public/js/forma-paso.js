@@ -198,7 +198,28 @@
       paso('indice', 'va', (a && a.texto) || 'Ordenando el índice como Navisworks…'); await duerme(1500); corta();
     }
     const EI = await api(F + '/modelos/' + encodeURIComponent(VID) + '/elementos-indice'), ids = new Set(EI.e), acero = new Set(EI.acero || []), aux = new Set(EI.aux || []);
-    const G = C.elementosDe(L, (d) => ids.has(d), (d) => (padres.has(d) ? padres.get(d) : null));
+    const G = C.elementosDe(L, (d) => ids.has(d), (d) => (padres.has(d) ? padres.get(d) : null), { lineasSueltas: DETALLE !== 'normal' });   // en alto y máximo ninguna línea se deja fuera por no tener elemento
+    /*
+     * v0.27.1 · Si hay piezas que no se pudieron unir a un elemento del índice, se arma un diagnóstico legible (qué id tiene la pieza en el
+     * visor, cuál en el índice, sus antecesores y qué dice el índice de cada uno): el visor lo muestra y se puede corregir con datos.
+     */
+    let DIAG = '';
+    if (G.sinElemento || G.lineasSinElemento) try {
+      const filas = [], vistos = new Set();
+      for (let f = 0; f < L.n && filas.length < 8; f++) {
+        if (L.tipo[f] !== 1 && L.tipo[f] !== 2) continue; const d2 = dbDe2(f); if (d2 == null || d2 <= 0 || vistos.has(d2)) continue;
+        let t = L.dbDe(f), k = 0, hay = false; while (t != null && t > 0 && k++ < 60) { if (ids.has(t)) { hay = true; break; } t = padres.has(t) ? padres.get(t) : null; } if (hay) continue;
+        vistos.add(d2); const cad = []; let p2 = d2;
+        for (let j = 0; j < 7 && p2 > 0; j++) { let nm = ''; try { nm = it.getNodeName(p2) || ''; } catch (e) {} cad.push([p2, I.v1(p2), String(nm).slice(0, 40)]); let pa = 0; try { pa = it.getNodeParentId(p2); } catch (e) {} if (!(pa > 0)) break; p2 = pa; }
+        filas.push({ tipo: L.tipo[f] === 2 ? 'línea' : 'sólido', cad });
+      }
+      const pedir = [...new Set(filas.flatMap((x) => x.cad.map((c) => c[1])).filter((x) => x > 0))];
+      const R = await api(F + '/modelos/' + encodeURIComponent(VID) + '/diagnostico-ids', { json: { ids: pedir } }), de = new Map((R.filas || []).map((x) => [x.e, x]));
+      DIAG = ['Correspondencia de ids: ' + I.tipo + ' (' + (I.n || 0) + ') · piezas ' + L.n + ' · sin correspondencia ' + sinMapa + ' · sólidos sin elemento ' + (G.sinElemento || 0) + ' · líneas sin elemento ' + (G.lineasSinElemento || 0),
+        'Índice: ' + JSON.stringify(R.clases || {}) + ' · elementos (clase 1) recibidos: ' + ids.size + ' · mayor id del índice: ' + (R.maxE || 0) + ' · comprobación de nombres: ' + VI.coinciden + ' de ' + VI.total + (VI.sinFicha ? ' (' + VI.sinFicha + ' sin ficha)' : ''),
+        ...filas.map((x, i) => (i + 1) + ') ' + x.tipo + ': ' + x.cad.map((c) => { const r = de.get(c[1]); return '[visor ' + c[0] + ' → índice ' + c[1] + ' «' + c[2] + '» = ' + (c[1] <= 0 ? 'SIN CORRESPONDENCIA' : !r || r.falta ? 'NO ESTÁ' : 'clase ' + r.clase + ' «' + String(r.nombre || '').slice(0, 30) + '» cat «' + (r.cat || '') + '»' + (r.anc ? ' anc ' + r.anc : '')) + ']'; }).join(' ← '))].join('\n').slice(0, 6000);
+      nota('diagnostico', { texto: DIAG.slice(0, 3000) });
+    } catch (e) { DIAG = 'No se pudo armar el diagnóstico: ' + e.message; }
     const muestra = G.muestraSin.map((d) => { const cadena = []; let x = d, k = 0; while (x != null && x > 0 && k++ < 8) { let nm = ''; try { const x2 = x >= FUERA ? x - FUERA : I.v2(x); nm = it.getNodeName(x2); } catch (e) {} cadena.push(x + ':' + String(nm || '').slice(0, 40)); x = padres.get(x); } return cadena.join(' < '); });
     nota('elementos', { elementosIndice: ids.size, acero: acero.size, grupos: G.elems.length, sinElemento: G.sinElemento, muestraSinElemento: muestra });
     // 3) plan (criterio del complemento de Navisworks: acero solo con propiedades, aligerado con 1 cm de tolerancia) y armado
@@ -230,7 +251,7 @@
     if (G.sinElemento) avisos.push(num(G.sinElemento) + ' pieza(s) sin elemento en el índice.');
     const out = C.cierraEscritor(W, L.origen, { modelo: pr.archivo, herramienta: 'Traducción de Autodesk Forma (visor de Autodesk) → CDE', forma: { version: pr.version },
       // v0.26.0: qué tan fiel es esta geometría a la de Autodesk; el visor lo muestra siempre (nada se quita en silencio)
-      fidelidad: { detalle: DETALLE, triangulosEntrada: K.triEntrada, triangulos: Math.round(W.nI / 3), piezas: K.piezas, piezasAligeradas: W.aligeradas, triAntes: W.triAntes, triDespues: W.triDespues, tolerancia: K.tolerancia, enCaja: W.enCaja, topeSeguro: K.topeSeguro, acero: K.nAcero, triAcero: K.triAcero, lineasDibujadas: LN.filas.length / 4, lineasAuxiliares: LN.aux, lineasOmitidas: LN.omitidas, lineasSinElemento: G.lineasSinElemento || 0, piezasSinElemento: G.sinElemento || 0 },
+      fidelidad: { detalle: DETALLE, triangulosEntrada: K.triEntrada, triangulos: Math.round(W.nI / 3), piezas: K.piezas, piezasAligeradas: W.aligeradas, triAntes: W.triAntes, triDespues: W.triDespues, tolerancia: K.tolerancia, enCaja: W.enCaja, topeSeguro: K.topeSeguro, acero: K.nAcero, triAcero: K.triAcero, lineasDibujadas: LN.filas.length / 4, lineasAuxiliares: LN.aux, lineasOmitidas: LN.omitidas, lineasSinElemento: DETALLE === 'normal' ? (G.lineasSinElemento || 0) : 0, lineasSueltas: DETALLE === 'normal' ? 0 : (G.lineasSinElemento || 0), piezasSinElemento: G.sinElemento || 0, diagnostico: DIAG },
       aligerado: aligerado ? { criterio: 'complemento de Navisworks (medio)', triangulosEntrada: K.triEntrada, triangulos: Math.round(W.nI / 3), tope: K.tope, tolerancia: K.tolerancia, piezasAligeradas: W.aligeradas, mallasReutilizadas: W.reusadas, acero: K.nAcero, enCaja: W.enCaja, topeSeguro: K.topeSeguro } : null });
     const blob = new Blob(out.partes, { type: 'application/octet-stream' });
     nota('armado', { bytes: blob.size, elementos: out.nElem, vertices: out.nVert, triangulos: Math.round(out.nIdx / 3), vaciadas: L.vaciadas || 0, aligeradas: W.aligeradas, triAntes: W.triAntes, triDespues: W.triDespues, reusadas: W.reusadas, enCaja: W.enCaja, triEnCaja: W.triEnCaja, aristas: out.nAristas });
@@ -242,7 +263,8 @@
       const st = await api(F + '/modelos/' + encodeURIComponent(VID) + '/estado');
       if (st.enVisor) break;
       if (st.trabajo && st.trabajo.error) throw new Error(st.trabajo.error);
-      if (k > 30) throw new Error('El CDE no terminó de instalar el modelo.');
+      if (k > 600) throw new Error('El CDE no terminó de instalar el modelo.');
+      paso('subir', 'va', tam(blob.size) + ' · subida completa; el servidor la está guardando (' + (k + 1) + ' s)…', 100);
       await duerme(1000);
     }
     paso('subir', 'ok', tam(blob.size));

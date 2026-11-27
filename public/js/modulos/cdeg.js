@@ -651,7 +651,7 @@
     return { partes: [cab.buffer, tabla.buffer].concat(W.tp, W.ti, [new Uint32Array(W.icTr)], W.tc, relleno ? [new Uint8Array(relleno)] : [], lins, aris), nElem: nE, nVert: W.nV, nIdx: W.nI, nAristas: W.nA || 0, nSegmentos: (W.lin && W.lin.nS) || 0 };
   }
   /** El elemento del indice de cada pieza (su antecesor que el indice reconoce como elemento) y la lista de elementos. */
-  function elementosDe(L, esElem, padreDe) {
+  function elementosDe(L, esElem, padreDe, op) {
     const memo = new Map(); let sinElem = 0;
     const destino = (db) => {
       if (memo.has(db)) return memo.get(db);
@@ -662,7 +662,7 @@
     };
     const porE = new Map(), sin = [], deFid = new Int32Array(L.n).fill(-1), enIndice = new Set(), linE = new Map(); let linSin = 0;
     for (let f = 0; f < L.n; f++) {
-      if (L.tipo[f] === 2) { const t = destino(L.dbDe(f)); if (t == null) { linSin++; continue; } deFid[f] = t; let x = linE.get(t); if (!x) linE.set(t, x = []); x.push(f); continue; }   // lineas: solo las de un elemento del indice
+      if (L.tipo[f] === 2) { let t = destino(L.dbDe(f)); if (t == null) { linSin++; if (!(op && op.lineasSueltas)) continue; t = L.dbDe(f); /* v0.27.1: se dibuja igual, con su propio id */ } deFid[f] = t; let x = linE.get(t); if (!x) linE.set(t, x = []); x.push(f); continue; }   // lineas: solo las de un elemento del indice
       if (L.tipo[f] !== 1) continue; const db = L.dbDe(f); let t = destino(db); if (t == null) { t = db; sinElem++; if (sin.length < 15 && !sin.includes(db)) sin.push(db); } else enIndice.add(t); deFid[f] = t; let x = porE.get(t); if (!x) porE.set(t, x = []); x.push(f); }
     return { elems: [...porE].sort((a, b) => a[0] - b[0]).map(([e, fids]) => ({ e, fids, indice: enIndice.has(e) })), deFid, sinElemento: sinElem, muestraSin: sin, lineas: [...linE].sort((a, b) => a[0] - b[0]).map(([e, fids]) => ({ e, fids })), lineasSinElemento: linSin };
   }
