@@ -1491,6 +1491,13 @@ const duerme = (ms) => new Promise(r => setTimeout(r, ms));
         }
         { const dg = await pide(F + '/modelos/' + mM.vid + '/visor-diagnostico', { json: { ids: [3, 6, 99] } }), f3 = dg.j.filas.find(x => x.e === 3), f99 = dg.j.filas.find(x => x.e === 99);
           ok(dg.status === 200 && f3 && f3.clase === 1 && f99 && f99.falta === true && dg.j.clases['clase 1'] === 2 && dg.j.soloIndice === true && f3.aux === false && require('../lib/arbol-navisworks').lineaAuxiliar('Center line') && !require('../lib/arbol-navisworks').lineaAuxiliar('Walls'), 'v0.28.1: el diagnóstico del vínculo dice, de cada id, su fila del índice (clase, categoría, icono) o que no está ' + JSON.stringify(dg.j).slice(0, 260)); }
+        { // v0.29.2 · el índice entero (lo que piden Filtro con sectores, Tablero y COBie) se arma una vez y después sale del disco, idéntico
+          const pidP = decodeURIComponent(F.split('/')[3]), u = B + '/api/modelos/' + pidP + '/' + mM.vid + '/props', h = { headers: { cookie: galleta } };
+          const p1 = await fetch(u, h), t1 = await p1.text(), p2 = await fetch(u, h), t2 = await p2.text(), j1 = JSON.parse(t1);
+          ok(p1.status === 200 && !p1.headers.get('x-cde-props') && p2.headers.get('x-cde-props') === 'copia' && t1 === t2 && j1.total === 2 && j1.params.includes('● Categoria'), 'v0.29.2: el índice entero del modelo se guarda junto al índice y la segunda vez sale del disco, idéntico (' + t1.length + ' bytes)');
+          const pj = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'js', 'visor-puente.js'), 'utf8'), vj2 = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'js', 'visor-forma.js'), 'utf8');
+          ok(/nValores\(g\)/.test(pj) && /sin valores \(/.test(pj) && /PUENTE\.cargaProps/.test(pj) && /vfcarga/.test(vj2) && /CON_INDICE/.test(vj2), 'v0.29.2: un botón de sectores sin valores no se ofrece (y se explica), y los módulos que cargan el índice avisan al instante');
+        }
         // (lo que sigue es el paso al visor propio: reutiliza el índice recién instalado y le añade su geometría)
         r = await pide(F + '/modelos/' + mM.vid + '/preparar', { json: {} });
         ok(r.status === 200 && r.j.urn === Buffer.from('urn:v:M?version=1').toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_') && r.j.region === 'US' && r.j.version === 1, 'preparar da la traducción del archivo en Autodesk (urn de la versión de Forma) y su región ' + JSON.stringify(r.j).slice(0, 200));

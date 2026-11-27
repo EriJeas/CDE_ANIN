@@ -98,7 +98,7 @@
     if (!INFO.indice) { await preparaIndice(); INFO = await api(F + '/modelos/' + encodeURIComponent(VID) + '/visor-forma'); }
     caja.classList.remove('lado'); caja.textContent = 'Abriendo el visualizador de Autodesk…';
     const ifr = document.createElement('iframe'); ifr.id = 'lienzoForma'; ifr.title = 'Visualizador de Autodesk';
-    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=291'; document.body.appendChild(ifr); });
+    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=292'; document.body.appendChild(ifr); });
     LZ = ifr.contentWindow.LIENZO; if (!LZ) throw new Error('El lienzo no se inició.');
     LZ.alGeometria = () => { GEO = 1; pintaCifras(); };
     LZ.alAvance = (p) => { if (GEO < 1) { GEO = Math.min(0.99, p); pintaCifras(); } if (!caja.classList.contains('oculto') && caja.dataset.fase === 'geo') caja.textContent = 'Autodesk entrega la geometría… ' + Math.round(p * 100) + ' %'; };
@@ -142,6 +142,7 @@
     FILTROS.length = 0; PARAMS = null; selecciona(null, true);
     abreModulo(MODULO && MODULOS[MODULO] ? MODULO : 'filtros', true);
     V.alCargarModelo.forEach(f => { try { f(); } catch (e) { console.warn(e); } });
+    if (EL) setTimeout(() => { try { if (window.PUENTE && window.PUENTE.cargaProps) window.PUENTE.cargaProps().catch(() => {}); } catch (e) {} }, 800);   // v0.29.2: el índice entero se adelanta en segundo plano
   }
   // v0.28.1 · mientras Autodesk sigue entregando geometría (las líneas y los vidrios llegan al final) la cabecera lo dice: el modelo aún no está completo
   let CIFRAS = '', GEO = 0;
@@ -313,11 +314,15 @@
   (function arrastrePanel() { const p = $('panel'), cab = $('pcab'); let a = null; cab.addEventListener('mousedown', (e) => { if (e.target.tagName === 'BUTTON') return; a = { x: e.clientX - p.offsetLeft, y: e.clientY - p.offsetTop }; e.preventDefault(); document.body.classList.add('arrastrando'); const lz = $('lienzoForma'); if (lz) lz.style.pointerEvents = 'none'; }); window.addEventListener('mousemove', (e) => { if (!a) return; p.style.left = Math.max(0, e.clientX - a.x) + 'px'; p.style.top = Math.max(48, e.clientY - a.y) + 'px'; }); window.addEventListener('mouseup', () => { a = null; const lz = $('lienzoForma'); if (lz) lz.style.pointerEvents = ''; }); })();
   // las ventanas del CDE se arrastran por encima del marco del visualizador: mientras se arrastra o se agranda una, el marco no captura el ratón
   document.addEventListener('mousedown', (e) => { if (e.target.closest && e.target.closest('.ventana, .flota')) { const lz = $('lienzoForma'); if (lz) { lz.style.pointerEvents = 'none'; const suelta = () => { lz.style.pointerEvents = ''; window.removeEventListener('mouseup', suelta); }; window.addEventListener('mouseup', suelta); } } }, true);
-  const MODULOS = {};
+  const MODULOS = {}, CON_INDICE = { sectores: 'Filtro Sectores', mbim: 'Tablero (métricas BIM)', cobie: 'COBie / Uniclass', modplanos: 'Modelos / Planos' };
   function abreModulo(m, silencioso) {
     if (MODULO === m && !silencioso && !$('panel').classList.contains('oculto')) { cierraPanel(); return; }
     MODULO = m; document.querySelectorAll('.carril .mod').forEach(x => x.classList.toggle('activo', x.dataset.m === m));
-    if (MODULOS[m]) MODULOS[m](); else panel(m, '<p class="pista">Este módulo aún no está disponible.</p>');
+    // v0.29.2: los módulos que necesitan el índice entero responden al instante: primero el aviso de carga, después su contenido
+    const lento = CON_INDICE[m] && VID && EL && !(window.props && window.props.total);
+    if (lento) panel(CON_INDICE[m], '<p class="pista vfcarga">⏳ Cargando el índice de parámetros del modelo… Solo tarda la primera vez que se abre este modelo.</p>');
+    let r; if (MODULOS[m]) r = MODULOS[m](); else panel(m, '<p class="pista">Este módulo aún no está disponible.</p>');
+    if (lento && r && r.then) r.then(() => { if ($('pcuerpo').querySelector('.vfcarga')) $('panel').classList.add('oculto'); }, (e) => { const c = $('pcuerpo').querySelector('.vfcarga'); if (c) c.textContent = 'No se pudo cargar el índice: ' + e.message; });
   }
   document.querySelectorAll('.carril .mod').forEach(m => m.onclick = () => abreModulo(m.dataset.m));
   const sinDatos = () => '<p class="pista">' + (VID ? 'Las funciones del CDE no están activas en este modelo (pulsa el aviso de arriba para ver por qué).' : 'Elige un modelo arriba.') + '</p>';

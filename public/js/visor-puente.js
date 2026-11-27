@@ -50,7 +50,7 @@
     const { api, esc: escV, num } = V;
     window.nav.project = V.PID; window.THREE = V.THREE;
     const PUENTE = { cargando: null, vid: '', tintesBarra: new Map(), rafTinte: 0 };
-    window.PUENTE = PUENTE;
+    window.PUENTE = PUENTE; PUENTE.cargaProps = () => cargaProps();   // v0.29.2: el visor puede adelantar la carga del índice
 
     // ---------- props: el indice entero, como el IV del visor ----------
     async function cargaProps() {
@@ -134,13 +134,26 @@
       if (!bar) { lista.insertAdjacentHTML('beforebegin', secBarHtml()); bar = $('secBar'); bar.querySelectorAll('button[data-g]').forEach(b => b.onclick = () => alternaGrupo(b.dataset.g)); }
       const t = $('ptitulo'); if (t) t.textContent = 'Filtro Sectores';
       if (typeof pintaBarraSectores === 'function') { try { pintaBarraSectores(); } catch (x) { console.warn(x); } }
+      // v0.29.2: «Código de partida» y «Nombre de partida» comparten parámetros (los que contienen «partida») y se reparten por la FORMA de cada
+      // valor. Si un grupo tiene parámetros pero ningún valor suyo, el botón no se ofrece y la línea de abajo lo dice (antes decía «2 parámetro(s)»
+      // y al pulsar respondía que no había ninguno).
+      try {
+        const info = $('secInfo');
+        for (const g of (typeof GRUPOS_VIRT !== 'undefined' ? GRUPOS_VIRT : [])) {
+          const b = $('btnSec' + g.id.charAt(0).toUpperCase() + g.id.slice(1)); if (!b || !g.filtraValor) continue;
+          const ps = paramsDeGrupo(g); if (!ps.length || V.FILTROS.some(f => f.tipo === 'grupo' && f.param === g.clave)) continue;
+          if (!nValores(g)) { b.disabled = true; b.title = 'Los parámetros ' + ps.join(', ') + ' no tienen valores con forma de «' + g.etiqueta + '» en este modelo'; if (info) info.textContent = info.textContent.replace(g.etiqueta + ': ' + ps.length + ' parámetro(s)', g.etiqueta + ': sin valores (' + ps.length + ' parámetro(s) con «partida», ninguno con esa forma)'); }
+        }
+      } catch (x) { console.warn(x); }
     }
+    const cuentaVal = new Map();   // grupo -> { de: props.params, n }
+    function nValores(g) { const c = cuentaVal.get(g.id); if (c && c.de === props.params) return c.n; const n = valoresDeGrupo(g).length; cuentaVal.set(g.id, { de: props.params, n }); return n; }
     async function alternaGrupo(gid) {
       const g = (typeof GRUPOS_VIRT !== 'undefined' ? GRUPOS_VIRT : []).find(x => x.id === gid); if (!g) return;
       const ya = V.FILTROS.find(f => f.tipo === 'grupo' && f.param === g.clave);
       if (ya) { V.quitaFiltro(ya); return; }
       const vals = valoresDeGrupo(g);
-      if (!vals.length) { alert('Ningun parametro de este modelo contiene "' + g.etiqueta + '".'); return; }
+      if (!vals.length) { const ps = paramsDeGrupo(g); alert(ps.length ? 'Este modelo tiene ' + ps.length + ' parámetro(s) con «partida» (' + ps.join(', ') + '), pero ninguno de sus valores tiene forma de «' + g.etiqueta + '».' : 'Ningún parámetro de este modelo contiene «' + g.etiqueta + '».'); return; }
       const f = await V.anadeFiltro({ tipo: 'grupo', param: g.clave, titulo: VIRT_PREFIX + g.etiqueta + ' (todos los parametros)', grupo: g.id, lista: vals });
       const e = ESPEJO.get(f.id); if (e && typeof ordenaValoresFiltro === 'function') { ordenaValoresFiltro(e); f.lista = e.values; V.pintaFiltros(); }
     }
