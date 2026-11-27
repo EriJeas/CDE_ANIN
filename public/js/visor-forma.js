@@ -98,7 +98,7 @@
     if (!INFO.indice) { await preparaIndice(); INFO = await api(F + '/modelos/' + encodeURIComponent(VID) + '/visor-forma'); }
     caja.classList.remove('lado'); caja.textContent = 'Abriendo el visualizador de Autodesk…';
     const ifr = document.createElement('iframe'); ifr.id = 'lienzoForma'; ifr.title = 'Visualizador de Autodesk';
-    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=290'; document.body.appendChild(ifr); });
+    await new Promise((ok, mal) => { ifr.onload = ok; ifr.onerror = () => mal(new Error('No se pudo abrir el lienzo.')); ifr.src = 'forma-lienzo.html?v=291'; document.body.appendChild(ifr); });
     LZ = ifr.contentWindow.LIENZO; if (!LZ) throw new Error('El lienzo no se inició.');
     LZ.alGeometria = () => { GEO = 1; pintaCifras(); };
     LZ.alAvance = (p) => { if (GEO < 1) { GEO = Math.min(0.99, p); pintaCifras(); } if (!caja.classList.contains('oculto') && caja.dataset.fase === 'geo') caja.textContent = 'Autodesk entrega la geometría… ' + Math.round(p * 100) + ' %'; };
@@ -280,7 +280,8 @@
     const fd = FILTROS.find(g => g.tipo === 'dim' && g.dim === DIM), items = cuentaDim(DIM, fd).slice(0, 300);
     const l = $('barrasDim'); if (l) {
       l.innerHTML = barras(items, fd && fd.valores.size === 1 ? [...fd.valores][0] : '', null);
-      l.querySelectorAll('.barra[data-k]').forEach(b => b.onclick = async () => { let f = fd; if (!f) f = await anadeFiltro({ tipo: 'dim', dim: DIM }); if (f.valores.has(b.dataset.k)) f.valores.delete(b.dataset.k); else { if (f.valores.size === 1) f.valores.clear(); f.valores.add(b.dataset.k); } recalcula(true); });
+      l.querySelectorAll('.barra[data-k]').forEach(b => b.onclick = async () => { let f = fd; if (!f) f = await anadeFiltro({ tipo: 'dim', dim: DIM }); if (f.valores.has(b.dataset.k)) f.valores.delete(b.dataset.k); else f.valores.add(b.dataset.k); recalcula(true); });   // v0.29.1: cada clic suma o quita (varias a la vez)
+      if (fd) l.querySelectorAll('.barra[data-k]').forEach(b => b.classList.toggle('activa', fd.valores.has(b.dataset.k)));
     }
     V.alPintarFiltros.forEach(fn => { try { fn(cont); } catch (e) { console.warn(e); } });
   }
@@ -324,7 +325,7 @@
     const c = panel('Filtros', '<div class="filab"><button class="primario" id="fAnade">+ Añadir filtro</button><button id="fLimpia" title="Quitar todos los filtros">Limpiar</button><span class="pista" id="filtrosN" style="margin-left:auto"></span></div>' +
       '<div id="filtrosLista"></div>' +
       '<div class="grupo"><h4>Colorear por<span class="hint">pinta cada valor de un color</span></h4><select id="fColor"><option value="">Colores del modelo</option>' + Object.entries(DIMS).map(([k, n]) => '<option value="' + k + '"' + (COLOREAR === k ? ' selected' : '') + '>' + n + '</option>').join('') + '</select><div class="leyenda" id="leyendaColor"></div></div>' +
-      '<div class="grupo"><h4>Resumen<span class="hint">clic en una barra filtra</span></h4><div class="lienzo-pestanas">' + Object.entries(DIMS).filter(([k]) => k !== 'tip').map(([k, n]) => '<button data-d="' + k + '"' + (DIM === k ? ' class="activa"' : '') + '>' + n + '</button>').join('') + '</div><div id="barrasDim" class="pista">' + (EL ? '' : (VID ? 'Las funciones del CDE no están activas en este modelo.' : 'Elige un modelo.')) + '</div></div>');
+      '<div class="grupo"><h4>Resumen<span class="hint">clic en una barra la suma al filtro; otro clic la quita</span></h4><div class="lienzo-pestanas">' + Object.entries(DIMS).filter(([k]) => k !== 'tip').map(([k, n]) => '<button data-d="' + k + '"' + (DIM === k ? ' class="activa"' : '') + '>' + n + '</button>').join('') + '</div><div id="barrasDim" class="pista">' + (EL ? '' : (VID ? 'Las funciones del CDE no están activas en este modelo.' : 'Elige un modelo.')) + '</div></div>');
     c.querySelector('#fAnade').onclick = (e) => { if (!EL) return; selectorParametro(e.currentTarget, (def) => anadeFiltro(def).then(() => { const el = $('filtrosLista').querySelector('.filtro:last-child'); if (el) el.scrollIntoView({ block: 'nearest' }); })); };
     c.querySelector('#fLimpia').onclick = () => { FILTROS.length = 0; OCULTOS = new Set(); recalcula(false); encuadra(); };
     c.querySelector('#fColor').onchange = (e) => coloreaPor(e.target.value);
